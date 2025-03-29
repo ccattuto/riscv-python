@@ -35,7 +35,7 @@ def decode(inst):
 def execute(cpu, inst):
     opcode, rd, funct3, rs1, rs2, funct7, imm_i, imm_s, imm_b, imm_u, imm_j = decode(inst)
 
-    #print(f"s1 = 0x{cpu.registers[9]:08x}")
+    #print(f"a0 = 0x{cpu.registers[10]:08x}, a1 = 0x{cpu.registers[11]:08x}")
 
     assert cpu.registers[0] == 0, "x0 register should always be 0"
 
@@ -131,28 +131,40 @@ def execute(cpu, inst):
         next_pc = (cpu.registers[rs1] + imm_i) & ~1
 
     elif opcode == 0x73:  # SYSTEM (ECALL/EBREAK)
-        if imm_i == 0:
+        if imm_i == 0: # ECALL
             syscall_id = cpu.registers[17]  # a7
-            print(f"[SYSCALL {syscall_id}]")
+            #print(f"[SYSCALL {syscall_id}]")
             if syscall_id == 64:  # _write syscall (newlib standard)
                 fd = cpu.registers[10]      # a0
                 addr = cpu.registers[11]    # a1
                 count = cpu.registers[12]   # a2
+                #print(f"[ECALL (write) fd={fd}, addr={addr:08x}, count={count}]")
                 data = cpu.memory[addr:addr+count]
                 if fd == 1 or fd == 2:  # stdout or stderr
                     print(data.decode(), end='')
                 cpu.registers[10] = count  # return count as written
+                cpu.pc = next_pc
+                return True
             elif syscall_id == 93:  # _exit syscall
                 exit_code = cpu.registers[10]  # a0
-                print(f"[PROGRAM EXIT]: code {exit_code}")
+                print(f"[ECALL (exit)]: code {exit_code}")
+                cpu.pc = next_pc
                 return False
             else:
-                print(f"[UNKNOWN SYSCALL]: {syscall_id}")
+                print(f"[ECALL (UNKNOWN {syscall_id})]")
+                cpu.pc = next_pc
                 return False
-            cpu.pc = (cpu.pc + 4) & 0xFFFFFFFF
-            return True
+        elif imm_i == 1: # EBREAK
+            print("[EBREAK]")
+            # Handle EBREAK (breakpoint)
+            # For now, we just print the registers and stop execution
+            cpu.print_registers()
+            cpu.pc = next_pc
+            return False
         else:
-            return False  # EBREAK or other system instructions
+            print(f"[UNHANDLED SYSTEM INSTRUCTION] imm_i={imm_i}")
+            cpu.pc = next_pc
+            return False
 
     cpu.registers[0] = 0
     cpu.pc = next_pc
@@ -202,8 +214,11 @@ class CPU:
             print(f"{name:<6} (x{i:02}): 0x{value:08x} ({value})")
 
 
+### MAIN
+
 cpu = CPU()
 
+# handle different binary file formats
 if sys.argv[1][-4:] == '.bin':
     # Load binary instructions into memory
     with open(sys.argv[1], 'rb') as f:
@@ -224,13 +239,10 @@ else:
     sys.exit(-1)
 
 # Run execution loop
-#instruction_limit = 10  # limit to avoid infinite loop in testing
-#for _ in range(instruction_limit):
 while True:
     inst = cpu.load_word(cpu.pc)
     continue_exec = execute(cpu, inst)
     if not continue_exec:
         break
-    print(f"PC={cpu.pc:08x}, x5={cpu.registers[5]}")
+    #print(f"PC={cpu.pc:08x}, x5={cpu.registers[5]}")
 
-cpu.print_registers()
