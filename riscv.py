@@ -19,14 +19,14 @@ def decode(inst):
     # Immediate formats:
     imm_i = sign_extend(inst >> 20, 12)
     imm_s = sign_extend(((inst >> 7) & 0x1F) | ((inst >> 25) << 5), 12)
-    imm_b = sign_extend(((inst >> 7 & 0x1) << 11) |
-                        ((inst >> 8 & 0xF) << 1) |
-                        ((inst >> 25 & 0x3F) << 5) |
+    imm_b = sign_extend((((inst >> 7) & 0x1) << 11) |
+                        (((inst >> 8) & 0xF) << 1) |
+                        (((inst >> 25) & 0x3F) << 5) |
                         ((inst >> 31) << 12), 13)
     imm_u = inst >> 12
-    imm_j = sign_extend(((inst >> 21 & 0x3FF) << 1) |
-                        ((inst >> 20 & 0x1) << 11) |
-                        ((inst >> 12 & 0xFF) << 12) |
+    imm_j = sign_extend((((inst >> 21) & 0x3FF) << 1) |
+                        (((inst >> 20) & 0x1) << 11) |
+                        (((inst >> 12) & 0xFF) << 12) |
                         ((inst >> 31) << 20), 21)
 
     return opcode, rd, funct3, rs1, rs2, funct7, imm_i, imm_s, imm_b, imm_u, imm_j
@@ -85,16 +85,16 @@ def execute(cpu, inst):
 
     elif opcode == 0x03:  # Loads
         addr = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
-        if funct3 == 0x2:  # LW
-            cpu.registers[rd] = cpu.load_word(addr)
-        elif funct3 == 0x0:  # LB
+        if funct3 == 0x0:  # LB
             cpu.registers[rd] = cpu.load_byte(addr)
         elif funct3 == 0x1:  # LH
             cpu.registers[rd] = cpu.load_half(addr)
+        elif funct3 == 0x2:  # LW
+            cpu.registers[rd] = cpu.load_word(addr)
         elif funct3 == 0x4:  # LBU
-            cpu.registers[rd] = cpu.load_byte(addr) & 0xFF
+            cpu.registers[rd] = cpu.load_byte(addr, signed=False) & 0xFF
         elif funct3 == 0x5:  # LHU
-            cpu.registers[rd] = cpu.load_half(addr) & 0xFFFF
+            cpu.registers[rd] = cpu.load_half(addr, signed=False) & 0xFFFF
 
     elif opcode == 0x23:  # Stores
         addr = (cpu.registers[rs1] + imm_s) & 0xFFFFFFFF
@@ -122,12 +122,12 @@ def execute(cpu, inst):
 
     elif opcode == 0x6F:  # JAL
         if rd != 0:
-            cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
+            cpu.registers[rd] = next_pc
         next_pc = (cpu.pc + imm_j) & 0xFFFFFFFF
 
     elif opcode == 0x67:  # JALR
         if rd != 0:
-            cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
+            cpu.registers[rd] = next_pc
         next_pc = (cpu.registers[rs1] + imm_i) & ~1
 
     elif opcode == 0x73:  # SYSTEM (ECALL/EBREAK)
@@ -165,7 +165,11 @@ def execute(cpu, inst):
             print(f"[UNHANDLED SYSTEM INSTRUCTION] imm_i={imm_i}")
             cpu.pc = next_pc
             return False
-
+    else:
+        print(f"[UNHANDLED INSTRUCTION] opcode=0x{opcode:x}, funct3=0x{funct3:x}, funct7=0x{funct7:x}, imm_i={imm_i}, imm_s={imm_s}, imm_b={imm_b}, imm_u={imm_u}, imm_j={imm_j}")
+        cpu.pc = next_pc
+        return False
+    
     cpu.registers[0] = 0
     cpu.pc = next_pc
     return True
@@ -177,14 +181,14 @@ class CPU:
         self.pc = 0
         self.memory = bytearray(memory_size)
 
-    def load_byte(self, addr):
-        return int.from_bytes(self.memory[addr:addr+1], 'little', signed=True)
+    def load_byte(self, addr, signed=True):
+        return int.from_bytes(self.memory[addr:addr+1], 'little', signed=signed)
 
-    def load_half(self, addr):
-        return int.from_bytes(self.memory[addr:addr+2], 'little', signed=True)
+    def load_half(self, addr, signed=True):
+        return int.from_bytes(self.memory[addr:addr+2], 'little', signed=signed)
 
-    def load_word(self, addr):
-        return int.from_bytes(self.memory[addr:addr+4], 'little', signed=True)
+    def load_word(self, addr, signed=True):
+        return int.from_bytes(self.memory[addr:addr+4], 'little', signed=signed)
 
     def store_byte(self, addr, value):
         self.memory[addr] = value & 0xFF
@@ -197,7 +201,6 @@ class CPU:
 
     def load_binary(self, binary, addr=0):
         self.memory[addr:addr+len(binary)] = binary
-        self.pc = addr
 
     def print_registers(self):
         reg_names = [
@@ -224,6 +227,7 @@ if sys.argv[1][-4:] == '.bin':
     with open(sys.argv[1], 'rb') as f:
         binary = f.read()
         cpu.load_binary(binary, addr=0)
+        cpu.pc = 0
 elif sys.argv[1][-4:] == '.elf':
     # Load ELF file
     with open(sys.argv[1], 'rb') as f:
@@ -233,7 +237,7 @@ elif sys.argv[1][-4:] == '.elf':
                 addr = segment['p_paddr']
                 data = segment.data()
                 cpu.load_binary(data, addr=addr)
-    cpu.pc = elf.header.e_entry
+        cpu.pc = elf.header.e_entry
 else:
     print("Unsupported file format. Please provide a .bin or .elf file.")
     sys.exit(-1)
