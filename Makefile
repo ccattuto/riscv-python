@@ -6,7 +6,7 @@ ARCH        := rv32i
 ABI         := ilp32
 CC          := riscv64-unknown-elf-gcc
 CFLAGS      := -march=$(ARCH) -mabi=$(ABI) -O2
-LDFLAGS     := -Ttext=0 -nostartfiles --specs=nano.specs --specs=nosys.specs -static # -Wl,-u,_printf_float
+LDFLAGS     := -Tlinker.ld -nostartfiles --specs=nano.specs --specs=nosys.specs -static # -Wl,-u,_printf_float
 OBJDUMP     := riscv64-unknown-elf-objdump
 OBJCOPY     := riscv64-unknown-elf-objcopy
 
