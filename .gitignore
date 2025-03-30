@@ -3,5 +3,4 @@ test.elf
 test.S
 test.s
 test.map
-syscalls.s
 riscv-tests
