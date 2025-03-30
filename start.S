@@ -5,6 +5,7 @@ _start:
     lui sp, 0x00100      # initialize SP at 0x00100000 (1MB)
     addi sp, sp, 0       # SP = 0x00100000 exactly
 
+    # initialize the global pointer
     .option push
     .option norelax
     la gp, __global_pointer$
@@ -17,5 +18,5 @@ halt:
     li a7, 93            # syscall ID for exit (newlib/Linux-style)
     ecall
 
-#    ebreak
+#    ebreak               # breakpoint after main returns
 #    j halt               # infinite loop after main returns
