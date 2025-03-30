@@ -2,4 +2,5 @@ test.bin
 test.elf
 test.S
 test.s
+syscalls.s
 riscv-tests
