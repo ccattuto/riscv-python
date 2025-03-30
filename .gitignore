@@ -1,6 +1,6 @@
-test.bin
-test.elf
-test.S
-test.s
-test.map
 riscv-tests
+*.o
+*.bin
+*.s
+*.map
+*.elf
