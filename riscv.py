@@ -146,6 +146,24 @@ def execute(cpu, inst):
                 cpu.registers[10] = count  # return count as written
                 cpu.pc = next_pc
                 return True
+            elif syscall_id == 63:  # read
+                fd = cpu.registers[10]      # a0
+                addr = cpu.registers[11]    # a1
+                count = cpu.registers[12]   # a2
+                #print(f"[ECALL (read) fd={fd}, addr=0x{addr:08x}, count={count}]")
+                if fd == 0:  # stdin
+                    try:
+                        # Blocking read from stdin
+                        input_text = input() + "\n"  # Simulate ENTER key
+                        data = input_text.encode()[:count]
+                    except EOFError:
+                        data = b''
+                    for i, byte in enumerate(data):
+                        cpu.memory[addr + i] = byte
+                    cpu.registers[10] = len(data)
+                else:
+                    print(f"[ECALL read] Unsupported fd={fd}")
+                    cpu.registers[10] = -1  # error
             elif syscall_id == 93:  # _exit syscall
                 exit_code = sign_extend(cpu.registers[10], 32)  # a0
                 print(f"[ECALL (exit)]: exit code {exit_code}")

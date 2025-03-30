@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 int main() {
     unsigned int sum = 0;
@@ -8,6 +9,12 @@ int main() {
     }
 
     printf("sum = %u\n", sum);
+
+    printf("Type a character: ");
+    fflush(stdout);
+    int ch = getchar();
+    printf("You typed: '%c'\n", ch);
+
     printf("sum = %u\n", sum);
 
     return 0;
