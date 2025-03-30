@@ -35,8 +35,6 @@ def decode(inst):
 def execute(cpu, inst):
     opcode, rd, funct3, rs1, rs2, funct7, imm_i, imm_s, imm_b, imm_u, imm_j = decode(inst)
 
-    #print(f"a0 = 0x{cpu.registers[10]:08x}, a1 = 0x{cpu.registers[11]:08x}")
-
     assert cpu.registers[0] == 0, "x0 register should always be 0"
 
     next_pc = (cpu.pc + 4) & 0xFFFFFFFF
@@ -124,13 +122,16 @@ def execute(cpu, inst):
         if rd != 0:
             cpu.registers[rd] = next_pc
         next_pc = (cpu.pc + imm_j) & 0xFFFFFFFF
+        #print(f"[JAL] pc=0x{cpu.pc:08x}, rd={rd}, target=0x{next_pc:08x}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08x}")
 
     elif opcode == 0x67:  # JALR
         if rd != 0:
             cpu.registers[rd] = next_pc
         next_pc = (cpu.registers[rs1] + imm_i) & ~1
+        #print(f"[JALR] jumping to 0x{next_pc:08x} from rs1=0x{cpu.registers[rs1]:08x}, imm={imm_i}")
 
     elif opcode == 0x73:  # SYSTEM (ECALL/EBREAK)
+        #print(f"[SYSTEM] opcode=0x{opcode:x}, imm_i={imm_i}")
         if imm_i == 0: # ECALL
             syscall_id = cpu.registers[17]  # a7
             #print(f"[SYSCALL {syscall_id}]")
@@ -156,8 +157,7 @@ def execute(cpu, inst):
                 return False
         elif imm_i == 1: # EBREAK
             print("[EBREAK]")
-            # Handle EBREAK (breakpoint)
-            # For now, we just print the registers and stop execution
+            # we just print register values and stop execution
             cpu.print_registers()
             cpu.pc = next_pc
             return False
@@ -244,9 +244,8 @@ else:
 
 # Run execution loop
 while True:
+    #print(f"PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}")
     inst = cpu.load_word(cpu.pc)
     continue_exec = execute(cpu, inst)
     if not continue_exec:
         break
-    #print(f"PC={cpu.pc:08x}, x5={cpu.registers[5]}")
-
