@@ -2,6 +2,14 @@
     .globl _write
     .globl _read
     .globl _exit
+    .globl _close
+    .globl _fstat
+    .globl _isatty
+    .globl _lseek
+    .globl _kill
+    .globl _getpid
+
+    .align 2
 
 # ssize_t _write(int fd, const char *buf, size_t count)
 _write:
@@ -22,3 +30,27 @@ _exit:
     # unreachable
 1:
     j 1b
+
+_close:
+    li a0, -1
+    ret
+
+_fstat:
+    li a0, -1
+    ret
+
+_isatty:
+    li a0, 1
+    ret
+
+_lseek:
+    li a0, -1
+    ret
+
+_kill:
+    li a0, -1
+    ret
+
+_getpid:
+    li a0, 1
+    ret
