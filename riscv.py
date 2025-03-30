@@ -147,8 +147,8 @@ def execute(cpu, inst):
                 cpu.pc = next_pc
                 return True
             elif syscall_id == 93:  # _exit syscall
-                exit_code = cpu.registers[10]  # a0
-                print(f"[ECALL (exit)]: code {exit_code}")
+                exit_code = sign_extend(cpu.registers[10], 32)  # a0
+                print(f"[ECALL (exit)]: exit code {exit_code}")
                 cpu.pc = next_pc
                 return False
             else:

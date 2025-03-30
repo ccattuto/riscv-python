@@ -11,6 +11,11 @@ _start:
     .option pop
 
     jal ra, main         # jump to main
+
 halt:
-    ebreak
+    mv a0, a0            # main's return value already in a0
+    li a7, 93            # syscall ID for exit (newlib/Linux-style)
+    ecall
+
+#    ebreak
 #    j halt               # infinite loop after main returns
