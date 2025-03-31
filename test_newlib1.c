@@ -15,7 +15,5 @@ int main() {
     int ch = getchar();
     printf("You typed: '%c'\n", ch);
 
-    printf("sum = %u\n", sum);
-
     return 0;
 }
