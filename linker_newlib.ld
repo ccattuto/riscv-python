@@ -36,7 +36,7 @@ SECTIONS
 
   /* Heap and Stack regions */
   . = ALIGN(4);
-  end = .; /* <-- needed for _sbrk */
+  end = .;
   __stack_top = ORIGIN(RAM) + LENGTH(RAM);
 
   PROVIDE(_end = end);
