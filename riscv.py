@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import sys
 from elftools.elf.elffile import ELFFile
@@ -133,44 +132,8 @@ def execute(cpu, inst):
     elif opcode == 0x73:  # SYSTEM (ECALL/EBREAK)
         #print(f"[SYSTEM] opcode=0x{opcode:x}, imm_i={imm_i}")
         if imm_i == 0: # ECALL
-            syscall_id = cpu.registers[17]  # a7
-            #print(f"[SYSCALL {syscall_id}]")
-            if syscall_id == 64:  # _write syscall (newlib standard)
-                fd = cpu.registers[10]      # a0
-                addr = cpu.registers[11]    # a1
-                count = cpu.registers[12]   # a2
-                #print(f"[ECALL (write) fd={fd}, addr={addr:08x}, count={count}]")
-                data = cpu.memory[addr:addr+count]
-                if fd == 1 or fd == 2:  # stdout or stderr
-                    print(data.decode(), end='')
-                cpu.registers[10] = count  # return count as written
-                cpu.pc = next_pc
-                return True
-            elif syscall_id == 63:  # read
-                fd = cpu.registers[10]      # a0
-                addr = cpu.registers[11]    # a1
-                count = cpu.registers[12]   # a2
-                #print(f"[ECALL (read) fd={fd}, addr=0x{addr:08x}, count={count}]")
-                if fd == 0:  # stdin
-                    try:
-                        # Blocking read from stdin
-                        input_text = input() + "\n"  # Simulate ENTER key
-                        data = input_text.encode()[:count]
-                    except EOFError:
-                        data = b''
-                    for i, byte in enumerate(data):
-                        cpu.memory[addr + i] = byte
-                    cpu.registers[10] = len(data)
-                else:
-                    print(f"[ECALL read] Unsupported fd={fd}")
-                    cpu.registers[10] = -1  # error
-            elif syscall_id == 93:  # _exit syscall
-                exit_code = sign_extend(cpu.registers[10], 32)  # a0
-                print(f"[ECALL (exit)]: exit code {exit_code}")
-                cpu.pc = next_pc
-                return False
-            else:
-                print(f"[ECALL (UNKNOWN {syscall_id})]")
+            ecall_ret = ecall(cpu)
+            if not ecall_ret:
                 cpu.pc = next_pc
                 return False
         elif imm_i == 1: # EBREAK
@@ -192,6 +155,55 @@ def execute(cpu, inst):
     cpu.pc = next_pc
     return True
 
+
+def ecall(cpu):
+    syscall_id = cpu.registers[17]  # a7
+    #print(f"[SYSCALL {syscall_id}]")
+
+    # _write syscall (newlib standard)
+    if syscall_id == 64:
+        fd = cpu.registers[10]      # a0
+        addr = cpu.registers[11]    # a1
+        count = cpu.registers[12]   # a2
+        #print(f"[ECALL (write) fd={fd}, addr={addr:08x}, count={count}]")
+        data = cpu.memory[addr:addr+count]
+        if fd == 1 or fd == 2:  # stdout or stderr
+            print(data.decode(), end='')
+        cpu.registers[10] = count  # return count as written
+        return True
+    
+    # read systcall (newlib standard)
+    elif syscall_id == 63:
+        fd = cpu.registers[10]      # a0
+        addr = cpu.registers[11]    # a1
+        count = cpu.registers[12]   # a2
+        #print(f"[ECALL (read) fd={fd}, addr=0x{addr:08x}, count={count}]")
+        if fd == 0:  # stdin
+            try:
+                # Blocking read from stdin
+                input_text = input() + "\n"  # Simulate ENTER key
+                data = input_text.encode()[:count]
+            except EOFError:
+                data = b''
+            for i, byte in enumerate(data):
+                cpu.memory[addr + i] = byte
+            cpu.registers[10] = len(data)
+        else:
+            print(f"[ECALL read] Unsupported fd={fd}")
+            cpu.registers[10] = -1  # error
+            return False
+        return True
+    
+    # exit systcall (newlib standard)
+    elif syscall_id == 93:  # _exit syscall
+        exit_code = sign_extend(cpu.registers[10], 32)  # a0
+        print(f"[ECALL (exit)]: exit code {exit_code}")
+        return False
+    
+    # unhandled syscall
+    else:
+        print(f"[ECALL (UNKNOWN {syscall_id})]")
+        return False
 
 class CPU:
     def __init__(self, memory_size=1024 * 1024):
