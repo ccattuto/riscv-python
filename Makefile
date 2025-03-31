@@ -1,43 +1,56 @@
-# ---------------------
-# Configuration
-# ---------------------
-TARGET      := test
-ARCH        := rv32i
-ABI         := ilp32
-CC          := riscv64-unknown-elf-gcc
-CFLAGS      := -march=$(ARCH) -mabi=$(ABI) -O2
-LDFLAGS     := -Tlinker.ld -nostartfiles --specs=nano.specs --specs=nosys.specs -static # -Wl,-u,_printf_float
-OBJDUMP     := riscv64-unknown-elf-objdump
-OBJCOPY     := riscv64-unknown-elf-objcopy
+# Toolchain and tools
+CC = riscv64-unknown-elf-gcc
+OBJDUMP = riscv64-unknown-elf-objdump
+OBJCOPY = riscv64-unknown-elf-objcopy
 
-# ---------------------
-# Source files
-# ---------------------
-SRCS        := start.S syscalls.S $(TARGET).c
-OBJS        := $(SRCS:.c=.o)
-OBJS        := $(OBJS:.S=.o)
+# Flags
+CFLAGS_COMMON = -march=rv32i -mabi=ilp32 -O2
+LDFLAGS_COMMON = -nostartfiles -static
+LINKER_SCRIPT_NEWLIB = -Tlinker_newlib.ld
+LINKER_SCRIPT_BARE = -Tlinker_bare.ld
+NEWLIB_SPECS = --specs=nano.specs --specs=nosys.specs
 
-# ---------------------
-# Build rules
-# ---------------------
-all: $(TARGET).elf
+# Source file groups
+ASM_TARGETS = test_asm1
+BARE_TARGETS = test_bare1
+NEWLIB_TARGETS = test_newlib1
 
-$(TARGET).elf: $(OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+# Object file suffixes
+STARTUP_NEWLIB = start_newlib.o
+STARTUP_BARE = start_bare.o
+SYSCALLS_NEWLIB = syscalls_newlib.o
+
+# Default build
+all: $(addsuffix .elf,$(ASM_TARGETS) $(BARE_TARGETS) $(NEWLIB_TARGETS)) \
+     $(addsuffix .bin,$(ASM_TARGETS) $(BARE_TARGETS))
+
+# --- ASM-only targets ---
+$(ASM_TARGETS:%=%.elf): %.elf: %.o
+	$(CC) $(CFLAGS_COMMON) $(LDFLAGS_COMMON) -Ttext=0 -nostdlib -o $@ $^
+
+# --- Bare-metal C targets (no newlib) ---
+$(BARE_TARGETS:%=%.elf): %.elf: $(STARTUP_BARE) %.o
+	$(CC) $(CFLAGS_COMMON) $(LDFLAGS_COMMON) $(LINKER_SCRIPT_BARE) -nostdlib -o $@ $^
+
+# --- Newlib targets (newlib support) ---
+$(NEWLIB_TARGETS:%=%.elf): %.elf: $(STARTUP_NEWLIB) $(SYSCALLS_NEWLIB) %.o
+	$(CC) $(CFLAGS_COMMON) $(LDFLAGS_COMMON) $(LINKER_SCRIPT_NEWLIB) $(NEWLIB_SPECS) -o $@ $^
+
+# Generate .bin from .elf
+$(BARE_TARGETS:%=%.bin): %.bin: %.elf
+	$(OBJCOPY) -O binary $< $@
+
+$(ASM_TARGETS:%=%.bin): %.bin: %.elf
+	$(OBJCOPY) -O binary $< $@
+
+# Compile rules
+%.o: %.S
+	$(CC) $(CFLAGS_COMMON) -c -o $@ $<
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-%.o: %.S
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS_COMMON) -c -o $@ $<
 
 clean:
-	rm -f *.o *.elf *.bin *.dump *.map
+	rm -f *.o *.elf *.bin *.map *.dump
 
-dump: $(TARGET).elf
-	$(OBJDUMP) -D -Mintel -S $< > $(TARGET).dump
-
-bin: $(TARGET).elf
-	$(OBJCOPY) -O binary $< $(TARGET).bin
-
-.PHONY: all clean dump bin
+.PHONY: all clean run
