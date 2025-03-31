@@ -1,6 +1,7 @@
-riscv-tests
+*.pyc
 *.o
 *.bin
 *.s
 *.map
 *.elf
+riscv-tests
