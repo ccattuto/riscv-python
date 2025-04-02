@@ -1,12 +1,10 @@
 #include <stdio.h>
-#include <stdlib.h>
 
-int main() {
+int main(void) {
     unsigned int sum = 0;
-
-    for (int i = 0; i < 100; i++) {
+    
+    for (int i = 0; i < 100; i++)
         sum += i;
-    }
 
     printf("sum = %u\n", sum);
 

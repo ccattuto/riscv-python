@@ -37,8 +37,12 @@ SECTIONS
   /* Heap and Stack regions */
   . = ALIGN(4);
   end = .;
+
   __stack_top = ORIGIN(RAM) + LENGTH(RAM);
+  __stack_bottom = __stack_top - 128K;
 
   PROVIDE(_end = end);
   PROVIDE(_stack_top = __stack_top);
+  PROVIDE(_stack_bottom = __stack_bottom);
+  PROVIDE(_global_pointer$ = __global_pointer$);
 }

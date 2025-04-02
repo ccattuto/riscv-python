@@ -191,6 +191,21 @@ def ecall(cpu):
             return False
         return True
     
+    # _sbrk syscall (newlib standard)
+    elif syscall_id == 214:
+        assert(cpu.stack_top is not None)
+
+        increment = cpu.registers[10]
+        old_heap_end = cpu.heap_end
+        new_heap_end = old_heap_end + increment
+
+        if new_heap_end >= cpu.stack_top:
+            cpu.registers[10] = 0xFFFFFFFF  # -1 = failure
+        else:
+            cpu.heap_end = new_heap_end
+            cpu.registers[10] = old_heap_end  # return old break
+        return True
+    
     # exit systcall (newlib standard)
     elif syscall_id == 93:  # _exit syscall
         exit_code = sign_extend(cpu.registers[10], 32)  # a0
@@ -201,6 +216,7 @@ def ecall(cpu):
     else:
         print(f"[ECALL (UNKNOWN {syscall_id})]")
         return False
+
 
 class CPU:
     def __init__(self, memory_size=1024 * 1024):
