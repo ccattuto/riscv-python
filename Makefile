@@ -13,7 +13,7 @@ NEWLIB_SPECS = --specs=nano.specs --specs=nosys.specs
 # Source file groups
 ASM_TARGETS = test_asm1
 BARE_TARGETS = test_bare1
-NEWLIB_TARGETS = test_newlib1 test_newlib2
+NEWLIB_TARGETS = test_newlib1 test_newlib2 test_newlib3
 
 # Object file suffixes
 STARTUP_NEWLIB = start_newlib.o
