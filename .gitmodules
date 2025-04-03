@@ -1,0 +1,3 @@
+[submodule "riscv-samples"]
+	path = riscv-samples
+	url = https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples.git
