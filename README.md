@@ -8,7 +8,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 - 🚀 **Supports ELF and flat binary formats**
 - 📞 **Emulates system calls**: `_write`, `_read`, `_exit`, `_sbrk`.
 - 💾 **Supports `malloc`/`free()` via Newlib's `_sbrk()`**
-- 🎨 **Supports terminal output (e.g., Mandelbrot ASCII art)**
+- 🎨 **Supports terminal I/O**
 - 🧪 **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
 - 🧹 Compact and self-contained codebase (~300 lines core)
 
@@ -44,8 +44,47 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 
 ### 🛠️ Compiling Examples
 
+```
+make all
+```
+
 ### ▶️ Running Programs
 
+Assembly examples (starts at PC=0):
+```
+./risc-emu.py test_asm1.bin
+```
+
+Bare C examples (starts at PC=0):
+```
+./risc-emu.py test_bare1.bin
+```
+or
+```
+./risc-emu.py test_bare1.elf
+```
+
+Newlib C examples:
+```
+./riscv-emu.py test_newlib4.elf
+```
 
 ## 🧪 Running Unit Tests
+(you might need to force ```TOOLCHAIN=riscv64-unknown-elf``` in the Makefile)
+```
+cd riscv-samples/unit-tests
+make
+cd -
+```
 
+```
+./run-unit-tests.sh
+```
+This script automatically runs all RV32UI .bin tests in ```riscv-samples/unit-tests/rv32ui/```.
+All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/) pass.
+
+## 🧩 Design Goals
+- Simplicity over speed
+- Minimal dependencies
+- Good separation of concerns: core ISA, syscall emulation, and binary loading
+- Useful for teaching, debugging, testing compiler output
