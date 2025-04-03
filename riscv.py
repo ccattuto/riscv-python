@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+def signed(val):
+    return val if val < 0x80000000 else val - 0x100000000
+
 def sign_extend(value, bits):
     sign_bit = 1 << (bits - 1)
     return (value & (sign_bit - 1)) - (value & sign_bit)
@@ -36,55 +39,66 @@ def execute(cpu, inst):
     next_pc = (cpu.pc + 4) & 0xFFFFFFFF
 
     if opcode == 0x33:  # R-type
-        if funct3 == 0x0:
-            cpu.registers[rd] = (cpu.registers[rs1] + cpu.registers[rs2]) & 0xFFFFFFFF if funct7 == 0x00 else (cpu.registers[rs1] - cpu.registers[rs2]) & 0xFFFFFFFF
-        elif funct3 == 0x7:
-            cpu.registers[rd] = cpu.registers[rs1] & cpu.registers[rs2]
+        if funct3 == 0x0: # ADD/SUB
+            if funct7 == 0x00: # ADD
+                cpu.registers[rd] = (cpu.registers[rs1] + cpu.registers[rs2]) & 0xFFFFFFFF
+            elif funct7 == 0x20: # SUB
+                cpu.registers[rd] = (cpu.registers[rs1] - cpu.registers[rs2]) & 0xFFFFFFFF
+            else:
+                raise ValueError(f"Invalid funct7=0x{funct7:02x} for ADD/SUB at PC=0x{cpu.pc:08x}")
+        elif funct3 == 0x1: # SLL
+            cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
+        elif funct3 == 0x2: # SLT
+            cpu.registers[rd] = int(signed(cpu.registers[rs1]) < signed(cpu.registers[rs2]))
+        elif funct3 == 0x3: # SLTU
+            cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF))
+        elif funct3 == 0x4: # XOR
+            cpu.registers[rd] = cpu.registers[rs1] ^ cpu.registers[rs2]
+        elif funct3 == 0x5: # SRL/SRA
+            shamt = cpu.registers[rs2] & 0x1F
+            if funct7 == 0x00: # SRL
+                cpu.registers[rd] = (cpu.registers[rs1] % (1 << 32)) >> shamt
+            elif funct7 == 0x20: # SRA
+                cpu.registers[rd] = (signed(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
+            else:
+                raise ValueError(f"Invalid funct7=0x{funct7:02x} for SRL/SRA at PC=0x{cpu.pc:08x}")
         elif funct3 == 0x6:
             cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
-        elif funct3 == 0x4:
-            cpu.registers[rd] = cpu.registers[rs1] ^ cpu.registers[rs2]
-        elif funct3 == 0x1:
-            cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
-        elif funct3 == 0x5:
-            if funct7 == 0x00:
-                cpu.registers[rd] = (cpu.registers[rs1] % (1 << 32)) >> (cpu.registers[rs2] & 0x1F)
-            else:
-                cpu.registers[rd] = cpu.registers[rs1] >> (cpu.registers[rs2] & 0x1F)
-        elif funct3 == 0x2:
-            cpu.registers[rd] = int(cpu.registers[rs1] < cpu.registers[rs2])
-        elif funct3 == 0x3:
-            cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF))
+        elif funct3 == 0x7:
+            cpu.registers[rd] = cpu.registers[rs1] & cpu.registers[rs2]
 
     elif opcode == 0x13:  # I-type arithmetic
-        if funct3 == 0x0:
+        if funct3 == 0x0: # ADDI
             cpu.registers[rd] = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
-        elif funct3 == 0x7:
-            cpu.registers[rd] = cpu.registers[rs1] & imm_i
-        elif funct3 == 0x6:
-            cpu.registers[rd] = cpu.registers[rs1] | imm_i
-        elif funct3 == 0x4:
-            cpu.registers[rd] = cpu.registers[rs1] ^ imm_i
-        elif funct3 == 0x1:
+        elif funct3 == 0x1: # SLLI
             cpu.registers[rd] = (cpu.registers[rs1] << (imm_i & 0x1F)) & 0xFFFFFFFF
-        elif funct3 == 0x5:
-            if funct7 == 0x00:
-                cpu.registers[rd] = (cpu.registers[rs1] % (1 << 32)) >> (imm_i & 0x1F)
-            else:
-                cpu.registers[rd] = cpu.registers[rs1] >> (imm_i & 0x1F)
-        elif funct3 == 0x2:
-            cpu.registers[rd] = int(cpu.registers[rs1] < imm_i)
-        elif funct3 == 0x3:
+        elif funct3 == 0x2: # SLTI
+            cpu.registers[rd] = int(signed(cpu.registers[rs1]) < signed(imm_i))
+        elif funct3 == 0x3: # SLTIU
             cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (imm_i & 0xFFFFFFFF))
+        elif funct3 == 0x4: # XORI
+            cpu.registers[rd] = (cpu.registers[rs1] ^ imm_i) & 0xFFFFFFFF
+        elif funct3 == 0x5: # SRLI/SRAI
+            shamt = imm_i & 0x1F
+            if funct7 == 0x00: # SRLI
+                cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
+            elif funct7 == 0x20: # SRAI
+                cpu.registers[rd] = (signed(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
+            else:
+                raise ValueError(f"Invalid funct7=0x{funct7:02x} for SRLI/SRAI at PC=0x{cpu.pc:08x}")
+        elif funct3 == 0x6: # ORI
+            cpu.registers[rd] = (cpu.registers[rs1] | imm_i) & 0xFFFFFFFF
+        elif funct3 == 0x7: # ANDI
+            cpu.registers[rd] = (cpu.registers[rs1] & imm_i) & 0xFFFFFFFF
 
     elif opcode == 0x03:  # Loads
         addr = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
         if funct3 == 0x0:  # LB
-            cpu.registers[rd] = cpu.load_byte(addr)
+            cpu.registers[rd] = cpu.load_byte(addr) & 0xFFFFFFFF
         elif funct3 == 0x1:  # LH
-            cpu.registers[rd] = cpu.load_half(addr)
+            cpu.registers[rd] = cpu.load_half(addr) & 0xFFFFFFFF
         elif funct3 == 0x2:  # LW
-            cpu.registers[rd] = cpu.load_word(addr)
+            cpu.registers[rd] = cpu.load_word(addr) & 0xFFFFFFFF
         elif funct3 == 0x4:  # LBU
             cpu.registers[rd] = cpu.load_byte(addr, signed=False) & 0xFF
         elif funct3 == 0x5:  # LHU
@@ -92,12 +106,12 @@ def execute(cpu, inst):
 
     elif opcode == 0x23:  # Stores
         addr = (cpu.registers[rs1] + imm_s) & 0xFFFFFFFF
-        if funct3 == 0x2:  # SW
-            cpu.store_word(addr, cpu.registers[rs2])
-        elif funct3 == 0x0:  # SB
+        if funct3 == 0x0:  # SB
             cpu.store_byte(addr, cpu.registers[rs2] & 0xFF)
         elif funct3 == 0x1:  # SH
             cpu.store_half(addr, cpu.registers[rs2] & 0xFFFF)
+        elif funct3 == 0x2:  # SW
+            cpu.store_word(addr, cpu.registers[rs2])
 
     elif opcode == 0x63:  # Branches
         if (funct3 == 0x0 and cpu.registers[rs1] == cpu.registers[rs2]) or \
@@ -121,9 +135,10 @@ def execute(cpu, inst):
         #print(f"[JAL] pc=0x{cpu.pc:08x}, rd={rd}, target=0x{next_pc:08x}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08x}")
 
     elif opcode == 0x67:  # JALR
+        addr_target = (cpu.registers[rs1] + imm_i) & ~1
         if rd != 0:
-            cpu.registers[rd] = next_pc
-        next_pc = (cpu.registers[rs1] + imm_i) & ~1
+            cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
+        next_pc = addr_target
         #print(f"[JALR] jumping to 0x{next_pc:08x} from rs1=0x{cpu.registers[rs1]:08x}, imm={imm_i}")
 
     elif opcode == 0x73:  # SYSTEM (ECALL/EBREAK)

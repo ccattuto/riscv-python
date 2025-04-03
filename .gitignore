@@ -5,4 +5,4 @@
 *.map
 *.elf
 .vscode
-riscv-tests
+riscv-samples
