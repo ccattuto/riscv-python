@@ -8,6 +8,12 @@ _start:
     la gp, __global_pointer$    # initialize the global pointer
     .option pop
 
+    # initialize newlib's reentrant structure
+    la  a0, _impure_ptr
+    lw  a0, 0(a0)
+    la  t0, __sinit
+    jalr ra, t0, 0
+
     jal ra, main        # jump to main
 
 halt:
