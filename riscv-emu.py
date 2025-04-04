@@ -56,7 +56,8 @@ elif sys.argv[1][-4:] == '.elf':
             for sym in symtab.iter_symbols():
                 if sym.name == "end":
                     cpu.heap_end = sym["st_value"]
-                if sym.name == "__stack_bottom":
+                    cpu.text_end = sym["st_value"]
+                if sym.name == "__stack_top":
                     cpu.stack_top = sym["st_value"]
                 if sym.name == "__stack_bottom":
                     cpu.stack_bottom = sym["st_value"]
@@ -65,9 +66,31 @@ else:
     print("Unsupported file format. Please provide a .bin or .elf file.")
     sys.exit(-1)
 
-# Run execution loop
+def check_invariants(cpu):
+    assert cpu.registers[0] == 0, "x0 register should always be 0"
+
+    assert cpu.pc >= 0 and cpu.pc < cpu.memory_size, f"PC out of bounds: 0x{cpu.pc}"
+
+    if cpu.stack_top is not None and cpu.registers[3] != 0:
+        assert cpu.registers[2] <= cpu.stack_top, f"SP above stack top: 0x{cpu.registers[2]:08x} > 0x{cpu.stack_top:08x}"
+
+    if cpu.stack_bottom is not None and cpu.registers[3] != 0:
+        assert cpu.registers[2] >= cpu.stack_bottom, f"SP below stack bottom: 0x{cpu.registers[2]:08x} < 0x{cpu.stack_bottom:08x}"
+
+    min_gap = 256  # bytes, arbitrary guard zone
+    if cpu.heap_end is not None:
+        assert cpu.heap_end + min_gap <= cpu.stack_bottom, f"Heap too close to stack: heap_end=0x{cpu.heap_end:08x}, stack_bottom=0x{cpu.stack_bottom:08x}"
+
+    assert cpu.registers[2] % 4 == 0, f"SP not aligned: 0x{cpu.registers[2]:08x}"
+
+    if cpu.heap_end is not None:
+        assert cpu.heap_end % 4 == 0, f"Heap end not aligned: 0x{cpu.heap_end:08x}"
+
+
+# Execution loop
 while True:
     #print(f"PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}, gp={cpu.registers[3]:08x}")
+    #check_invariants(cpu)
     inst = cpu.load_word(cpu.pc)
     continue_exec = execute(cpu, inst)
     if not continue_exec:

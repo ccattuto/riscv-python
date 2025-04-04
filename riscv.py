@@ -49,8 +49,6 @@ def decode(inst):
 def execute(cpu, inst):
     opcode, rd, funct3, rs1, rs2, funct7, imm_i, imm_s, imm_b, imm_u, imm_j = decode(inst)
 
-    assert cpu.registers[0] == 0, "x0 register should always be 0"
-
     next_pc = (cpu.pc + 4) & 0xFFFFFFFF
 
     if opcode == 0x33:  # R-type
@@ -72,7 +70,7 @@ def execute(cpu, inst):
         elif funct3 == 0x5: # SRL/SRA
             shamt = cpu.registers[rs2] & 0x1F
             if funct7 == 0x00: # SRL
-                cpu.registers[rd] = (cpu.registers[rs1] % (1 << 32)) >> shamt
+                cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
             elif funct7 == 0x20: # SRA
                 cpu.registers[rd] = (signed(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
             else:
@@ -118,6 +116,8 @@ def execute(cpu, inst):
             cpu.registers[rd] = cpu.load_byte(addr, signed=False) & 0xFF
         elif funct3 == 0x5:  # LHU
             cpu.registers[rd] = cpu.load_half(addr, signed=False) & 0xFFFF
+        else:
+            raise ValueError(f"Invalid funct3=0x{funct3:02x} for LOAD at PC=0x{cpu.pc:08x}")
 
     elif opcode == 0x23:  # Stores
         addr = (cpu.registers[rs1] + imm_s) & 0xFFFFFFFF
@@ -127,6 +127,8 @@ def execute(cpu, inst):
             cpu.store_half(addr, cpu.registers[rs2] & 0xFFFF)
         elif funct3 == 0x2:  # SW
             cpu.store_word(addr, cpu.registers[rs2])
+        else:
+            raise ValueError(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08x}")
 
     elif opcode == 0x63:  # Branches
         if (funct3 == 0x0 and cpu.registers[rs1] == cpu.registers[rs2]) or \
@@ -150,7 +152,7 @@ def execute(cpu, inst):
         #print(f"[JAL] pc=0x{cpu.pc:08x}, rd={rd}, target=0x{next_pc:08x}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08x}")
 
     elif opcode == 0x67:  # JALR
-        addr_target = (cpu.registers[rs1] + imm_i) & ~1
+        addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
         if rd != 0:
             cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
         next_pc = addr_target
@@ -223,17 +225,18 @@ def ecall(cpu):
     
     # _sbrk syscall (newlib standard)
     elif syscall_id == 214:
-        assert(cpu.stack_top is not None)
+        assert(cpu.stack_bottom is not None)
 
         increment = cpu.registers[10]
         old_heap_end = cpu.heap_end
         new_heap_end = old_heap_end + increment
 
-        if new_heap_end >= cpu.stack_top:
+        if new_heap_end >= cpu.stack_bottom:
             cpu.registers[10] = 0xFFFFFFFF  # -1 = failure
         else:
             cpu.heap_end = new_heap_end
             cpu.registers[10] = old_heap_end  # return old break
+        #print(f"[ECALL (sbrk)]: increment={increment}, old_heap_end=0x{old_heap_end:08x}, new_heap_end=0x{new_heap_end:08x}")
         return True
     
     # exit systcall (newlib standard)
@@ -253,6 +256,7 @@ class CPU:
         self.registers = [0] * 32
         self.pc = 0
         self.memory = bytearray(memory_size)
+        self.memory_size = memory_size
 
     def load_byte(self, addr, signed=True):
         return int.from_bytes(self.memory[addr:addr+1], 'little', signed=signed)
