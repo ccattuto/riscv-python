@@ -6,7 +6,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 
 - 🧠 **Implements the full RV32I base integer ISA**
 - 🚀 **Supports ELF and flat binary formats**
-- 📞 **Emulates system calls**: `_write`, `_read`, `_exit`, `_sbrk`.
+- 📞 **Supports Newlib's system calls**: `_write`, `_read`, `_exit`, `_sbrk`.
 - 💾 **Supports `malloc`/`free()` via Newlib's `_sbrk()`**
 - 🎨 **Supports terminal I/O**
 - 🧪 **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
@@ -27,9 +27,9 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 ├── riscv-emu.py           # Emulator
 ├── riscv.py               # Core emulator logic
 ├── Makefile               # Builds ELF/binary targets
-├── start_bare.S           # Minimal RISC-V startup code
-├── start_newlib.S         # Minimal RISC-V startup code
-├── syscalls_newlib.S      # Newlib-compatible syscall stubs for newlib
+├── start_bare.S           # Minimal startup code
+├── start_newlib.S         # Startup code for Newlib-nano
+├── syscalls_newlib.S      # Newlib-compatible syscall stubs for Newlib-nano
 ├── linker_bare.ld         # Siple linker script, no heap support
 ├── linker_newlib.ld       # Linker script supporting newlib
 ├── test_asm*.S            # Example assembly programs
