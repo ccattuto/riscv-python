@@ -104,6 +104,46 @@ cd -
 
 ```
 ./run_unit_tests.sh
+[PASS] add.bin
+[PASS] addi.bin
+[PASS] and.bin
+[PASS] andi.bin
+[PASS] auipc.bin
+[PASS] beq.bin
+[PASS] bge.bin
+[PASS] bgeu.bin
+[PASS] blt.bin
+[PASS] bltu.bin
+[PASS] bne.bin
+[PASS] jal.bin
+[PASS] jalr.bin
+[PASS] lb.bin
+[PASS] lbu.bin
+[PASS] lh.bin
+[PASS] lhu.bin
+[PASS] lui.bin
+[PASS] lw.bin
+[PASS] ma_data.bin
+[PASS] or.bin
+[PASS] ori.bin
+[PASS] sb.bin
+[PASS] sh.bin
+[PASS] simple.bin
+[PASS] sll.bin
+[PASS] slli.bin
+[PASS] slt.bin
+[PASS] slti.bin
+[PASS] sltiu.bin
+[PASS] sltu.bin
+[PASS] sra.bin
+[PASS] srai.bin
+[PASS] srl.bin
+[PASS] srli.bin
+[PASS] sub.bin
+[PASS] sw.bin
+[PASS] xor.bin
+[PASS] xori.bin
+Summary: 39 passed, 0 failed
 ```
 This script automatically runs all RV32UI .bin tests in `riscv-samples/unit-tests/rv32ui/`.
 All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/) pass.
