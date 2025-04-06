@@ -4,7 +4,7 @@ OBJDUMP = riscv64-unknown-elf-objdump
 OBJCOPY = riscv64-unknown-elf-objcopy
 
 # Flags
-CFLAGS_COMMON = -march=rv32i -mabi=ilp32 -O2
+CFLAGS_COMMON = -march=rv32i -mabi=ilp32 -O2 -D_REENT_SMALL
 LDFLAGS_COMMON = -nostartfiles -static
 LINKER_SCRIPT_NEWLIB = -Tlinker_newlib.ld
 LINKER_SCRIPT_BARE = -Tlinker_bare.ld
@@ -13,7 +13,7 @@ NEWLIB_SPECS = --specs=nano.specs --specs=nosys.specs
 # Source file groups
 ASM_TARGETS = test_asm1
 BARE_TARGETS = test_bare1
-NEWLIB_TARGETS = test_newlib1 test_newlib2 test_newlib3 test_newlib4
+NEWLIB_TARGETS = test_newlib1 test_newlib2 test_newlib3 test_newlib4 test_newlib5 test_newlib6
 
 # Object file suffixes
 STARTUP_NEWLIB = start_newlib.o

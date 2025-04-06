@@ -2,6 +2,8 @@
 #include <stdlib.h>
 
 int main() {
+    putchar('\0'); // triggers newlib-nano initialization
+    
     printf("Starting dynamic memory test...\n");
 
     for (int i = 0; i < 3; i++) {

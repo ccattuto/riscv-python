@@ -78,7 +78,7 @@ def check_invariants(cpu):
         assert cpu.registers[2] >= cpu.stack_bottom, f"SP below stack bottom: 0x{cpu.registers[2]:08x} < 0x{cpu.stack_bottom:08x}"
 
     min_gap = 256  # bytes, arbitrary guard zone
-    if cpu.heap_end is not None:
+    if cpu.heap_end is not None and cpu.stack_bottom is not None:
         assert cpu.heap_end + min_gap <= cpu.stack_bottom, f"Heap too close to stack: heap_end=0x{cpu.heap_end:08x}, stack_bottom=0x{cpu.stack_bottom:08x}"
 
     assert cpu.registers[2] % 4 == 0, f"SP not aligned: 0x{cpu.registers[2]:08x}"

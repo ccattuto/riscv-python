@@ -8,6 +8,8 @@ int main() {
     int count = 0;
     int num = 2;
 
+    putchar('\0'); // triggers newlib-nano initialization
+
     while (count < MAX_PRIMES) {
         bool is_prime = true;
         for (int i = 0; i < count; i++) {

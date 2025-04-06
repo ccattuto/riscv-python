@@ -2,7 +2,9 @@
 
 int main(void) {
     unsigned int sum = 0;
-    
+
+    putchar('\0'); // triggers newlib-nano initialization
+
     for (int i = 0; i < 100; i++)
         sum += i;
 

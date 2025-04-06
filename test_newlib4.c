@@ -6,6 +6,8 @@
 #define MAX_ITER 128
 
 int main(void) {
+    putchar('\0'); // triggers newlib-nano initialization
+
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
             int cr = (x - WIDTH/2) * 4 * 1024 / WIDTH;
