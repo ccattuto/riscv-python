@@ -10,7 +10,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 - 💾 **Supports `malloc`/`free()` via Newlib's `_sbrk()`**
 - 🎨 **Supports terminal I/O**
 - 🧪 **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
-- 🧹 Compact and self-contained codebase (~300 lines code)
+- 🧹 Compact and self-contained codebase (~300 lines for core logic, ~150 lines for emulation control)
 
 ## 🔧 Requirements
 
@@ -93,6 +93,18 @@ Newlib C examples:
                         .................................                       
 
 ```
+
+### ▶️ Command-Line Options
+
+`riscv-emu.py` accepts the following options:
+
+| Option             | Description                                                                 |
+|--------------------|-----------------------------------------------------------------------------|
+| `--regs`           | Print selected registers (`pc`, `ra`, `sp`, `gp`, `a0`) at each instruction |
+| `--check`          | Enable runtime invariant checks on stack/heap alignment and boundaries      |
+| `--check-text`     | Ensure the `.text` segment remains unmodified during execution              |
+| `--trace`          | Print the name of functions traversed during execution                      |
+| `--help`           | Show usage help and available options                                       |
 
 ## 🧪 Running Unit Tests
 (on OSX, you might need to force `TOOLCHAIN=riscv64-unknown-elf` in the Makefile)
