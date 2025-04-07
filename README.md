@@ -38,6 +38,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 ├── tests/test_bare*.C     # Example C programs without Newlib support
 ├── tests/test_newlib*.C   # Example C programs with Newlib-nano support
 ├── build/                 # Executable and binaries
+├── prebuilt/              # Pre-built examples
 ├── run_unit_tests.sh      # Runs RISC-V unit tests (RV32I only, user-mode only)
 ├── riscv-samples/         # Git submodule with unit tests
 └── README.md              # You're here!
@@ -50,6 +51,8 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 ```
 make all
 ```
+
+(if you just want to test the emulator without installing a RISC-V compiler, you will find pre-built binaries in `prebuilt/`)
 
 ### ▶️ Running Programs
 
@@ -174,6 +177,6 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12.4
 - The provided Makefild builds all Newlib examples selecting Newlib-nano (`--specs=nano.specs` linker option)
 - Newlib-nano's initialization is triggered by `putchar('\0');`, as visible in all examples
-- The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If changing RAM size, make sure to update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`
+- The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`
 
 
