@@ -24,7 +24,7 @@ MEMORY_SIZE = 1024 * 1024 # 1MB
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RISC-V Emulator")
-    parser.add_argument("input", help="Input .elf or .bin file")
+    parser.add_argument("executable", help=".elf or .bin file")
     parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
     parser.add_argument("--regs", action="store_true", help="Print registers at each instruction")
     parser.add_argument("--check", action="store_true", help="Check invariants on each step")
