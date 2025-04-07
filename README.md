@@ -4,13 +4,14 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 
 ## ✅ Features
 
-- 🧠 **Implements the full RV32I base integer ISA**
-- 🚀 **Supports ELF and flat binary formats**
-- 📞 **Supports [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls**: `_write`, `_read`, `_exit`, `_sbrk`.
-- 💾 **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
-- 🎨 **Supports terminal I/O**
-- 🧪 **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
-- 🧹 Compact and self-contained codebase (~300 lines for core logic, ~150 lines for emulation control)
+- **Implements the full RV32I base integer ISA**
+- **Supports ELF and flat binary formats**
+- **Supports [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls**: `_write`, `_read`, `_exit`, `_sbrk`.
+- **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
+- **Supports terminal I/O**
+- **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
+- **Supports logging** of register values, call traces, violations of invariants
+- Compact and self-contained codebase (~300 lines for core logic, ~150 lines for emulation control)
 
 ## 🔧 Requirements
 
@@ -44,7 +45,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 
 ## 🚀 Usage
 
-### 🛠️ Compiling Examples
+### Compiling Examples
 
 ```
 make all
@@ -106,6 +107,7 @@ Newlib C examples:
 | `--check`          | Enable runtime invariant checks on stack/heap alignment and boundaries      |
 | `--check-text`     | Ensure the `.text` segment remains unmodified during execution              |
 | `--trace`          | Print the name of functions traversed during execution                      |
+| `--log LOG_FILE`   | Log debug information to file `LOG_FILE`                                    |
 | `--help`           | Show usage help and available options                                       |
 
 ## 🧪 Running Unit Tests
@@ -162,7 +164,7 @@ Summary: 39 passed, 0 failed
 This script automatically runs all RV32UI .bin tests in `riscv-samples/unit-tests/rv32ui/`.
 All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/) pass.
 
-## 🧩 Design Goals
+## Design Goals
 - Simplicity over speed
 - Minimal dependencies
 - Good separation of concerns: core ISA, syscall emulation, and binary loading
