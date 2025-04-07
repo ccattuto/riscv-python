@@ -6,7 +6,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 
 - 🧠 **Implements the full RV32I base integer ISA**
 - 🚀 **Supports ELF and flat binary formats**
-- 📞 **Supports Newlib's system calls**: `_write`, `_read`, `_exit`, `_sbrk`.
+- 📞 **Supports [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls**: `_write`, `_read`, `_exit`, `_sbrk`.
 - 💾 **Supports `malloc`/`free()` via Newlib's `_sbrk()`**
 - 🎨 **Supports terminal I/O**
 - 🧪 **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
@@ -34,7 +34,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 ├── linker_newlib.ld       # Linker script supporting newlib
 ├── test_asm*.S            # Example assembly programs
 ├── test_bare*.C           # Example C programs without newlib support
-├── test_newlib*.C         # Example C programs with newlib support
+├── test_newlib*.C         # Example C programs with newlib-nano support
 ├── run_unit_tests.sh      # Run RISC-V unit tests (RV32I only, user-mode only)
 ├── riscv-samples/         # Git submodule with unit tests
 └── README.md              # You're here!
@@ -165,3 +165,8 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - Minimal dependencies
 - Good separation of concerns: core ISA, syscall emulation, and binary loading
 - Useful for teaching, debugging, testing compiler output
+
+## Notes
+- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv), Python 3.12.4
+- The provided Makefild build all Newlib examples selecting Newlib-nano (`--specs=nano.specs` linker option)
+
