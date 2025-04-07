@@ -1,3 +1,7 @@
+// This program implements Conway's Game of Life.
+// It uses newlib-nano for minimal C library support and  dynamic memory allocation.
+// The state of the board is shown on terminal using ANSI escape codes.
+
 #include <stdio.h>
 #include <stdlib.h>
 

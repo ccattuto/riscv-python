@@ -1,3 +1,6 @@
+// This example generates the first 1000 prime numbers and prints them to the console.
+// It uses newlib-nano for minimal C library support.
+
 #include <stdio.h>
 #include <stdbool.h>
 

@@ -1,3 +1,5 @@
+// This example computes a Mandelbrot fractal and displays it using ASCII characters.
+
 #include <stdio.h>
 #include <stdlib.h>
 

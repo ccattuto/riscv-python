@@ -1,3 +1,5 @@
+// This example tests the dynamic memory allocation and deallocation.
+
 #include <stdio.h>
 #include <stdlib.h>
 

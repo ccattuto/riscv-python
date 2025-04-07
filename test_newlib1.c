@@ -1,3 +1,5 @@
+// This examples demonstrates the use of newlib-nano.
+
 #include <stdio.h>
 
 int main(void) {

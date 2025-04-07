@@ -1,6 +1,8 @@
+// This example generates a random maze using the recursive backtracking algorithm.
+// It uses newlib-nano for minimal C library support.
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <reent.h>
 
 #define WIDTH  79  // must be odd
 #define HEIGHT 31  // must be odd
