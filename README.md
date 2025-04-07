@@ -38,6 +38,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 ├── tests/test_bare*.C     # Example C programs without Newlib support
 ├── tests/test_newlib*.C   # Example C programs with Newlib-nano support
 ├── build/                 # Executable and binaries
+├── prebuilt/              # Pre-built examples
 ├── run_unit_tests.sh      # Runs RISC-V unit tests (RV32I only, user-mode only)
 ├── riscv-samples/         # Git submodule with unit tests
 └── README.md              # You're here!
@@ -50,6 +51,8 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 ```
 make all
 ```
+
+(if you just want to test the emulator without installing a RISC-V compiler, you will find pre-built binaries in `prebuilt/`)
 
 ### ▶️ Running Programs
 
