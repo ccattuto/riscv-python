@@ -69,7 +69,7 @@ if __name__ == '__main__':
     cpu.stack_bottom = None
     cpu.text_start = None
     cpu.text_end = None
-    text_snapshot = None
+    cpu.text_snapshot = None
     symbol_dict = None
 
     # Load binary or ELF file
