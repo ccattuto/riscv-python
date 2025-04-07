@@ -8,7 +8,7 @@ CFLAGS_COMMON = -march=rv32i -mabi=ilp32 -O2 -D_REENT_SMALL
 LDFLAGS_COMMON = -nostartfiles -static
 LINKER_SCRIPT_NEWLIB = -Tlinker_newlib.ld
 LINKER_SCRIPT_BARE = -Tlinker_bare.ld
-NEWLIB_SPECS = --specs=nano.specs --specs=nosys.specs
+NEWLIB_SPECS = --specs=nano.specs
 
 # Source file groups
 ASM_TARGETS = test_asm1
