@@ -31,14 +31,14 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 ├── Makefile               # Builds ELF/binary targets
 ├── start_bare.S           # Minimal startup code
 ├── start_newlib.S         # Startup code for Newlib-nano
-├── syscalls_newlib.S      # Newlib-compatible syscall stubs for Newlib-nano
-├── linker_bare.ld         # Siple linker script, no heap support
-├── linker_newlib.ld       # Linker script supporting newlib
+├── syscalls_newlib.S      # Syscall stubs for Newlib-nano
+├── linker_bare.ld         # Simple linker script, no heap support
+├── linker_newlib.ld       # Linker script supporting Newlib-nano
 ├── tests/test_asm*.S      # Example assembly programs
-├── tests/test_bare*.C     # Example C programs without newlib support
-├── tests/test_newlib*.C   # Example C programs with newlib-nano support
-├── build/                 # Executable binaries
-├── run_unit_tests.sh      # Run RISC-V unit tests (RV32I only, user-mode only)
+├── tests/test_bare*.C     # Example C programs without Newlib support
+├── tests/test_newlib*.C   # Example C programs with Newlib-nano support
+├── build/                 # Executable and binaries
+├── run_unit_tests.sh      # Runs RISC-V unit tests (RV32I only, user-mode only)
 ├── riscv-samples/         # Git submodule with unit tests
 └── README.md              # You're here!
 ```
