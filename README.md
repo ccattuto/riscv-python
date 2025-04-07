@@ -169,4 +169,6 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 ## Notes
 - The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12.4
 - The provided Makefild builds all Newlib examples selecting Newlib-nano (`--specs=nano.specs` linker option)
+- Newlib-nano's initialization is triggered by `putchar('\0');`, as visible in all examples
+
 
