@@ -18,6 +18,7 @@
 import sys, argparse
 from elftools.elf.elffile import ELFFile
 from riscv import CPU, execute
+import logging
 
 MEMORY_SIZE = 1024 * 1024 # 1MB
 
@@ -28,6 +29,8 @@ def parse_args():
     parser.add_argument("--regs", action="store_true", help="Print registers at each instruction")
     parser.add_argument("--check", action="store_true", help="Check invariants on each step")
     parser.add_argument("--check-text", action="store_true", help="Ensure text segment is not modified")
+    parser.add_argument("--log", help="Path to log file (optional)")
+    parser.add_argument("--log-level", default="DEBUG", help="Logging level: DEBUG, INFO, WARNING, ERROR")
     return parser.parse_args()
 
 def check_invariants(cpu):
@@ -60,6 +63,22 @@ def check_invariants(cpu):
 
 if __name__ == '__main__':
     args = parse_args()
+
+    log = logging.getLogger("riscv-emu")
+    log.setLevel(logging.DEBUG)
+
+    if args.log:
+        # Log to file only
+        file_handler = logging.FileHandler(args.log)
+        file_handler.setLevel(getattr(logging, args.log_level.upper(), logging.DEBUG))
+        file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+        log.addHandler(file_handler)
+    else:
+        # Log to terminal
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG)
+        console_handler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
+        log.addHandler(console_handler)
     
     # Instantiate CPU + RAM
     cpu = CPU(memory_size=MEMORY_SIZE)
@@ -134,13 +153,13 @@ if __name__ == '__main__':
     try:
         while True:
             if args.regs:
-                print(f"PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}, gp={cpu.registers[3]:08x}, a0={cpu.registers[10]:08x}")
+                log.debug(f"PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}, gp={cpu.registers[3]:08x}, a0={cpu.registers[10]:08x}")
             if args.check:
                 check_invariants(cpu)
             if args.check_text and cpu.text_snapshot is not None:
                 assert cpu.memory[cpu.text_start:cpu.text_end] == cpu.text_snapshot, "Text segment has been modified!"
             if args.trace and symbol_dict and cpu.pc in symbol_dict:
-                print(f"PC={cpu.pc:08x}, {symbol_dict[cpu.pc]}")
+                log.debug(f"PC={cpu.pc:08x}, {symbol_dict[cpu.pc]}")
 
             inst = cpu.load_word(cpu.pc)
             continue_exec = execute(cpu, inst)
