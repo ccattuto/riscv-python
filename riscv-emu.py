@@ -92,16 +92,16 @@ if __name__ == '__main__':
     symbol_dict = None
 
     # Load binary or ELF file
-    if args.input.endswith('.bin'):
+    if args.executable.endswith('.bin'):
         # load binary file
-        with open(args.input, 'rb') as f:
+        with open(args.executable, 'rb') as f:
             binary = f.read()
             cpu.load_binary(binary, addr=0)
             cpu.pc = 0 # entry point at start of the binary
 
-    elif args.input.endswith('.elf'):
+    elif args.executable.endswith('.elf'):
         # load ELF file
-        with open(args.input, 'rb') as f:
+        with open(args.executable, 'rb') as f:
             elf = ELFFile(f)
 
             # load all segments
