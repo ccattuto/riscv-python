@@ -23,6 +23,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 
 
 ## File Strucure
+
 ```
 ├── riscv-emu.py           # Emulator
 ├── riscv.py               # Core emulator logic
@@ -32,9 +33,10 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 ├── syscalls_newlib.S      # Newlib-compatible syscall stubs for Newlib-nano
 ├── linker_bare.ld         # Siple linker script, no heap support
 ├── linker_newlib.ld       # Linker script supporting newlib
-├── test_asm*.S            # Example assembly programs
-├── test_bare*.C           # Example C programs without newlib support
-├── test_newlib*.C         # Example C programs with newlib-nano support
+├── tests/test_asm*.S      # Example assembly programs
+├── tests/test_bare*.C     # Example C programs without newlib support
+├── tests/test_newlib*.C   # Example C programs with newlib-nano support
+├── build/                 # Executable binaries
 ├── run_unit_tests.sh      # Run RISC-V unit tests (RV32I only, user-mode only)
 ├── riscv-samples/         # Git submodule with unit tests
 └── README.md              # You're here!
@@ -52,21 +54,21 @@ make all
 
 Assembly examples (starts at PC=0):
 ```
-./risc-emu.py test_asm1.bin
+./risc-emu.py build/test_asm1.bin
 ```
 
 Bare C examples (starts at PC=0):
 ```
-./risc-emu.py test_bare1.bin
+./risc-emu.py build/test_bare1.bin
 ```
 or
 ```
-./risc-emu.py test_bare1.elf
+./risc-emu.py build/test_bare1.elf
 ```
 
 Newlib C examples:
 ```
-./riscv-emu.py test_newlib4.elf
+./riscv-emu.py build/test_newlib4.elf
                                                                                 
                         .................................                       
                   .............................................                 
