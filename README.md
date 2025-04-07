@@ -167,6 +167,6 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - Useful for teaching, debugging, testing compiler output
 
 ## Notes
-- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv), Python 3.12.4
-- The provided Makefild build all Newlib examples selecting Newlib-nano (`--specs=nano.specs` linker option)
+- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12.4
+- The provided Makefild builds all Newlib examples selecting Newlib-nano (`--specs=nano.specs` linker option)
 
