@@ -156,9 +156,9 @@ if __name__ == '__main__':
                 log.debug(f"PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}, gp={cpu.registers[3]:08x}, a0={cpu.registers[10]:08x}")
             if args.check:
                 check_invariants(cpu)
-            if args.check_text and cpu.text_snapshot is not None:
+            if args.check_text and (cpu.text_snapshot is not None):
                 assert cpu.memory[cpu.text_start:cpu.text_end] == cpu.text_snapshot, "Text segment has been modified!"
-            if args.trace and symbol_dict and cpu.pc in symbol_dict:
+            if args.trace and (symbol_dict is not None) and (cpu.pc in symbol_dict):
                 log.debug(f"PC={cpu.pc:08x}, {symbol_dict[cpu.pc]}")
 
             inst = cpu.load_word(cpu.pc)
