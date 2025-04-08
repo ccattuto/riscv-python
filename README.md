@@ -109,7 +109,8 @@ Newlib C examples:
 | `--regs`           | Print selected registers (`pc`, `ra`, `sp`, `gp`, `a0`) at each instruction |
 | `--check`          | Enable runtime invariant checks on stack/heap alignment and boundaries      |
 | `--check-text`     | Ensure the `.text` segment remains unmodified during execution              |
-| `--trace`          | Print the name of functions traversed during execution                      |
+| `--trace`          | Log the names of functions traversed during execution                       |
+| `--syscalls`       | Log Newlib syscalls                                                         |
 | `--log LOG_FILE`   | Log debug information to file `LOG_FILE`                                    |
 | `--help`           | Show usage help and available options                                       |
 

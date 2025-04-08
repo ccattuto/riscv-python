@@ -74,7 +74,7 @@ if __name__ == '__main__':
             if args.check_text and (cpu.text_snapshot is not None):
                 assert cpu.memory[cpu.text_start:cpu.text_end] == cpu.text_snapshot, "Text segment has been modified!"
             if args.trace and (cpu.pc in cpu.symbol_dict):
-                log.debug(f"FUNCTION {cpu.symbol_dict[cpu.pc]}, PC={cpu.pc:08x}")
+                log.debug(f"FUNC {cpu.symbol_dict[cpu.pc]}, PC={cpu.pc:08x}")
 
             inst = cpu.load_word(cpu.pc)
             continue_exec = cpu.execute(inst)

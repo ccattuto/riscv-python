@@ -244,7 +244,7 @@ def ecall(cpu):
             cpu.heap_end = new_heap_end
             cpu.registers[10] = old_heap_end  # return old break
         if cpu.logger is not None and cpu.trace_syscalls:
-            cpu.logger.debug(f"SYSCALL _sbrk: increment={increment}, old_heap_end=0x{old_heap_end:08x}, new_heap_end=0x{new_heap_end:08x}")
+            cpu.logger.debug(f"SYSCALL _sbrk: increment={increment}, old_heap_end={old_heap_end:08x}, new_heap_end={new_heap_end:08x}")
         return True
     
     # _exit systcall (Newlib standard)
