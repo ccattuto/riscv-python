@@ -24,14 +24,14 @@ MEMORY_SIZE = 1024 * 1024 # 1MB
 def parse_args():
     parser = argparse.ArgumentParser(description="RISC-V Emulator")
     parser.add_argument("executable", help=".elf or .bin file")
-    parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
     parser.add_argument("--regs", action="store_true", help="Print registers at each instruction")
     parser.add_argument("--check", action="store_true", help="Check invariants on each step")
     parser.add_argument("--check-text", action="store_true", help="Ensure text segment is not modified")
+    parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
+    parser.add_argument("--syscalls", action="store_true", help="Enable Newlib syscall tracing")
     parser.add_argument("--log", help="Path to log file (optional)")
     parser.add_argument("--log-level", default="DEBUG", help="Logging level: DEBUG, INFO, WARNING, ERROR")
     return parser.parse_args()
-
 
 if __name__ == '__main__':
     args = parse_args()
@@ -53,7 +53,7 @@ if __name__ == '__main__':
         log.addHandler(console_handler)
     
     # Instantiate CPU + RAM
-    cpu = CPU(memory_size=MEMORY_SIZE)
+    cpu = CPU(memory_size=MEMORY_SIZE, logger=log, trace_syscalls=args.syscalls)
 
     # Load binary or ELF file
     if args.executable.endswith('.bin'):
@@ -68,13 +68,13 @@ if __name__ == '__main__':
     try:
         while True:
             if args.regs:
-                log.debug(f"PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}, gp={cpu.registers[3]:08x}, a0={cpu.registers[10]:08x}")
+                log.debug(f"REGS: PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}, gp={cpu.registers[3]:08x}, a0={cpu.registers[10]:08x}")
             if args.check:
                 cpu.check_invariants()
             if args.check_text and (cpu.text_snapshot is not None):
                 assert cpu.memory[cpu.text_start:cpu.text_end] == cpu.text_snapshot, "Text segment has been modified!"
             if args.trace and (cpu.pc in cpu.symbol_dict):
-                log.debug(f"PC={cpu.pc:08x}, {cpu.symbol_dict[cpu.pc]}")
+                log.debug(f"FUNCTION {cpu.symbol_dict[cpu.pc]}, PC={cpu.pc:08x}")
 
             inst = cpu.load_word(cpu.pc)
             continue_exec = cpu.execute(inst)

@@ -166,7 +166,7 @@ def execute(cpu, inst):
 
     elif opcode == 0x73:  # SYSTEM (ECALL/EBREAK)
         #print(f"[SYSTEM] opcode=0x{opcode:x}, imm_i={imm_i}")
-        if imm_i == 0: # ECALL
+        if imm_i == 0:  # ECALL
             ecall_ret = ecall(cpu)
             if not ecall_ret:
                 cpu.pc = next_pc
@@ -193,14 +193,14 @@ def execute(cpu, inst):
 
 def ecall(cpu):
     syscall_id = cpu.registers[17]  # a7
-    #print(f"[SYSCALL {syscall_id}]")
 
     # _write syscall (Newlib standard)
     if syscall_id == 64:
         fd = cpu.registers[10]      # a0
         addr = cpu.registers[11]    # a1
         count = cpu.registers[12]   # a2
-        #print(f"[ECALL (write) fd={fd}, addr={addr:08x}, count={count}]")
+        if cpu.logger is not None and cpu.trace_syscalls:
+            cpu.logger.debug(f"SYSCALL _write: fd={fd}, addr={addr:08x}, count={count}")
         data = cpu.memory[addr:addr+count]
         if fd == 1 or fd == 2:  # stdout or stderr
             print(data.decode(), end='')
@@ -212,7 +212,8 @@ def ecall(cpu):
         fd = cpu.registers[10]      # a0
         addr = cpu.registers[11]    # a1
         count = cpu.registers[12]   # a2
-        #print(f"[ECALL (read) fd={fd}, addr=0x{addr:08x}, count={count}]")
+        if cpu.logger is not None and cpu.trace_syscalls:
+            cpu.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08x}, count={count}]")
         if fd == 0:  # stdin
             try:
                 # Blocking read from stdin
@@ -242,12 +243,15 @@ def ecall(cpu):
         else:
             cpu.heap_end = new_heap_end
             cpu.registers[10] = old_heap_end  # return old break
-        #print(f"[ECALL (sbrk)]: increment={increment}, old_heap_end=0x{old_heap_end:08x}, new_heap_end=0x{new_heap_end:08x}")
+        if cpu.logger is not None and cpu.trace_syscalls:
+            cpu.logger.debug(f"SYSCALL _sbrk: increment={increment}, old_heap_end=0x{old_heap_end:08x}, new_heap_end=0x{new_heap_end:08x}")
         return True
     
     # _exit systcall (Newlib standard)
     elif syscall_id == 93:  # _exit syscall
         exit_code = sign_extend(cpu.registers[10], 32)  # a0
+        if cpu.logger is not None and cpu.trace_syscalls:
+            cpu.logger.debug(f"SYSCALL _exit: exit code={exit_code}")
         print(f"[ECALL (exit)]: exit code {exit_code}")
         return False
     
@@ -286,7 +290,7 @@ def check_invariants(cpu):
 
 
 class CPU:
-    def __init__(self, memory_size=1024 * 1024):
+    def __init__(self, memory_size=1024 * 1024, logger=None, trace_syscalls=False):
         self.registers = [0] * 32
         self.pc = 0
         self.memory = bytearray(memory_size)
@@ -299,6 +303,9 @@ class CPU:
         self.text_end = None
         self.text_snapshot = None
         self.symbol_dict = {}
+
+        self.logger = logger
+        self.trace_syscalls = trace_syscalls
         
     def execute(self, inst):
         return execute(self, inst)
@@ -390,4 +397,3 @@ class CPU:
         for i, name in enumerate(reg_names):
             value = self.registers[i]
             print(f"{name:<6} (x{i:02}): 0x{value:08x} ({value})")
-
