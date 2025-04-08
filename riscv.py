@@ -213,7 +213,7 @@ def ecall(cpu):
         addr = cpu.registers[11]    # a1
         count = cpu.registers[12]   # a2
         if cpu.logger is not None and cpu.trace_syscalls:
-            cpu.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08x}, count={count}]")
+            cpu.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08x}, count={count}")
         if fd == 0:  # stdin
             try:
                 # Blocking read from stdin
