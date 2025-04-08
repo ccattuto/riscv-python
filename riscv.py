@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+from elftools.elf.elffile import ELFFile
+
 def signed(val):
     return val if val < 0x80000000 else val - 0x100000000
 
@@ -52,50 +54,50 @@ def execute(cpu, inst):
     next_pc = (cpu.pc + 4) & 0xFFFFFFFF
 
     if opcode == 0x33:  # R-type
-        if funct3 == 0x0: # ADD/SUB
-            if funct7 == 0x00: # ADD
+        if funct3 == 0x0:  # ADD/SUB
+            if funct7 == 0x00:  # ADD
                 cpu.registers[rd] = (cpu.registers[rs1] + cpu.registers[rs2]) & 0xFFFFFFFF
-            elif funct7 == 0x20: # SUB
+            elif funct7 == 0x20:  # SUB
                 cpu.registers[rd] = (cpu.registers[rs1] - cpu.registers[rs2]) & 0xFFFFFFFF
             else:
                 raise ValueError(f"Invalid funct7=0x{funct7:02x} for ADD/SUB at PC=0x{cpu.pc:08x}")
-        elif funct3 == 0x1: # SLL
+        elif funct3 == 0x1:  # SLL
             cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
-        elif funct3 == 0x2: # SLT
+        elif funct3 == 0x2:  # SLT
             cpu.registers[rd] = int(signed(cpu.registers[rs1]) < signed(cpu.registers[rs2]))
-        elif funct3 == 0x3: # SLTU
+        elif funct3 == 0x3:  # SLTU
             cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF))
-        elif funct3 == 0x4: # XOR
+        elif funct3 == 0x4:  # XOR
             cpu.registers[rd] = cpu.registers[rs1] ^ cpu.registers[rs2]
-        elif funct3 == 0x5: # SRL/SRA
+        elif funct3 == 0x5:  # SRL/SRA
             shamt = cpu.registers[rs2] & 0x1F
-            if funct7 == 0x00: # SRL
+            if funct7 == 0x00:  # SRL
                 cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
-            elif funct7 == 0x20: # SRA
+            elif funct7 == 0x20:  # SRA
                 cpu.registers[rd] = (signed(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
             else:
                 raise ValueError(f"Invalid funct7=0x{funct7:02x} for SRL/SRA at PC=0x{cpu.pc:08x}")
-        elif funct3 == 0x6:
+        elif funct3 == 0x6:  # OR
             cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
-        elif funct3 == 0x7:
+        elif funct3 == 0x7:  # AND
             cpu.registers[rd] = cpu.registers[rs1] & cpu.registers[rs2]
 
     elif opcode == 0x13:  # I-type arithmetic
-        if funct3 == 0x0: # ADDI
+        if funct3 == 0x0:  # ADDI
             cpu.registers[rd] = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
-        elif funct3 == 0x1: # SLLI
+        elif funct3 == 0x1:  # SLLI
             cpu.registers[rd] = (cpu.registers[rs1] << (imm_i & 0x1F)) & 0xFFFFFFFF
-        elif funct3 == 0x2: # SLTI
+        elif funct3 == 0x2:  # SLTI
             cpu.registers[rd] = int(signed(cpu.registers[rs1]) < signed(imm_i))
-        elif funct3 == 0x3: # SLTIU
+        elif funct3 == 0x3:  # SLTIU
             cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (imm_i & 0xFFFFFFFF))
-        elif funct3 == 0x4: # XORI
+        elif funct3 == 0x4:  # XORI
             cpu.registers[rd] = (cpu.registers[rs1] ^ imm_i) & 0xFFFFFFFF
-        elif funct3 == 0x5: # SRLI/SRAI
+        elif funct3 == 0x5:  # SRLI/SRAI
             shamt = imm_i & 0x1F
-            if funct7 == 0x00: # SRLI
+            if funct7 == 0x00:  # SRLI
                 cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
-            elif funct7 == 0x20: # SRAI
+            elif funct7 == 0x20:  # SRAI
                 cpu.registers[rd] = (signed(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
             else:
                 raise ValueError(f"Invalid funct7=0x{funct7:02x} for SRLI/SRAI at PC=0x{cpu.pc:08x}")
@@ -131,13 +133,17 @@ def execute(cpu, inst):
             raise ValueError(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08x}")
 
     elif opcode == 0x63:  # Branches
-        if (funct3 == 0x0 and cpu.registers[rs1] == cpu.registers[rs2]) or \
-           (funct3 == 0x1 and cpu.registers[rs1] != cpu.registers[rs2]) or \
-           (funct3 == 0x4 and sign_extend(cpu.registers[rs1],32) < sign_extend(cpu.registers[rs2],32)) or \
-           (funct3 == 0x5 and sign_extend(cpu.registers[rs1],32) >= sign_extend(cpu.registers[rs2],32)) or \
-           (funct3 == 0x6 and (cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF)) or \
-           (funct3 == 0x7 and (cpu.registers[rs1] & 0xFFFFFFFF) >= (cpu.registers[rs2] & 0xFFFFFFFF)):
+        if (
+            (funct3 == 0x0 and cpu.registers[rs1] == cpu.registers[rs2]) or  # BEQ
+            (funct3 == 0x1 and cpu.registers[rs1] != cpu.registers[rs2]) or  # BNE
+            (funct3 == 0x4 and sign_extend(cpu.registers[rs1],32) < sign_extend(cpu.registers[rs2],32)) or  # BLT
+            (funct3 == 0x5 and sign_extend(cpu.registers[rs1],32) >= sign_extend(cpu.registers[rs2],32)) or  # BGE
+            (funct3 == 0x6 and (cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF)) or  # BLTU
+            (funct3 == 0x7 and (cpu.registers[rs1] & 0xFFFFFFFF) >= (cpu.registers[rs2] & 0xFFFFFFFF))  # BGEU
+            ): 
             next_pc = (cpu.pc + imm_b) & 0xFFFFFFFF
+        elif funct3 == 0x2 or funct3 == 0x3:
+            raise Exception(f"Illegal branch funct3=0x{funct3:X}")
 
     elif opcode == 0x37:  # LUI
         cpu.registers[rd] = (imm_u << 12) & 0xFFFFFFFF
@@ -165,7 +171,7 @@ def execute(cpu, inst):
             if not ecall_ret:
                 cpu.pc = next_pc
                 return False
-        elif imm_i == 1: # EBREAK
+        elif imm_i == 1:  # EBREAK
             print("[EBREAK]")
             # we just print register values and stop execution
             cpu.print_registers()
@@ -180,8 +186,8 @@ def execute(cpu, inst):
         cpu.pc = next_pc
         return False
     
-    cpu.registers[0] = 0
-    cpu.pc = next_pc
+    cpu.registers[0] = 0    # x0 is always 0
+    cpu.pc = next_pc        # update PC
     return True
 
 
@@ -201,7 +207,7 @@ def ecall(cpu):
         cpu.registers[10] = count  # return count as written
         return True
     
-    # read systcall (newlib standard)
+    # _read systcall (newlib standard)
     elif syscall_id == 63:
         fd = cpu.registers[10]      # a0
         addr = cpu.registers[11]    # a1
@@ -249,6 +255,34 @@ def ecall(cpu):
     else:
         print(f"[ECALL (UNKNOWN {syscall_id})]")
         return False
+    
+
+def check_invariants(cpu):
+    # x0
+    assert cpu.registers[0] == 0, "x0 register should always be 0"
+
+    # PC within memory bounds
+    assert 0 <= cpu.pc < cpu.memory_size, f"PC out of bounds: 0x{cpu.pc}"
+
+    # SP below stack top
+    if cpu.stack_top is not None and cpu.registers[3] != 0:
+        assert cpu.registers[2] <= cpu.stack_top, f"SP above stack top: 0x{cpu.registers[2]:08x} > 0x{cpu.stack_top:08x}"
+
+    # SP above stack bottom
+    if cpu.stack_bottom is not None and cpu.registers[3] != 0:
+        assert cpu.registers[2] >= cpu.stack_bottom, f"SP below stack bottom: 0x{cpu.registers[2]:08x} < 0x{cpu.stack_bottom:08x}"
+
+    # Stack and heap separation
+    min_gap = 256
+    if cpu.heap_end is not None and cpu.stack_bottom is not None:
+        assert cpu.heap_end + min_gap <= cpu.stack_bottom, f"Heap too close to stack: heap_end=0x{cpu.heap_end:08x}, stack_bottom=0x{cpu.stack_bottom:08x}"
+
+    # SP alignment
+    assert cpu.registers[2] % 4 == 0, f"SP not aligned: 0x{cpu.registers[2]:08x}"
+
+    # Heap end alignment
+    if cpu.heap_end is not None:
+        assert cpu.heap_end % 4 == 0, f"Heap end not aligned: 0x{cpu.heap_end:08x}"
 
 
 class CPU:
@@ -258,6 +292,17 @@ class CPU:
         self.memory = bytearray(memory_size)
         self.memory_size = memory_size
 
+        self.stack_top = None
+        self.stack_bottom = None
+        self.heap_end = None
+        self.text_start = None
+        self.text_end = None
+        self.text_snapshot = None
+        self.symbol_dict = {}
+        
+    def execute(self, inst):
+        return execute(self, inst)
+    
     def load_byte(self, addr, signed=True):
         return int.from_bytes(self.memory[addr:addr+1], 'little', signed=signed)
 
@@ -278,6 +323,59 @@ class CPU:
 
     def load_binary(self, binary, addr=0):
         self.memory[addr:addr+len(binary)] = binary
+
+    def load_flatbinary(self, fname):
+        with open(fname, 'rb') as f:
+            binary = f.read()
+            self.load_binary(binary, addr=0)
+            self.pc = 0 # entry point at start of the binary
+
+    def load_elf(self, fname, load_symbols=False, text_snapshot=False):
+        with open(fname, 'rb') as f:
+            elf = ELFFile(f)
+
+            # load all segments
+            for segment in elf.iter_segments():
+                if segment['p_type'] == 'PT_LOAD':
+                    addr = segment['p_paddr']
+                    data = segment.data()
+                    self.load_binary(data, addr=addr)
+
+            # set entry point
+            self.pc = elf.header.e_entry
+
+            # extract text / stack / heap boundaries
+            symtab = elf.get_section_by_name(".symtab")
+            if symtab:
+                for sym in symtab.iter_symbols():
+                    if sym.name == "end":
+                        self.heap_end = sym["st_value"]
+                    elif sym.name == "__stack_top":
+                        self.stack_top = sym["st_value"]
+                    elif sym.name == "__stack_bottom":
+                        self.stack_bottom = sym["st_value"]
+
+                # load symbols for tracing
+                if load_symbols:
+                    for sym in symtab.iter_symbols():
+                        name = sym.name
+                        if not name:
+                            continue
+                        if sym['st_info']['type'] == 'STT_FUNC':
+                            addr = sym['st_value']
+                            self.symbol_dict[addr] = name
+
+            # get boundaries of the text segment
+            text_section = elf.get_section_by_name(".text")
+            if text_section:
+                self.text_start = text_section['sh_addr']
+                self.text_end = self.text_start + text_section['sh_size']
+                # if checking for text segment integrity, take a snapshot
+                if text_snapshot:
+                    self.text_snapshot = self.memory[self.text_start:self.text_end]
+
+    def check_invariants(self):
+        check_invariants(self)
 
     def print_registers(self):
         reg_names = [
