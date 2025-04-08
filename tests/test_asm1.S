@@ -1,5 +1,5 @@
 # Startup code + return value
-# Should return 42
+# Returns 42 in register a0
 
     .section .text
     .globl _start
@@ -12,14 +12,11 @@ _start:
     jal ra, main         # jump to main
 
 halt:
-    mv a0, a0            # main's return value already in a0
-    li a7, 93            # syscall ID for exit (newlib/Linux-style)
-    ecall
-
-#    ebreak               # breakpoint after main returns
-#    j halt               # infinite loop after main returns
+    ebreak               # breakpoint, return value in a0
+# unreachable
+1:
+    j 1b
 
 main:
-    # load return value into a0
-    li a0, 42   # return value for main
+    li a0, 42  # load return value
     ret

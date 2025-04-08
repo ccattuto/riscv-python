@@ -1,6 +1,5 @@
 # Toolchain and tools
 CC = riscv64-unknown-elf-gcc
-OBJDUMP = riscv64-unknown-elf-objdump
 OBJCOPY = riscv64-unknown-elf-objcopy
 
 # Flags

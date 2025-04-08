@@ -173,7 +173,7 @@ def execute(cpu, inst):
                 return False
         elif imm_i == 1:  # EBREAK
             print("[EBREAK]")
-            # we just print register values and stop execution
+            # print register values and stop execution
             cpu.print_registers()
             cpu.pc = next_pc
             return False
@@ -195,7 +195,7 @@ def ecall(cpu):
     syscall_id = cpu.registers[17]  # a7
     #print(f"[SYSCALL {syscall_id}]")
 
-    # _write syscall (newlib standard)
+    # _write syscall (Newlib standard)
     if syscall_id == 64:
         fd = cpu.registers[10]      # a0
         addr = cpu.registers[11]    # a1
@@ -207,7 +207,7 @@ def ecall(cpu):
         cpu.registers[10] = count  # return count as written
         return True
     
-    # _read systcall (newlib standard)
+    # _read systcall (Newlib standard)
     elif syscall_id == 63:
         fd = cpu.registers[10]      # a0
         addr = cpu.registers[11]    # a1
@@ -229,7 +229,7 @@ def ecall(cpu):
             return False
         return True
     
-    # _sbrk syscall (newlib standard)
+    # _sbrk syscall (Newlib standard)
     elif syscall_id == 214:
         assert(cpu.stack_bottom is not None)
 
@@ -245,7 +245,7 @@ def ecall(cpu):
         #print(f"[ECALL (sbrk)]: increment={increment}, old_heap_end=0x{old_heap_end:08x}, new_heap_end=0x{new_heap_end:08x}")
         return True
     
-    # exit systcall (newlib standard)
+    # _exit systcall (Newlib standard)
     elif syscall_id == 93:  # _exit syscall
         exit_code = sign_extend(cpu.registers[10], 32)  # a0
         print(f"[ECALL (exit)]: exit code {exit_code}")

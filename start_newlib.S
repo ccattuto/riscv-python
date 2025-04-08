@@ -17,6 +17,3 @@ halt:
 # unreachable
 1:
     j 1b
-
-#    ebreak              # breakpoint after main returns
-#    j halt              # infinite loop after main returns

@@ -10,12 +10,7 @@ _start:
     jal ra, main        # jump to main
 
 halt:
-    mv a0, a0           # main's return value already in a0
-    li a7, 93           # syscall ID for exit (newlib/Linux-style)
-    ecall
+    ebreak              # breakpoint, return value in a0
 # unreachable
 1:
     j 1b
-
-#    ebreak              # breakpoint after main returns
-#    j halt              # infinite loop after main returns
