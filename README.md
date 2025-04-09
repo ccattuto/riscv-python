@@ -8,7 +8,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 - **Supports ELF and flat binary formats**
 - **Supports [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls**: `_write`, `_read`, `_exit`, `_sbrk`.
 - **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
-- **Supports terminal I/O**
+- **Supports terminal I/O**, both "cooked" and raw
 - **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
 - **Supports logging** of register values, call traces, violations of invariants
 - Compact and self-contained codebase (~300 lines for core logic, ~150 lines for emulation control)
@@ -176,7 +176,7 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - Useful for teaching, debugging, testing compiler output
 
 ## Notes
-- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12.4
+- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12.4. The emulator can run rather complex code such as, e.g., minimal [MicroPython](https://micropython.org/)
 - The provided Makefild builds all Newlib examples selecting Newlib-nano (`--specs=nano.specs` linker option)
 - Newlib-nano's lazy initialization is triggered by `putchar('\0');`, as visible in all examples
 - The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`
