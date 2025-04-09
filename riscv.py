@@ -16,6 +16,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from elftools.elf.elffile import ELFFile
+import sys
 
 def signed(val):
     return val if val < 0x80000000 else val - 0x100000000
@@ -203,7 +204,11 @@ def ecall(cpu):
             cpu.logger.debug(f"SYSCALL _write: fd={fd}, addr={addr:08x}, count={count}")
         data = cpu.memory[addr:addr+count]
         if fd == 1 or fd == 2:  # stdout or stderr
-            print(data.decode(), end='')
+            if not cpu.raw_tty:
+                print(data.decode(), end='')
+            else:
+                sys.stdout.buffer.write(data)
+                sys.stdout.flush()
         cpu.registers[10] = count  # return count as written
         return True
     
@@ -215,15 +220,22 @@ def ecall(cpu):
         if cpu.logger is not None and cpu.trace_syscalls:
             cpu.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08x}, count={count}")
         if fd == 0:  # stdin
-            try:
-                # Blocking read from stdin
-                input_text = input() + "\n"  # Simulate ENTER key
-                data = input_text.encode()[:count]
-            except EOFError:
-                data = b''
-            for i, byte in enumerate(data):
-                cpu.memory[addr + i] = byte
-            cpu.registers[10] = len(data)
+            if not cpu.raw_tty:
+                try: # normal terminal mode
+                    # Blocking read from stdin
+                    input_text = input() + "\n"  # Simulate ENTER key
+                    data = input_text.encode()[:count]
+                except EOFError:
+                    data = b''
+                for i, byte in enumerate(data):
+                    cpu.memory[addr + i] = byte
+                cpu.registers[10] = len(data)
+            else: # raw terminal mode
+                ch = sys.stdin.read(1)  # blocks for a single char
+                if ch == '\x03':  # CTRL+C
+                    raise KeyboardInterrupt
+                cpu.memory[addr] = ord(ch)
+                cpu.registers[10] = 1
         else:
             print(f"[ECALL read] Unsupported fd={fd}")
             cpu.registers[10] = -1  # error
@@ -290,7 +302,7 @@ def check_invariants(cpu):
 
 
 class CPU:
-    def __init__(self, memory_size=1024 * 1024, logger=None, trace_syscalls=False):
+    def __init__(self, memory_size=1024 * 1024, raw_tty=False, logger=None, trace_syscalls=False):
         self.registers = [0] * 32
         self.pc = 0
         self.memory = bytearray(memory_size)
@@ -304,6 +316,7 @@ class CPU:
         self.text_snapshot = None
         self.symbol_dict = {}
 
+        self.raw_tty = raw_tty
         self.logger = logger
         self.trace_syscalls = trace_syscalls
         

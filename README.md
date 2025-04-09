@@ -111,6 +111,7 @@ Newlib C examples:
 | `--check-text`     | Ensure the `.text` segment remains unmodified during execution              |
 | `--trace`          | Log the names of functions traversed during execution                       |
 | `--syscalls`       | Log Newlib syscalls                                                         |
+| `--raw-tty`        | Enable raw terminal mode                                                    |
 | `--log LOG_FILE`   | Log debug information to file `LOG_FILE`                                    |
 | `--help`           | Show usage help and available options                                       |
 
@@ -177,7 +178,5 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 ## Notes
 - The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12.4
 - The provided Makefild builds all Newlib examples selecting Newlib-nano (`--specs=nano.specs` linker option)
-- Newlib-nano's initialization is triggered by `putchar('\0');`, as visible in all examples
+- Newlib-nano's lazy initialization is triggered by `putchar('\0');`, as visible in all examples
 - The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`
-
-

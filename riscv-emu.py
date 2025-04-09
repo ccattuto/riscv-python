@@ -16,8 +16,9 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import sys, argparse
-from riscv import CPU
+import tty, termios
 import logging
+from riscv import CPU
 
 MEMORY_SIZE = 1024 * 1024 # 1MB
 
@@ -29,6 +30,7 @@ def parse_args():
     parser.add_argument("--check-text", action="store_true", help="Ensure text segment is not modified")
     parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
     parser.add_argument("--syscalls", action="store_true", help="Enable Newlib syscall tracing")
+    parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
     parser.add_argument("--log", help="Path to log file (optional)")
     parser.add_argument("--log-level", default="DEBUG", help="Logging level: DEBUG, INFO, WARNING, ERROR")
     return parser.parse_args()
@@ -53,7 +55,7 @@ if __name__ == '__main__':
         log.addHandler(console_handler)
     
     # Instantiate CPU + RAM
-    cpu = CPU(memory_size=MEMORY_SIZE, logger=log, trace_syscalls=args.syscalls)
+    cpu = CPU(memory_size=MEMORY_SIZE, raw_tty=args.raw_tty, logger=log, trace_syscalls=args.syscalls)
 
     # Load binary or ELF file
     if args.executable.endswith('.bin'):
@@ -63,6 +65,12 @@ if __name__ == '__main__':
     else:
         print("Unsupported file format. Please provide a .bin or .elf file.")
         sys.exit(-1)
+
+    # If requested, set raw terminal mode
+    if args.raw_tty:
+        fd = sys.stdin.fileno()
+        tty_old_settings = termios.tcgetattr(fd)
+        tty.setraw(fd)
 
     # Execution loop
     try:
@@ -82,4 +90,9 @@ if __name__ == '__main__':
                 break
 
     except KeyboardInterrupt:
-        print("\nExecution interrupted by user.")
+        print("\r\nExecution interrupted by user.")
+
+    # Restore terminal settings
+    if args.raw_tty:
+        termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
+        print()
