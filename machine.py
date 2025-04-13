@@ -26,10 +26,11 @@ class InvariantViolationError(MachineError):
     pass
 
 class Machine:
-    def __init__(self, cpu, ram, raw_tty=False, trace_syscalls=False):
+    def __init__(self, cpu, ram, logger=None, raw_tty=False, trace_syscalls=False):
         self.cpu = cpu
         self.ram = ram
 
+        self.logger = logger
         self.raw_tty = raw_tty
         self.trace_syscalls = trace_syscalls
 
@@ -109,8 +110,8 @@ class Machine:
             fd = cpu.registers[10]      # a0
             addr = cpu.registers[11]    # a1
             count = cpu.registers[12]   # a2
-            if cpu.logger is not None and self.trace_syscalls:
-                cpu.logger.debug(f"SYSCALL _write: fd={fd}, addr={addr:08x}, count={count}")
+            if self.logger is not None and self.trace_syscalls:
+                self.logger.debug(f"SYSCALL _write: fd={fd}, addr={addr:08x}, count={count}")
             data = self.ram.memory[addr:addr+count]
             if fd == 1 or fd == 2:  # stdout or stderr
                 if not self.raw_tty:
@@ -126,8 +127,8 @@ class Machine:
             fd = cpu.registers[10]      # a0
             addr = cpu.registers[11]    # a1
             count = cpu.registers[12]   # a2
-            if cpu.logger is not None and self.trace_syscalls:
-                cpu.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08x}, count={count}")
+            if self.logger is not None and self.trace_syscalls:
+                self.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08x}, count={count}")
             if fd == 0:  # stdin
                 if not self.raw_tty:
                     try: # normal terminal mode
@@ -162,8 +163,8 @@ class Machine:
             else:
                 self.heap_end = new_heap_end
                 cpu.registers[10] = old_heap_end  # return old break
-            if cpu.logger is not None and self.trace_syscalls:
-                cpu.logger.debug(f"SYSCALL _sbrk: increment={increment}, old_heap_end={old_heap_end:08x}, new_heap_end={new_heap_end:08x}")
+            if self.logger is not None and self.trace_syscalls:
+                self.logger.debug(f"SYSCALL _sbrk: increment={increment}, old_heap_end={old_heap_end:08x}, new_heap_end={new_heap_end:08x}")
             return True
         
         # _exit systcall (Newlib standard)
@@ -171,8 +172,8 @@ class Machine:
             exit_code = cpu.registers[10] # a0
             if exit_code >= 0x80000000:
                 exit_code - 0x100000000
-            if cpu.logger is not None:
-                cpu.logger.debug(f"SYSCALL _exit: exit code={exit_code}")
+            if self.logger is not None:
+                self.logger.debug(f"SYSCALL _exit: exit code={exit_code}")
             return False
         
         # unhandled syscall

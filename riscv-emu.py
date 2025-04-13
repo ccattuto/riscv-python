@@ -64,9 +64,9 @@ if __name__ == '__main__':
         log.addHandler(console_handler)
     
     # Instantiate CPU + RAM
-    ram = RAM(MEMORY_SIZE, logger=log) if not args.check_ram else SafeRAM(MEMORY_SIZE)
+    ram = RAM(MEMORY_SIZE, logger=log) if not args.check_ram else SafeRAM(MEMORY_SIZE, logger=log)
     cpu = CPU(ram, logger=log)
-    machine = Machine(cpu, ram, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
+    machine = Machine(cpu, ram, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
     cpu.set_ecall_handler(machine.handle_ecall)  # Set syscall handler
 
     # Load binary or ELF file
