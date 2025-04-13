@@ -18,16 +18,21 @@
 import sys, argparse
 import tty, termios
 import logging
-from riscv import CPU
 
-MEMORY_SIZE = 1024 * 1024 # 1MB
+from machine import Machine, MachineError
+from cpu import CPU
+from ram import RAM, SafeRAM
+
+MEMORY_SIZE = 1024 * 1024  # 1 Mb
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RISC-V Emulator")
     parser.add_argument("executable", help=".elf or .bin file")
     parser.add_argument("--regs", action="store_true", help="Print registers at each instruction")
-    parser.add_argument("--check", action="store_true", help="Check invariants on each step")
+    parser.add_argument("--check-inv", action="store_true", help="Check invariants on each step")
+    parser.add_argument("--check-ram", action="store_true", help="Check memory accesses")
     parser.add_argument("--check-text", action="store_true", help="Ensure text segment is not modified")
+    parser.add_argument("--check-all", action="store_true", help="Enable all checks")
     parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
     parser.add_argument("--syscalls", action="store_true", help="Enable Newlib syscall tracing")
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
@@ -37,6 +42,10 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
+    if args.check_all:
+        args.check_inv = True
+        args.check_ram = True
+        args.check_text = True
 
     log = logging.getLogger("riscv-emu")
     log.setLevel(logging.DEBUG)
@@ -55,13 +64,16 @@ if __name__ == '__main__':
         log.addHandler(console_handler)
     
     # Instantiate CPU + RAM
-    cpu = CPU(memory_size=MEMORY_SIZE, raw_tty=args.raw_tty, logger=log, trace_syscalls=args.syscalls)
+    ram = RAM(MEMORY_SIZE, logger=log) if not args.check_ram else SafeRAM(MEMORY_SIZE)
+    cpu = CPU(ram, logger=log)
+    machine = Machine(cpu, ram, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
+    cpu.set_ecall_handler(machine.handle_ecall)  # Set syscall handler
 
     # Load binary or ELF file
     if args.executable.endswith('.bin'):
-        cpu.load_flatbinary(args.executable)
+        machine.load_flatbinary(args.executable)
     elif args.executable.endswith('.elf'):
-        cpu.load_elf(args.executable, load_symbols=args.trace, text_snapshot=args.check_text)
+        machine.load_elf(args.executable, load_symbols=args.trace, text_snapshot=args.check_text)
     else:
         print("Unsupported file format. Please provide a .bin or .elf file.")
         sys.exit(-1)
@@ -77,22 +89,35 @@ if __name__ == '__main__':
         while True:
             if args.regs:
                 log.debug(f"REGS: PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}, gp={cpu.registers[3]:08x}, a0={cpu.registers[10]:08x}")
-            if args.check:
-                cpu.check_invariants()
-            if args.check_text and (cpu.text_snapshot is not None):
-                assert cpu.memory[cpu.text_start:cpu.text_end] == cpu.text_snapshot, "Text segment has been modified!"
-            if args.trace and (cpu.pc in cpu.symbol_dict):
-                log.debug(f"FUNC {cpu.symbol_dict[cpu.pc]}, PC={cpu.pc:08x}")
+            if args.check_inv:
+                machine.check_invariants()
+            if args.trace and (cpu.pc in machine.symbol_dict):
+                log.debug(f"FUNC {machine.symbol_dict[cpu.pc]}, PC={cpu.pc:08x}")
 
-            inst = cpu.load_word(cpu.pc)
-            continue_exec = cpu.execute(inst)
+            inst = machine.ram.load_word(cpu.pc)
+            continue_exec = machine.cpu.execute(inst)
             if not continue_exec:
                 break
 
     except KeyboardInterrupt:
-        print("\r\nExecution interrupted by user.")
+        if args.raw_tty: # Restore terminal settings
+            termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
+        print("\nExecution interrupted by user.")
 
-    # Restore terminal settings
-    if args.raw_tty:
-        termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
+    except MachineError as e:
+        if args.raw_tty:
+            termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
+        print(f"\nEMULATOR ERROR [{type(e).__name__}] at PC=0x{cpu.pc:08x}: {e}")
+        cpu.print_registers()
+        sys.exit(1)
+
+    except Exception:
+        if args.raw_tty:
+            termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
+        print()
+        raise
+    
+    finally:
+        if args.raw_tty:
+            termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
         print()
