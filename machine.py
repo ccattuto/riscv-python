@@ -52,7 +52,7 @@ class Machine:
         with open(fname, 'rb') as f:
             binary = f.read()
             self.ram.store_binary(0, binary)
-            self.cpu.pc = 0 # entry point at start of the binary
+            self.cpu.pc = 0  # entry point at start of the binary
 
     # load an ELF executable into RAM
     def load_elf(self, fname, load_symbols=False, text_snapshot=False):
@@ -131,7 +131,7 @@ class Machine:
                 self.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08x}, count={count}")
             if fd == 0:  # stdin
                 if not self.raw_tty:
-                    try: # normal terminal mode
+                    try:  # normal (cooked) terminal mode
                         # Blocking read from stdin
                         input_text = input() + "\n"  # Simulate ENTER key
                         data = input_text.encode()[:count]
@@ -139,7 +139,7 @@ class Machine:
                         data = b''
                     self.ram.store_binary(addr, data)
                     cpu.registers[10] = len(data)
-                else: # raw terminal mode
+                else:  # raw terminal mode
                     ch = sys.stdin.read(1)  # blocks for a single char
                     if ch == '\x03':  # CTRL+C
                         raise KeyboardInterrupt
@@ -168,7 +168,7 @@ class Machine:
         
         # _exit systcall (Newlib standard)
         elif syscall_id == 93:  # _exit syscall
-            exit_code = cpu.registers[10] # a0
+            exit_code = cpu.registers[10]  # a0
             if exit_code >= 0x80000000:
                 exit_code - 0x100000000
             if self.logger is not None:
