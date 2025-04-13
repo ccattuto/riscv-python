@@ -34,14 +34,21 @@ SECTIONS
     __bss_end = .;
   } > RAM
 
+  .sbss : ALIGN(4)
+  {
+    *(.sbss*)
+  } > RAM
+
   /* Heap and Stack regions */
-  . = ALIGN(4);
+  . = ALIGN(8);
   end = .;
+  __heap_start = .;
 
   __stack_top = ORIGIN(RAM) + LENGTH(RAM);
   __stack_bottom = __stack_top - 128K;
 
   PROVIDE(_end = end);
+  PROVIDE(_heap_start = __heap_start);
   PROVIDE(_stack_top = __stack_top);
   PROVIDE(_stack_bottom = __stack_bottom);
   PROVIDE(_global_pointer$ = __global_pointer$);
