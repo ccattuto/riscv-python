@@ -10,7 +10,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 - **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
 - **Supports terminal I/O**, both "cooked" and raw
 - **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
-- **Supports logging** of register values, call traces, violations of invariants
+- **Supports logging** of register values, call traces, invalid memory accesses, violations of invariants
 - Compact and self-contained codebase (~300 lines for core logic, ~150 lines for emulation control)
 
 ## 🔧 Requirements
@@ -27,7 +27,9 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 
 ```
 ├── riscv-emu.py           # Emulator
-├── riscv.py               # Core emulator logic
+├── cpu.py                 # CPU emulation logic
+├── ram.py                 # RAM emulation logic
+├── machine.py             # Host logic (syscalls, terminal I/O)
 ├── Makefile               # Builds ELF/binary targets
 ├── start_bare.S           # Minimal startup code
 ├── start_newlib.S         # Startup code for Newlib-nano
