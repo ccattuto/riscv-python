@@ -51,7 +51,7 @@ class Machine:
     def load_flatbinary(self, fname):
         with open(fname, 'rb') as f:
             binary = f.read()
-            self.ram.load_binary(binary, addr=0)
+            self.ram.store_binary(0, binary)
             self.cpu.pc = 0 # entry point at start of the binary
 
     # load an ELF executable into RAM
@@ -64,7 +64,7 @@ class Machine:
                 if segment['p_type'] == 'PT_LOAD':
                     addr = segment['p_paddr']
                     data = segment.data()
-                    self.ram.load_binary(data, addr=addr)
+                    self.ram.store_binary(addr, data)
 
             # set entry point
             self.cpu.pc = elf.header.e_entry
@@ -112,7 +112,7 @@ class Machine:
             count = cpu.registers[12]   # a2
             if self.logger is not None and self.trace_syscalls:
                 self.logger.debug(f"SYSCALL _write: fd={fd}, addr={addr:08x}, count={count}")
-            data = self.ram.memory[addr:addr+count]
+            data = self.ram.load_binary(addr, count)
             if fd == 1 or fd == 2:  # stdout or stderr
                 if not self.raw_tty:
                     print(data.decode(), end='')
@@ -137,14 +137,13 @@ class Machine:
                         data = input_text.encode()[:count]
                     except EOFError:
                         data = b''
-                    for i, byte in enumerate(data):
-                        self.ram.memory[addr + i] = byte
+                    self.ram.store_binary(addr, data)
                     cpu.registers[10] = len(data)
                 else: # raw terminal mode
                     ch = sys.stdin.read(1)  # blocks for a single char
                     if ch == '\x03':  # CTRL+C
                         raise KeyboardInterrupt
-                    self.ram.memory[addr] = ord(ch)
+                    self.ram.store_byte(addr, ord(ch))
                     cpu.registers[10] = 1
             else:
                 raise InvalidSyscallError(f"SYSCALL _read: unsupported fd={fd}")

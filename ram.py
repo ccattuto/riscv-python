@@ -46,7 +46,10 @@ class RAM:
     def store_word(self, addr, value):
         self.memory[addr:addr+4] = (value & 0xFFFFFFFF).to_bytes(4, 'little')
 
-    def load_binary(self, binary, addr=0):
+    def load_binary(self, addr, n):
+        return self.memory[addr:addr+n]
+
+    def store_binary(self, addr, binary):
         self.memory[addr:addr+len(binary)] = binary
 
 # Safe RAM class: checks all addresses
@@ -56,35 +59,39 @@ class SafeRAM:
         self.size = size
         self.logger = logger
 
-    def check(self, addr, n=1):
+    def check(self, addr, n):
         if addr < 0 or addr + n > self.size:
             raise MemoryAccessError(f"Access out of bounds: 0x{addr:08x} (+{n})")
 
     def load_byte(self, addr, signed=True):
-        self.check(addr, n=1)
+        self.check(addr, 1)
         val = self.memory[addr]
         return val if not signed or val < 0x80 else val - 0x100
  
     def load_half(self, addr, signed=True):
-        self.check(addr, n=2)
+        self.check(addr, 2)
         return int.from_bytes(self.memory[addr:addr+2], 'little', signed=signed)
 
     def load_word(self, addr, signed=True):
-        self.check(addr, n=4)
+        self.check(addr, 4)
         return int.from_bytes(self.memory[addr:addr+4], 'little', signed=signed)
 
     def store_byte(self, addr, value):
-        self.check(addr, n=1)
+        self.check(addr, 1)
         self.memory[addr] = value & 0xFF
 
     def store_half(self, addr, value):
-        self.check(addr, n=2)
+        self.check(addr, 2)
         self.memory[addr:addr+2] = (value & 0xFFFF).to_bytes(2, 'little')
 
     def store_word(self, addr, value):
-        self.check(addr, n=4)
+        self.check(addr, 4)
         self.memory[addr:addr+4] = (value & 0xFFFFFFFF).to_bytes(4, 'little')
 
-    def load_binary(self, binary, addr=0):
+    def load_binary(self, addr, n):
+        self.check(addr, n)
+        return self.memory[addr:addr+n]
+
+    def store_binary(self, addr, binary):
         self.check(addr, n=len(binary))
         self.memory[addr:addr+len(binary)] = binary
