@@ -73,7 +73,7 @@ if __name__ == '__main__':
     if args.executable.endswith('.bin'):
         machine.load_flatbinary(args.executable)
     elif args.executable.endswith('.elf'):
-        machine.load_elf(args.executable, load_symbols=args.trace, text_snapshot=args.check_text)
+        machine.load_elf(args.executable, load_symbols=args.trace, check_text=args.check_text)
     else:
         print("Unsupported file format. Please provide a .bin or .elf file.")
         sys.exit(-1)

@@ -55,7 +55,7 @@ class Machine:
             self.cpu.pc = 0  # entry point at start of the binary
 
     # load an ELF executable into RAM
-    def load_elf(self, fname, load_symbols=False, text_snapshot=False):
+    def load_elf(self, fname, load_symbols=False, check_text=False):
         with open(fname, 'rb') as f:
             elf = ELFFile(f)
 
@@ -96,7 +96,7 @@ class Machine:
                 self.text_start = text_section['sh_addr']
                 self.text_end = self.text_start + text_section['sh_size']
                 # if checking for text segment integrity, take a snapshot
-                if text_snapshot:
+                if check_text:
                     self.text_snapshot = self.ram.memory[self.text_start:self.text_end]
 
 
