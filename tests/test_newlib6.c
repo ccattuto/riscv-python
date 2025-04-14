@@ -1,6 +1,7 @@
 // This program implements Conway's Game of Life.
 // It uses newlib-nano for minimal C library support and  dynamic memory allocation.
 // The state of the board is shown on terminal using ANSI escape codes.
+// It accepts an optional command-line parameter for the seed of the random number generator.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,18 +83,24 @@ void print_board(int **board) {
     fflush(stdout);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    int rng_seed = 42;
+
     putchar('\0'); // triggers newlib-nano initialization
+
+    if (argc > 1)
+        rng_seed = atoi(argv[1]);
 
     int **current = alloc_board();
     int **next = alloc_board();
 
-    random_init(current, 42);
+    random_init(current, rng_seed);
 
     printf("\033[2J");
 
     for (int step_num = 0; step_num < STEPS; ++step_num) {
         print_board(current);
+        printf("generation %05d\n", step_num);
         step(current, next);
 
         // Swap pointers
