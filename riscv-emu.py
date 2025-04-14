@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import sys, argparse
+import sys, os, argparse
 import tty, termios
 import logging
 
@@ -26,6 +26,14 @@ from ram import RAM, SafeRAM
 MEMORY_SIZE = 1024 * 1024  # 1 Mb
 
 def parse_args():
+    if "--" in sys.argv:
+        split_index = sys.argv.index("--")
+        emulator_args = sys.argv[1:split_index]
+        program_args = sys.argv[split_index + 1:]
+    else:
+        emulator_args = sys.argv[1:]
+        program_args = []
+
     parser = argparse.ArgumentParser(description="RISC-V Emulator")
     parser.add_argument("executable", help=".elf or .bin file")
     parser.add_argument("--regs", action="store_true", help="Print registers at each instruction")
@@ -38,8 +46,12 @@ def parse_args():
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
     parser.add_argument("--log", help="Path to log file (optional)")
     parser.add_argument("--log-level", default="DEBUG", help="Logging level: DEBUG, INFO, WARNING, ERROR")
-    return parser.parse_args()
 
+    args = parser.parse_args(emulator_args)
+    args.program_args = [os.path.basename(args.executable)] + program_args
+    return args
+
+# MAIN
 if __name__ == '__main__':
     args = parse_args()
     if args.check_all:
@@ -74,6 +86,8 @@ if __name__ == '__main__':
         machine.load_flatbinary(args.executable)
     elif args.executable.endswith('.elf'):
         machine.load_elf(args.executable, load_symbols=args.trace, check_text=args.check_text)
+        if args.program_args:
+            machine.setup_argv(args.program_args)
     else:
         print("Unsupported file format. Please provide a .bin or .elf file.")
         sys.exit(-1)

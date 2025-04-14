@@ -47,6 +47,26 @@ class Machine:
         # symbol dictionary for syscall tracing
         self.symbol_dict = {}
 
+    # setup argv[] strings in the heap
+    def setup_argv(self, argv_list):
+        argv_pointers = []
+        for arg in argv_list:
+            addr = self.heap_end
+            self.ram.store_binary(addr, arg.encode() + b'\0')
+            argv_pointers.append(addr)
+            self.heap_end += len(arg) + 1
+            self.heap_end = (self.heap_end + 3) & ~3  # ensure 4-byte alignment
+
+        argv_table_addr = self.heap_end
+        for ptr in argv_pointers + [0]:
+            self.ram.store_word(self.heap_end, ptr)
+            self.heap_end += 4
+
+        self.heap_end = (self.heap_end + 7) & ~7  # ensure 8-byte alignment
+
+        self.cpu.registers[10] = len(argv_list)   # a0
+        self.cpu.registers[11] = argv_table_addr  # a1
+
     # load a flat binary executable into RAM
     def load_flatbinary(self, fname):
         with open(fname, 'rb') as f:
