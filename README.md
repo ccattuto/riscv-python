@@ -9,6 +9,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 - **Supports [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls**: `_write`, `_read`, `_exit`, `_sbrk`.
 - **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
 - **Supports terminal I/O**, both "cooked" and raw
+- **Supports argc/argv arguments**
 - **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
 - **Supports logging** of register values, call traces, invalid memory accesses, violations of invariants
 - Compact and self-contained codebase (~300 lines for core logic, ~150 lines for emulation control)
@@ -100,6 +101,16 @@ Newlib C examples:
                   .............................................                 
                         .................................                       
 
+```
+
+Passing command-line arguments to the emulated program (the basename of the executable is automatically passed as argument 0):
+```
+./riscv-emu.py build/test_newlib7.elf -- arg1 arg2 arg3    
+Number of arguments: 4
+Argument 0: test_newlib7.elf
+Argument 1: arg1
+Argument 2: arg2
+Argument 3: arg3
 ```
 
 ### ▶️ Command-Line Options
