@@ -171,7 +171,8 @@ class Machine:
         
         # _sbrk syscall (Newlib standard)
         elif syscall_id == 214:
-            assert(self.stack_bottom is not None)
+            if self.stack_bottom is None:
+                raise InvalidSyscallError("SYSCALL _sbrk: stack bottom not set")
 
             increment = cpu.registers[10]
             old_heap_end = self.heap_end

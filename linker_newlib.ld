@@ -13,6 +13,7 @@ SECTIONS
     KEEP(*(.text.startup))
     *(.text*)
     *(.rodata*)
+    *(.srodata*)
   } > RAM
 
   .data : ALIGN(4)
@@ -26,7 +27,7 @@ SECTIONS
     *(.sdata*)
   } > RAM
 
-  .bss : ALIGN(4)
+  .bss : ALIGN(8)
   {
     __bss_start = .;
     *(.bss*)
@@ -46,9 +47,11 @@ SECTIONS
 
   __stack_top = ORIGIN(RAM) + LENGTH(RAM);
   __stack_bottom = __stack_top - 128K;
+  __heap_end = __stack_bottom;
 
   PROVIDE(_end = end);
   PROVIDE(_heap_start = __heap_start);
+  PROVIDE(_heap_end = __heap_end);
   PROVIDE(_stack_top = __stack_top);
   PROVIDE(_stack_bottom = __stack_bottom);
   PROVIDE(_global_pointer$ = __global_pointer$);

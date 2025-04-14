@@ -89,7 +89,7 @@ if __name__ == '__main__':
         machine.load_flatbinary(args.executable)
     elif args.executable.endswith('.elf'):
         machine.load_elf(args.executable, load_symbols=args.trace, check_text=args.check_text)
-        if args.program_args:
+        if machine.heap_end is not None and args.program_args:
             machine.setup_argv(args.program_args)
     else:
         print("Unsupported file format. Please provide a .bin or .elf file.")
