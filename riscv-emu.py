@@ -34,7 +34,10 @@ def parse_args():
         emulator_args = sys.argv[1:]
         program_args = []
 
-    parser = argparse.ArgumentParser(description="RISC-V Emulator")
+    parser = argparse.ArgumentParser(
+        description="RISC-V Emulator",
+        epilog=("For ELF executables, arguments after '--' are passed to the emulated program as argv[], "
+                "with argv[0] set to the basename of the executable.") )
     parser.add_argument("executable", help=".elf or .bin file")
     parser.add_argument("--regs", action="store_true", help="Print registers at each instruction")
     parser.add_argument("--check-inv", action="store_true", help="Check invariants on each step")
