@@ -127,6 +127,7 @@ Argument 3: arg3
 | `--trace`          | Log the names of functions traversed during execution                       |
 | `--syscalls`       | Log Newlib syscalls                                                         |
 | `--raw-tty`        | Enable raw terminal mode                                                    |
+| `--nocolor`        | Remove ANSI colors in debugging output                                      |
 | `--log LOG_FILE`   | Log debug information to file `LOG_FILE`                                    |
 | `--help`           | Show usage help and available options                                       |
 
@@ -195,3 +196,4 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - The provided Makefile builds all Newlib examples using Newlib-nano (`--specs=nano.specs` linker option)
 - Newlib-nano's lazy initialization is triggered by `putchar('\0');`, as visible in all examples
 - The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`
+- The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.
