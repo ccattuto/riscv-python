@@ -193,7 +193,7 @@ class Machine:
             if exit_code >= 0x80000000:
                 exit_code - 0x100000000
             if self.logger is not None:
-                self.logger.debug(f"SYSCALL _exit: exit code={exit_code}")
+                self.logger.info(f"SYSCALL _exit: exit code={exit_code}")
             return False
         
         # unhandled syscall

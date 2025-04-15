@@ -47,12 +47,34 @@ def parse_args():
     parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
     parser.add_argument("--syscalls", action="store_true", help="Enable Newlib syscall tracing")
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
+    parser.add_argument("--nocolor", action="store_false", help="Remove ANSI colors in debugging output")
     parser.add_argument("--log", help="Path to log file (optional)")
     parser.add_argument("--log-level", default="DEBUG", help="Logging level: DEBUG, INFO, WARNING, ERROR")
 
     args = parser.parse_args(emulator_args)
     args.program_args = [os.path.basename(args.executable)] + program_args
     return args
+
+LOG_COLORS = {
+    logging.DEBUG: "\033[36m",      # Cyan
+    logging.INFO: "\033[32m",       # Green
+    logging.WARNING: "\033[33m",    # Yellow
+    logging.ERROR: "\033[31m"       # Red
+}
+RESET_COLOR = "\033[0m"
+
+class ColorFormatter(logging.Formatter):
+    def __init__(self, fmt, use_color=True):
+        super().__init__(fmt)
+        self.use_color = use_color
+
+    def format(self, record):
+        message = super().format(record)
+        if self.use_color and record.levelno in LOG_COLORS:
+            color = LOG_COLORS[record.levelno]
+            return f"{color}{message}{RESET_COLOR}"
+        return message
+
 
 # MAIN
 if __name__ == '__main__':
@@ -73,9 +95,10 @@ if __name__ == '__main__':
         log.addHandler(file_handler)
     else:
         # Log to terminal
+        is_tty = sys.stdout.isatty()
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.DEBUG)
-        console_handler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
+        console_handler.setFormatter(ColorFormatter('[%(levelname)s] %(message)s', use_color=is_tty and args.nocolor))
         log.addHandler(console_handler)
     
     # Instantiate CPU + RAM
@@ -92,7 +115,7 @@ if __name__ == '__main__':
         if machine.heap_end is not None and args.program_args:
             machine.setup_argv(args.program_args)
     else:
-        print("Unsupported file format. Please provide a .bin or .elf file.")
+        log.error("Unsupported file format. Please provide a .bin or .elf file.")
         sys.exit(-1)
 
     # If requested, set raw terminal mode
@@ -119,12 +142,14 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         if args.raw_tty: # Restore terminal settings
             termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
-        print("\nExecution interrupted by user.")
+        print()
+        log.info("Execution interrupted by user.")
 
     except MachineError as e:
         if args.raw_tty:
             termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
-        print(f"\nEMULATOR ERROR [{type(e).__name__}] at PC=0x{cpu.pc:08x}: {e}")
+        print()
+        log.error(f"EMULATOR ERROR [{type(e).__name__}] at PC=0x{cpu.pc:08x}: {e}")
         cpu.print_registers()
         sys.exit(1)
 
