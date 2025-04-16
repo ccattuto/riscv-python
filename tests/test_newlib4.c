@@ -8,8 +8,6 @@
 #define MAX_ITER 128
 
 int main(void) {
-    putchar('\0'); // triggers newlib-nano initialization
-
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
             int cr = (x - WIDTH/2) * 4 * 1024 / WIDTH;
@@ -32,7 +30,6 @@ int main(void) {
                 if (iter == 0) break;
             }
 
-            //printf("%d %d %ld\n", x, y, iter);
             char c = " .:=+*#@"[log];
             putchar(c);
         }

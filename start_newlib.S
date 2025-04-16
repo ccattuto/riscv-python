@@ -8,7 +8,9 @@ _start:
     la gp, __global_pointer$    # initialize the global pointer
     .option pop
 
-    jal ra, main        # jump to main
+    call __sinit    # initialize Newlib
+
+    call main
 
 halt:
     mv a0, a0           # main's return value already in a0

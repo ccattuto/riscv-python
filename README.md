@@ -194,6 +194,5 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 ## Notes
 - The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12. The emulator can run complex code such as, e.g., minimal [MicroPython](https://micropython.org/)
 - The provided Makefile builds all Newlib examples using Newlib-nano (`--specs=nano.specs` linker option)
-- Newlib-nano's lazy initialization is triggered by `putchar('\0');`, as visible in all examples
 - The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`
 - The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.

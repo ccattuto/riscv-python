@@ -1,11 +1,9 @@
-// This examples demonstrates the use of newlib-nano.
+// This examples demonstrates the use of Newlib-nano.
 
 #include <stdio.h>
 
 int main(void) {
     unsigned int sum = 0;
-
-    putchar('\0'); // triggers newlib-nano initialization
 
     for (int i = 0; i < 100; i++)
         sum += i;

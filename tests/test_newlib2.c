@@ -1,5 +1,5 @@
 // This example generates the first 1000 prime numbers and prints them to the console.
-// It uses newlib-nano for minimal C library support.
+// It uses Newlib-nano for minimal C library support.
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -10,8 +10,6 @@ int main() {
     int primes[MAX_PRIMES];
     int count = 0;
     int num = 2;
-
-    putchar('\0'); // triggers newlib-nano initialization
 
     while (count < MAX_PRIMES) {
         bool is_prime = true;

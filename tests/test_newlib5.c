@@ -65,8 +65,6 @@ void free_maze() {
 
 
 int main() {
-    putchar('\0'); // triggers newlib-nano initialization
-
     srand(42);  // make output deterministic
     init_maze();
     carve(1, 1);

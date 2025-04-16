@@ -86,8 +86,6 @@ void print_board(int **board) {
 int main(int argc, char *argv[]) {
     int rng_seed = 42;
 
-    putchar('\0'); // triggers newlib-nano initialization
-
     if (argc > 1)
         rng_seed = atoi(argv[1]);
 
