@@ -8,7 +8,6 @@ _start:
     la gp, __global_pointer$    # initialize the global pointer
     .option pop
 
-    la   a0, _impure_ptr
     call __sinit                # initialize Newlib
 
     call main
