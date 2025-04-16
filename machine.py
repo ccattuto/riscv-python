@@ -205,7 +205,7 @@ class Machine:
     def check_invariants(self):
         cpu = self.cpu
 
-        # x0
+        # x0 = 0
         if not (cpu.registers[0] == 0):
             raise InvariantViolationError("x0 register should always be 0")
 
@@ -218,22 +218,22 @@ class Machine:
             if not(cpu.registers[2] <= self.stack_top):
                 raise InvariantViolationError(f"SP above stack top: SP=0x{cpu.registers[2]:08x} > 0x{self.stack_top:08x}")
 
-        # SP above stack bottom
+        # SP above stack bottom (stack overflow check)
         if self.stack_bottom is not None and cpu.registers[3] != 0:
             if not(cpu.registers[2] >= self.stack_bottom):
-                raise InvariantViolationError(f"SP below stack bottom: SP=0x{cpu.registers[2]:08x} < 0x{self.stack_bottom:08x}")
+                raise InvariantViolationError(f"SP below stack bottom (stack overlow): SP=0x{cpu.registers[2]:08x} < 0x{self.stack_bottom:08x}")
 
         # Stack and heap separation
-        min_gap = 256
+        MIN_GAP = 256
         if self.heap_end is not None and self.stack_bottom is not None:
-            if not (self.heap_end + min_gap <= self.stack_bottom):
+            if not (self.heap_end + MIN_GAP <= self.stack_bottom):
                 raise InvariantViolationError(f"Heap too close to stack: heap_end=0x{self.heap_end:08x}, stack_bottom=0x{self.stack_bottom:08x}")
 
-        # SP alignment
+        # SP word alignment
         if not(cpu.registers[2] % 4 == 0):
             raise InvariantViolationError(f"SP not aligned: SP=0x{cpu.registers[2]:08x}")
 
-        # Heap end alignment
+        # Heap end word alignment
         if self.heap_end is not None:
             if not(self.heap_end % 4 == 0):
                 raise InvariantViolationError(f"Heap end not aligned: 0x{self.heap_end:08x}")
