@@ -7,7 +7,7 @@ _start:
     la sp, __stack_top  # initialize the stack pointer
     .option pop
 
-    jal ra, main        # jump to main
+    call main
 
 halt:
     ebreak              # breakpoint, return value in a0
