@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import sys
+import sys, os, stat, errno, struct
 from elftools.elf.elffile import ELFFile
 
 class MachineError(Exception):
@@ -40,6 +40,15 @@ class Machine:
         self.heap_end = None
         self.text_start = None
         self.text_end = None
+
+        # file descriptor mapping
+        self.fd_map = {
+            0: sys.stdin.fileno(),
+            1: sys.stdout.fileno(),
+            2: sys.stderr.fileno(),
+        }
+        self.next_fd = 3
+        self.umask = 0o022  # default umask
 
         # text segment snapshot
         self.text_snapshot = None
@@ -125,50 +134,15 @@ class Machine:
         cpu = self.cpu
         syscall_id = cpu.registers[17]  # a7
 
-        # _write syscall (Newlib standard)
-        if syscall_id == 64:
-            fd = cpu.registers[10]      # a0
-            addr = cpu.registers[11]    # a1
-            count = cpu.registers[12]   # a2
-            if self.logger is not None and self.trace_syscalls:
-                self.logger.debug(f"SYSCALL _write: fd={fd}, addr={addr:08x}, count={count}")
-            data = self.ram.load_binary(addr, count)
-            if fd == 1 or fd == 2:  # stdout or stderr
-                if not self.raw_tty:
-                    print(data.decode(), end='')
-                else:
-                    sys.stdout.buffer.write(data)
-                    sys.stdout.flush()
-            cpu.registers[10] = count  # return count as written
-            return True
-        
-        # _read systcall (Newlib standard)
-        elif syscall_id == 63:
-            fd = cpu.registers[10]      # a0
-            addr = cpu.registers[11]    # a1
-            count = cpu.registers[12]   # a2
-            if self.logger is not None and self.trace_syscalls:
-                self.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08x}, count={count}")
-            if fd == 0:  # stdin
-                if not self.raw_tty:
-                    try:  # normal (cooked) terminal mode
-                        # Blocking read from stdin
-                        input_text = input() + "\n"  # Simulate ENTER key
-                        data = input_text.encode()[:count]
-                    except EOFError:
-                        data = b''
-                    self.ram.store_binary(addr, data)
-                    cpu.registers[10] = len(data)
-                else:  # raw terminal mode
-                    ch = sys.stdin.read(1)  # blocks for a single char
-                    if ch == '\x03':  # CTRL+C
-                        raise KeyboardInterrupt
-                    self.ram.store_byte(addr, ord(ch))
-                    cpu.registers[10] = 1
-            else:
-                raise InvalidSyscallError(f"SYSCALL _read: unsupported fd={fd}")
-            return True
-        
+        # _exit syscall (Newlib standard)
+        if syscall_id == 93:  # _exit syscall
+            exit_code = cpu.registers[10]  # a0
+            if exit_code >= 0x80000000:
+                exit_code -= 0x100000000
+            if self.logger is not None:
+                self.logger.info(f"SYSCALL _exit: exit code={exit_code}")
+            return False
+
         # _sbrk syscall (Newlib standard)
         elif syscall_id == 214:
             if self.stack_bottom is None:
@@ -187,18 +161,212 @@ class Machine:
                 self.logger.debug(f"SYSCALL _sbrk: increment={increment}, old_heap_end={old_heap_end:08x}, new_heap_end={new_heap_end:08x}")
             return True
         
-        # _exit systcall (Newlib standard)
-        elif syscall_id == 93:  # _exit syscall
-            exit_code = cpu.registers[10]  # a0
-            if exit_code >= 0x80000000:
-                exit_code - 0x100000000
-            if self.logger is not None:
-                self.logger.info(f"SYSCALL _exit: exit code={exit_code}")
-            return False
+        # _write syscall (Newlib standard)
+        elif syscall_id == 64:
+            fd = cpu.registers[10]      # a0
+            addr = cpu.registers[11]    # a1
+            count = cpu.registers[12]   # a2
+            if self.logger is not None and self.trace_syscalls:
+                self.logger.debug(f"SYSCALL _write: fd={fd}, addr={addr:08x}, count={count}")
+            data = self.ram.load_binary(addr, count)
+            if fd == 1 or fd == 2:  # stdout or stderr
+                if not self.raw_tty:
+                    print(data.decode(), end='')
+                else:
+                    sys.stdout.buffer.write(data)
+                    sys.stdout.flush()
+                cpu.registers[10] = count  # number of bytes written
+            else:
+                if fd in self.fd_map:
+                    try:
+                        count = os.write(self.fd_map[fd], data)
+                        cpu.registers[10] = count
+                    except OSError as e:
+                        cpu.registers[10] = -e.errno
+                        self.logger.warning(f"SYSCALL _write: error {-e.errno} writing fd={fd}")
+                else:
+                    cpu.registers[10] = -errno.EBADF
+                    self.logger.warning(f"SYSCALL _write: unknown fd={fd}")
+            return True
+        
+        # _read syscall (Newlib standard)
+        elif syscall_id == 63:
+            fd = cpu.registers[10]      # a0
+            addr = cpu.registers[11]    # a1
+            count = cpu.registers[12]   # a2
+            if self.logger is not None and self.trace_syscalls:
+                self.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08x}, count={count}")
+            if fd == 0:  # stdin
+                if not self.raw_tty:
+                    try:  # normal (cooked) terminal mode
+                        # Blocking read from stdin
+                        input_text = input() + "\n"  # Simulate ENTER key
+                        data = input_text.encode()[:count]
+                    except EOFError:
+                        data = b''
+                    self.ram.store_binary(addr, data)
+                    cpu.registers[10] = len(data)
+                else:  # raw terminal mode
+                    ch = sys.stdin.read(1)  # blocks for a single char
+                    if ch == '\x03':        # handle CTRL+C
+                        raise KeyboardInterrupt
+                    self.ram.store_byte(addr, ord(ch))
+                    cpu.registers[10] = 1
+            elif fd in self.fd_map:
+                data = os.read(self.fd_map[fd], count)
+                self.ram.store_binary(addr, data)
+                cpu.registers[10] = len(data)
+            else:
+                cpu.registers[10] = -errno.EBADF
+                self.logger.warning(f"SYSCALL _read: unknown fd={fd}")
+            return True
+        
+        # _openat syscall (Newlib standard)
+        if syscall_id == 1024:
+            dirfd = cpu.registers[10]  # a0 (signed)
+            if dirfd >= 0x80000000:
+                dirfd -= 0x100000000
+            if dirfd != -100:
+                self.logger.warning(f"SYSCALL _openat: dirfd={dirfd} is not supported")
+                cpu.registers[10] = -errno.ENOTSUP
+                return True
+            pathname_ptr = cpu.registers[11]    # a1
+            flags = cpu.registers[12]           # a2
+            mode = cpu.registers[13]            # a3
+            pathname = self.ram.load_cstring(pathname_ptr)
+            if self.logger is not None and self.trace_syscalls:
+                self.logger.debug(f"SYSCALL _openat: dirfd={dirfd}, path=\"{pathname}\", flags={flags:#x}, mode={mode:#o}")
+            
+            try:
+                old_umask = os.umask(0)
+                host_fd = os.open(path=pathname, flags=flags, mode=mode & ~self.umask)
+                emu_fd = self.next_fd
+                self.fd_map[emu_fd] = host_fd
+                self.next_fd += 1
+                cpu.registers[10] = emu_fd
+            except OSError as e:
+                cpu.registers[10] = -e.errno
+            finally:
+                os.umask(old_umask)
+            
+            return True
+        
+        # _close syscall (Newlib standard)
+        elif syscall_id == 57:
+            fd = cpu.registers[10]  # a0
+            if self.logger and self.trace_syscalls:
+                self.logger.debug(f"SYSCALL _close: fd={fd}")
+            if fd in self.fd_map:
+                try:
+                    os.close(self.fd_map[fd])
+                    del self.fd_map[fd]
+                    cpu.registers[10] = 0  # success
+                except OSError as e:
+                    cpu.registers[10] = -e.errno
+                    self.logger.warning(f"SYSCALL _close: error {-e.errno} for fd={fd}")
+            else:
+                cpu.registers[10] = -errno.EBADF
+                self.logger.warning(f"SYSCALL _close: unknown fd={fd}")
+            return True
+        
+        # _lseek syscall (Newlib standard)
+        elif syscall_id == 62:
+            fd = cpu.registers[10]      # a0
+            offset = cpu.registers[11]  # a1
+            whence = cpu.registers[12]  # a2 (0=SEEK_SET, 1=SEEK_CUR, 2=SEEK_END)
+
+            if self.logger and self.trace_syscalls:
+                self.logger.debug(f"SYSCALL _lseek: fd={fd}, offset={offset}, whence={whence}")
+
+            if fd not in self.fd_map:
+                cpu.registers[10] = -errno.EBADF
+                self.logger.warning(f"SYSCALL _lseek: unknown fd={fd}")
+                return True
+
+            try:
+                result = os.lseek(self.fd_map[fd], offset, whence)
+                cpu.registers[10] = result
+            except OSError as e:
+                cpu.registers[10] = -e.errno
+                self.logger.warning(f"SYSCALL _lseek: error {-e.errno} seeking fd={fd}")
+            return True
+
+        # _fstat syscall (Newlib standard)
+        elif syscall_id == 80:
+            fd = cpu.registers[10]       # a0
+            buf_ptr = cpu.registers[11]  # a1
+            if self.logger and self.trace_syscalls:
+                self.logger.debug(f"SYSCALL _fstat: fd={fd}, buf_ptr=0x{buf_ptr:08x}")
+
+            if fd == 0 or fd == 1 or fd == 2:  # pretend it's a tty
+                mode = stat.S_IFCHR | 0o666
+                size = 0
+            elif fd in self.fd_map:
+                try:
+                    st = os.fstat(self.fd_map[fd])
+                    mode = st.st_mode
+                    size = st.st_size
+                except OSError as e:
+                    cpu.registers[10] = -e.errno
+                    self.logger.warning(f"SYSCALL _fstat: error {-e.errno} on fd={fd}")
+                    return True
+            else:
+                cpu.registers[10] = -errno.EBADF
+                self.logger.warning(f"SYSCALL _fstat: unknown fd={fd}")
+                return True
+
+            # Fill stat data structure (st_mode and st_size only)
+            stat_buf = bytearray(88)
+            struct.pack_into("<I", stat_buf, 4, mode)   # st_mode at offset 4
+            struct.pack_into("<Q", stat_buf, 16, size)  # st_size at offset 16
+            self.ram.store_binary(buf_ptr, stat_buf)
+
+            cpu.registers[10] = 0  # success
+            return True
+        
+        # _isatty syscall (Newlib standard)
+        elif syscall_id == 89:
+            fd = cpu.registers[10]  # a0
+            if self.logger and self.trace_syscalls:
+                self.logger.debug(f"SYSCALL _isatty: fd={fd}")
+            if fd == 0 or fd == 1 or fd == 2:
+                cpu.registers[10] = 1  # is a TTY
+            elif fd in self.fd_map:
+                cpu.registers[10] = 0  # not a TTY
+            else:
+                cpu.registers[10] = -errno.EBADF
+                self.logger.warning(f"SYSCALL _isatty: unknown fd={fd}")
+            return True
+        
+        # _kill syscall (Newlib standard)
+        elif syscall_id == 129:
+            pid = cpu.registers[10]  # a0
+            sig = cpu.registers[11]  # a1
+            if self.logger and self.trace_syscalls:
+                self.logger.warning(f"SYSCALL _kill (UNIMPLEMENTED): pid={pid}, sig={sig}")
+            cpu.registers[10] = -errno.ENOSYS
+            return True
+        
+        # _getpid syscall (Newlib standard)
+        elif syscall_id == 172:
+            if self.logger and self.trace_syscalls:
+                self.logger.debug("SYSCALL _getpid: returning 1")
+            cpu.registers[10] = 1  # always return PID=1
+            return True
+        
+        # umask syscall (Newlib standard)
+        elif syscall_id == 60:
+            new_mask = cpu.registers[10]  # a0
+            old_mask = self.umask
+            if self.logger and self.trace_syscalls:
+                self.logger.debug("SYSCALL umask: old_mask={old_mask:#o}, new_mask={new_mask:#o}")
+            self.umask = new_mask & 0o777
+            cpu.registers[10] = old_mask
+            return True
         
         # unhandled syscall
         else:
-            raise InvalidSyscallError(f"SYSCALL UNKNOWN: {syscall_id})]")
+            raise InvalidSyscallError(f"SYSCALL {syscall_id} UNKNOWN")
         
 
     # Invariants check
