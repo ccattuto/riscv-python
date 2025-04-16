@@ -12,8 +12,12 @@ SECTIONS
     KEEP(*(.init))
     KEEP(*(.text.startup))
     *(.text*)
-    *(.rodata*)
-    *(.srodata*)
+  } > RAM
+
+  .rodata : ALIGN(4)
+  {
+    KEEP(*(.rodata*))
+    KEEP(*(.srodata*))
   } > RAM
 
   .data : ALIGN(4)
