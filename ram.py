@@ -52,6 +52,14 @@ class RAM:
     def store_binary(self, addr, binary):
         self.memory[addr:addr+len(binary)] = binary
 
+    def load_cstring(self, addr, max_len=1024):
+        end = min(addr + max_len, self.size)
+        memory_slice = self.memory[addr:end]
+        nul_index = memory_slice.find(0)
+        if nul_index == -1:
+            raise MemoryAccessError(f"Exceeded maximum length while reading C string: 0x{addr:08x}")
+        return memory_slice[:nul_index].decode('utf-8', errors='replace')
+
 # Safe RAM class: checks all addresses
 class SafeRAM:
     def __init__(self, size, logger=None):
@@ -95,3 +103,13 @@ class SafeRAM:
     def store_binary(self, addr, binary):
         self.check(addr, n=len(binary))
         self.memory[addr:addr+len(binary)] = binary
+
+    def load_cstring(self, addr, max_len=1024):
+        if addr < 0 or addr >= self.size:
+            raise MemoryAccessError(f"Invalid start address reading C string: 0x{addr:08x}")
+        end = min(addr + max_len, self.size)
+        memory_slice = self.memory[addr:end]
+        nul_index = memory_slice.find(0)
+        if nul_index == -1:
+            raise MemoryAccessError(f"Exceeded maximum length while reading C string: 0x{addr:08x}")
+        return memory_slice[:nul_index].decode('utf-8', errors='replace')
