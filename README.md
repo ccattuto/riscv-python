@@ -9,11 +9,11 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 - **Supports terminal I/O**, both "cooked" and raw
 - **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls** (`_write`, `_read`, `_exit`, ...)
 - **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
-- **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, ...)
+- **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, `_unlink`, `_mkdir`, `_rmdir`)
 - **Supports argc/argv program arguments**
 - **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
 - **Supports logging** of register values, call traces, system calls, invalid memory accesses, violations of invariants
-- Compact and self-contained codebase (~250 lines for CPU+RAM logic, ~400 lines for host logic, ~150 lines for emulation control)
+- Compact, self-contained, modular codebase
 
 ## 🔧 Requirements
 
@@ -31,7 +31,8 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 ├── riscv-emu.py           # Emulator
 ├── cpu.py                 # CPU emulation logic
 ├── ram.py                 # RAM emulation logic
-├── machine.py             # Host logic (syscalls, terminal I/O)
+├── machine.py             # Host logic (executable loading, invariants check)
+├── syscalls.py            # System calls and terminal I/O
 ├── Makefile               # Builds ELF/binary targets
 ├── start_bare.S           # Minimal startup code
 ├── start_newlib.S         # Startup code for Newlib-nano
@@ -118,19 +119,22 @@ Argument 3: arg3
 
 `riscv-emu.py` accepts the following options:
 
-| Option             | Description                                                                 |
-|--------------------|-----------------------------------------------------------------------------|
-| `--regs`           | Print selected registers (`pc`, `ra`, `sp`, `gp`, `a0`) at each instruction |
-| `--check-inv`      | Enable runtime invariant checks on stack/heap alignment and boundaries      |
-| `--check-ram`      | Check validity of memory accesses                                           |
-| `--check-text`     | Ensure the `.text` segment remains unmodified during execution              |
-| `--check-all`      | Enable all checks                                                           |
-| `--trace`          | Log the names of functions traversed during execution                       |
-| `--syscalls`       | Log Newlib syscalls                                                         |
-| `--raw-tty`        | Enable raw terminal mode                                                    |
-| `--nocolor`        | Remove ANSI colors in debugging output                                      |
-| `--log LOG_FILE`   | Log debug information to file `LOG_FILE`                                    |
-| `--help`           | Show usage help and available options                                       |
+| Option               | Description                                                                 |
+|----------------------|-----------------------------------------------------------------------------|
+| `--regs`             | Print selected registers (`pc`, `ra`, `sp`, `gp`, `a0`) at each instruction |
+| `--trace`            | Log the names of functions traversed during execution                       |
+| `--syscalls`         | Log Newlib syscalls                                                         |
+| `--check-inv`        | Enable runtime invariant checks on stack/heap alignment and boundaries      |
+| `--check-ram`        | Check validity of memory accesses                                           |
+| `--check-text`       | Ensure the `.text` segment remains unmodified during execution              |
+| `--check-all`        | Enable all checks                                                           |
+| `--check-start WHEN` | Condition to enable checks (default, early, main, first-call, 0xADDR)       |
+| `--init-regs VALUE`  | Initial register state (zero, random, 0xDEADBEEF)                           |
+| `--init-ram PATTERN` | Initialize RAM with pattern (random, addr, 0xAA)                            |
+| `--raw-tty`          | Enable raw terminal mode                                                    |
+| `--no-color`         | Remove ANSI colors in debugging output                                      |
+| `--log LOG_FILE`     | Log debug information to file `LOG_FILE`                                    |
+| `--help`             | Show usage help and available options                                       |
 
 ## 🧪 Running Unit Tests
 (on OSX, you might need to force `TOOLCHAIN=riscv64-unknown-elf` in the Makefile)
@@ -189,7 +193,7 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 ## Design Goals
 - Simplicity over speed
 - Minimal dependencies
-- Good separation of concerns: core ISA, syscall emulation, and binary loading
+- Good separation of concerns: core ISA, syscall, binary loading, and emulatio control
 - Useful for teaching, debugging, testing compiler output
 
 ## Notes
