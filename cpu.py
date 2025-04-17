@@ -15,7 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from machine import MachineError
+from machine import MachineError, ConfigError
+import random
 
 # CPU exceptions
 class InvalidInstructionError(MachineError):
@@ -201,18 +202,36 @@ def execute(cpu, ram, inst):
 
 # CPU class
 class CPU:
-    def __init__(self, ram, logger=None):
+    def __init__(self, ram, init_regs=None, logger=None):
         self.registers = [0] * 32
         self.pc = 0
         self.ram = ram
         self.handle_ecall = None
         self.logger = logger
+        if init_regs is not None:
+            self.init_registers(init_regs)
 
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
-        
+
     def execute(self, inst):
         return execute(self, self.ram, inst)
+
+    def init_registers(self, mode):
+        self.registers[0] = 0
+        if mode == 'zero':
+            for i in range(1, 32):
+                self.registers[i] = 0
+        elif mode == 'random':
+            for i in range(1, 32):
+                self.registers[i] = random.getrandbits(32)
+        else:
+            try:
+                value = int(mode, 0) & 0xFFFFFFFF
+            except ValueError:
+                raise ConfigError(f"Invalid --init-regs value: {mode}")
+            for i in range(1, 32):
+                self.registers[i] = value
 
     def print_registers(self):
         reg_names = [

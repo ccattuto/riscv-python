@@ -40,16 +40,18 @@ def parse_args():
                 "with argv[0] set to the basename of the executable.") )
     parser.add_argument("executable", help=".elf or .bin file")
     parser.add_argument("--regs", action="store_true", help="Print registers at each instruction")
+    parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
+    parser.add_argument("--syscalls", action="store_true", help="Enable Newlib syscall tracing")
     parser.add_argument("--check-inv", action="store_true", help="Check invariants on each step")
     parser.add_argument("--check-ram", action="store_true", help="Check memory accesses")
     parser.add_argument("--check-text", action="store_true", help="Ensure text segment is not modified")
     parser.add_argument("--check-all", action="store_true", help="Enable all checks")
-    parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
-    parser.add_argument("--syscalls", action="store_true", help="Enable Newlib syscall tracing")
+    parser.add_argument("--check-start", metavar="WHEN", default="default", help="Condition to enable checks (default, early, main, first-call, 0xADDR)")
+    parser.add_argument("--init-regs", metavar="VALUE", default="zero", help='Initial register state (e.g., zero, random, 0xDEADBEEF)')
     parser.add_argument('--init-ram', metavar='PATTERN', default='0x00', help='Initialize RAM with pattern (e.g., random, addr, 0xAA)')
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
-    parser.add_argument("--nocolor", action="store_false", help="Remove ANSI colors in debugging output")
-    parser.add_argument("--log", help="Path to log file (optional)")
+    parser.add_argument("--no-color", action="store_false", help="Remove ANSI colors in terminal output")
+    parser.add_argument("--log", help="Path to log file")
     parser.add_argument("--log-level", default="DEBUG", help="Logging level: DEBUG, INFO, WARNING, ERROR")
 
     args = parser.parse_args(emulator_args)
@@ -99,25 +101,29 @@ if __name__ == '__main__':
         is_tty = sys.stdout.isatty()
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.DEBUG)
-        console_handler.setFormatter(ColorFormatter('[%(levelname)s] %(message)s', use_color=is_tty and args.nocolor))
+        console_handler.setFormatter(ColorFormatter('[%(levelname)s] %(message)s', use_color=is_tty and args.no_color))
         log.addHandler(console_handler)
     
     # Instantiate CPU + RAM
     ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log) if not args.check_ram else SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
-    cpu = CPU(ram, logger=log)
-    machine = Machine(cpu, ram, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
+    cpu = CPU(ram, init_regs=args.init_regs, logger=log)
+    machine = Machine(cpu, ram, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls, check_start=args.check_start)
     cpu.set_ecall_handler(machine.handle_ecall)  # Set syscall handler
 
     # Load binary or ELF file
-    if args.executable.endswith('.bin'):
-        machine.load_flatbinary(args.executable)
-    elif args.executable.endswith('.elf'):
-        machine.load_elf(args.executable, load_symbols=args.trace, check_text=args.check_text)
-        if machine.heap_end is not None and args.program_args:
-            machine.setup_argv(args.program_args)
-    else:
-        log.error("Unsupported file format. Please provide a .bin or .elf file.")
-        sys.exit(-1)
+    try:
+        if args.executable.endswith('.bin'):
+            machine.load_flatbinary(args.executable)
+        elif args.executable.endswith('.elf'):
+            machine.load_elf(args.executable, load_symbols=args.trace, check_text=args.check_text)
+            if machine.heap_end is not None and args.program_args:
+                machine.setup_argv(args.program_args)
+        else:
+            log.error("Unsupported file format. Please provide a .bin or .elf file")
+            sys.exit(1)
+    except MachineError as e:
+        log.error(f"EMULATOR ERROR [{type(e).__name__}]: {e}")
+        sys.exit(1)
 
     # If requested, set raw terminal mode
     if args.raw_tty:

@@ -20,19 +20,23 @@ from elftools.elf.elffile import ELFFile
 
 class MachineError(Exception):
     pass
+class ConfigError(MachineError):
+    pass
 class InvalidSyscallError(MachineError):
     pass
 class InvariantViolationError(MachineError):
     pass
 
 class Machine:
-    def __init__(self, cpu, ram, logger=None, raw_tty=False, trace_syscalls=False):
+    def __init__(self, cpu, ram, logger=None, raw_tty=False, trace_syscalls=False, check_start=None):
         self.cpu = cpu
         self.ram = ram
 
         self.logger = logger
         self.raw_tty = raw_tty
         self.trace_syscalls = trace_syscalls
+        self.check_start = check_start
+        self.check_enable = False
 
         # text, stack and heap boundaries
         self.stack_top = None
@@ -55,6 +59,7 @@ class Machine:
 
         # symbol dictionary for syscall tracing
         self.symbol_dict = {}
+        self.main_addr = None
 
     # setup argv[] strings in the heap
     def setup_argv(self, argv_list):
@@ -82,6 +87,10 @@ class Machine:
             binary = f.read()
             self.ram.store_binary(0, binary)
             self.cpu.pc = 0  # entry point at start of the binary
+            if self.check_start == 'main':
+                raise ConfigError("check_start=main is unsupported for flat binary executables")
+            if self.check_start is None or self.check_start == 'default':
+                self.check_start = 'first-call'
 
     # load an ELF executable into RAM
     def load_elf(self, fname, load_symbols=False, check_text=False):
@@ -108,6 +117,8 @@ class Machine:
                         self.stack_top = sym["st_value"]
                     elif sym.name == "__stack_bottom":
                         self.stack_bottom = sym["st_value"]
+                    elif sym.name == "main":
+                        self.main_addr = sym["st_value"]
 
                 # load symbols for tracing
                 if load_symbols:
@@ -128,6 +139,10 @@ class Machine:
                 if check_text:
                     self.text_snapshot = self.ram.memory[self.text_start:self.text_end]
 
+        if self.check_start is None or self.check_start == 'default':
+            self.check_start = 'main'
+        if self.check_start == 'main' and self.main_addr is None:
+            self.logger.warning("No symbol found for main() — invariants checks disabled")
 
     # Syscall handling
     def handle_ecall(self):
@@ -366,11 +381,36 @@ class Machine:
         # unhandled syscall
         else:
             raise InvalidSyscallError(f"SYSCALL {syscall_id} UNKNOWN")
-        
+    
+    # Invariant check trigger
+    def trigger_check(self):
+        cpu = self.cpu
+        if self.check_start == 'early':
+            return True
+        elif self.check_start == 'main':
+            return cpu.pc == self.main_addr
+        elif self.check_start == 'first-call':
+            inst = self.ram.load_word(cpu.pc)
+            opcode = inst & 0x7F
+            return opcode in (0x6F, 0x67)
+        else:
+            try:
+                value = int(self.check_start, 0) & 0xFFFFFFFF
+                return self.pc == value
+            except ValueError:
+                raise ConfigError(f"Invalid --start-check value: {self.check_start}")
 
     # Invariants check
     def check_invariants(self):
         cpu = self.cpu
+
+        # trigger checks
+        if not self.check_enable:
+            self.check_enable = self.trigger_check()
+            if not self.check_enable:
+                return
+            else:
+                self.logger.debug(f"Invariants checking started ({self.check_start})")
 
         # x0 = 0
         if not (cpu.registers[0] == 0):
