@@ -274,7 +274,6 @@ class Machine:
             fd = cpu.registers[10]      # a0
             offset = cpu.registers[11]  # a1
             whence = cpu.registers[12]  # a2 (0=SEEK_SET, 1=SEEK_CUR, 2=SEEK_END)
-
             if self.logger and self.trace_syscalls:
                 self.logger.debug(f"SYSCALL _lseek: fd={fd}, offset={offset}, whence={whence}")
 
