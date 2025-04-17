@@ -22,7 +22,9 @@ class MemoryAccessError(MachineError):
     pass
 
 def initialize_ram(ram, fill='0x00'):
-    if fill == 'random':
+    if fill == '0x00':
+        return
+    elif fill == 'random':
         for i in range(ram.size):
             ram.memory[i] = random.getrandbits(8)
     elif fill == 'addr':
