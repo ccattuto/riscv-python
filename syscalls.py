@@ -61,8 +61,8 @@ class SyscallHandler:
             Syscall.KILL:       self.handle_kill,
             Syscall.GETPID:     self.handle_getpid,
             Syscall.UMASK:      self.handle_umask,
-            #Syscall.MKDIRAT:    self.handke_mkdirat,
-            #Syscall.UNLINKAT:   self.handke_unlinkat
+            Syscall.MKDIRAT:    self.handle_mkdirat,
+            Syscall.UNLINKAT:   self.handle_unlinkat
         }
 
          # file descriptor mapping
@@ -176,7 +176,7 @@ class SyscallHandler:
         dirfd = self.cpu.registers[10]  # a0 (signed)
         if dirfd >= 0x80000000:
             dirfd -= 0x100000000
-        if dirfd != -100:
+        if dirfd != -100:  # not AT_FDCWD
             self.logger.warning(f"SYSCALL _openat: dirfd={dirfd} is not supported")
             self.cpu.registers[10] = -errno.ENOTSUP
             return True
@@ -309,4 +309,63 @@ class SyscallHandler:
             self.logger.debug("SYSCALL umask: old_mask={old_mask:#o}, new_mask={new_mask:#o}")
         self.umask = new_mask & 0o777
         self.cpu.registers[10] = old_mask
+        return True
+    
+    # _mkdirat syscall (Newlib standard)
+    def handle_mkdirat(self):
+        dirfd = self.cpu.registers[10]
+        if dirfd >= 0x80000000:
+            dirfd -= 0x100000000
+        if dirfd != -100:  # not AT_FDCWD
+            self.logger.warning(f"SYSCALL _openat: dirfd={dirfd} is not supported")
+            self.cpu.registers[10] = -errno.ENOTSUP
+            return True
+        
+        pathname_ptr = self.cpu.registers[11]
+        mode = self.cpu.registers[12]
+        pathname = self.ram.load_cstring(pathname_ptr)
+        if self.logger and self.trace_syscalls:
+            self.logger.debug(f"SYSCALL _mkdirat: dirfd={dirfd}, path={pathname!r}, mode=0o{mode:o}")
+
+        try:
+            os.mkdir(pathname, mode & ~self.umask)
+            self.cpu.registers[10] = 0
+        except FileExistsError:
+            self.cpu.registers[10] = -errno.EEXIST
+        except PermissionError:
+            self.cpu.registers[10] = -errno.EPERM
+        except Exception:
+            self.cpu.registers[10] = -errno.EIO
+        return True
+    
+    # _unlinkat syscall (Newlib standard)
+    def handle_unlinkat(self):
+        dirfd = self.cpu.registers[10]          # a0
+        if dirfd >= 0x80000000:
+            dirfd -= 0x100000000
+        if dirfd != -100:  # not AT_FDCWD
+            self.logger.warning(f"SYSCALL _openat: dirfd={dirfd} is not supported")
+            self.cpu.registers[10] = -errno.ENOTSUP
+            return True
+        
+        pathname_ptr = self.cpu.registers[11]   # a1
+        flags = self.cpu.registers[12]          # a2
+        pathname = self.ram.load_cstring(pathname_ptr)
+        if self.logger and self.trace_syscalls:
+            self.logger.debug(f"SYSCALL unlinkat: dirfd={dirfd}, path={pathname!r}, flags=0x{flags:x}")
+
+        try:
+            if flags & 0x200:  # AT_REMOVEDIR
+                os.rmdir(pathname)
+            else:
+                os.unlink(pathname)
+            self.cpu.registers[10] = 0  # success
+        except FileNotFoundError:
+            self.cpu.registers[10] = -errno.ENOENT
+        except IsADirectoryError:
+            self.cpu.registers[10] = -errno.EISDIR
+        except PermissionError:
+            self.cpu.registers[10] = -errno.EPERM
+        except Exception as e:
+            self.cpu.registers[10] = -errno.EIO
         return True
