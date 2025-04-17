@@ -16,16 +16,34 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from machine import MachineError
+import random
 
 class MemoryAccessError(MachineError):
     pass
 
+def initialize_ram(ram, fill='0x00'):
+    if fill == 'random':
+        for i in range(ram.size):
+            ram.memory[i] = random.getrandbits(8)
+    elif fill == 'addr':
+        for i in range(ram.size):
+            ram.memory[i] = i & 0xFF
+    else:
+        try:
+            value = int(fill, 0) & 0xFF
+        except ValueError:
+            raise ValueError(f"Invalid --init-ram value: {fill}")
+        for i in range(ram.size):
+            ram.memory[i] = value
+
 # "Fast" RAM class: no address checks
 class RAM:
-    def __init__(self, size, logger=None):
+    def __init__(self, size, init=None, logger=None):
         self.memory = bytearray(size)
         self.size = size
         self.logger = logger
+        if init is not None:
+            initialize_ram(self, init)
 
     def load_byte(self, addr, signed=True):
         val = self.memory[addr]
@@ -62,10 +80,12 @@ class RAM:
 
 # Safe RAM class: checks all addresses
 class SafeRAM:
-    def __init__(self, size, logger=None):
+    def __init__(self, size, init=None, logger=None):
         self.memory = bytearray(size)
         self.size = size
         self.logger = logger
+        if init is not None:
+            initialize_ram(self, init)
 
     def check(self, addr, n):
         if addr < 0 or addr + n > self.size:

@@ -46,6 +46,7 @@ def parse_args():
     parser.add_argument("--check-all", action="store_true", help="Enable all checks")
     parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
     parser.add_argument("--syscalls", action="store_true", help="Enable Newlib syscall tracing")
+    parser.add_argument('--init-ram', metavar='PATTERN', default='0x00', help='Initialize RAM with pattern (e.g., random, addr, 0xAA)')
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
     parser.add_argument("--nocolor", action="store_false", help="Remove ANSI colors in debugging output")
     parser.add_argument("--log", help="Path to log file (optional)")
@@ -102,7 +103,7 @@ if __name__ == '__main__':
         log.addHandler(console_handler)
     
     # Instantiate CPU + RAM
-    ram = RAM(MEMORY_SIZE, logger=log) if not args.check_ram else SafeRAM(MEMORY_SIZE, logger=log)
+    ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log) if not args.check_ram else SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
     cpu = CPU(ram, logger=log)
     machine = Machine(cpu, ram, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
     cpu.set_ecall_handler(machine.handle_ecall)  # Set syscall handler
