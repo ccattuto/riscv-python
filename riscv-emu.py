@@ -22,6 +22,7 @@ import logging
 from machine import Machine, MachineError
 from cpu import CPU
 from ram import RAM, SafeRAM
+from syscalls import SyscallHandler
 
 MEMORY_SIZE = 1024 * 1024  # 1 Mb
 
@@ -104,11 +105,12 @@ if __name__ == '__main__':
         console_handler.setFormatter(ColorFormatter('[%(levelname)s] %(message)s', use_color=is_tty and args.no_color))
         log.addHandler(console_handler)
     
-    # Instantiate CPU + RAM
+    # Instantiate CPU + RAM + machine + syscall handler
     ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log) if not args.check_ram else SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
     cpu = CPU(ram, init_regs=args.init_regs, logger=log)
-    machine = Machine(cpu, ram, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls, check_start=args.check_start)
-    cpu.set_ecall_handler(machine.handle_ecall)  # Set syscall handler
+    machine = Machine(cpu, ram, logger=log, check_start=args.check_start)
+    syscall_handler = SyscallHandler(cpu, ram, machine, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
+    cpu.set_ecall_handler(syscall_handler.handle)  # Set syscall handler
 
     # Load binary or ELF file
     try:
