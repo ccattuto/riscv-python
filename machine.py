@@ -384,19 +384,18 @@ class Machine:
     
     # Invariant check trigger
     def trigger_check(self):
-        cpu = self.cpu
         if self.check_start == 'early':
             return True
         elif self.check_start == 'main':
-            return cpu.pc == self.main_addr
+            return self.cpu.pc == self.main_addr
         elif self.check_start == 'first-call':
-            inst = self.ram.load_word(cpu.pc)
+            inst = self.ram.load_word(self.cpu.pc)
             opcode = inst & 0x7F
             return opcode in (0x6F, 0x67)
         else:
             try:
                 value = int(self.check_start, 0) & 0xFFFFFFFF
-                return self.pc == value
+                return self.cpu.pc == value
             except ValueError:
                 raise ConfigError(f"Invalid --start-check value: {self.check_start}")
 
