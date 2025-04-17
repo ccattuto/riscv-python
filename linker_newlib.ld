@@ -41,7 +41,9 @@ SECTIONS
 
   .sbss : ALIGN(4)
   {
+    __sbss_start = .;
     *(.sbss*)
+    __sbss_end = .;
   } > RAM
 
   /* Heap and Stack regions */
