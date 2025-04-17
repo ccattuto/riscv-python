@@ -6,13 +6,13 @@ This is a simple and readable **RISC-V RV32I emulator** written in Python, targe
 
 - **Implements the full RV32I base integer ISA**
 - **Supports ELF and flat binary formats**
-- **Supports several [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls** (`_write`, `_read`, `_exit`, `_sbrk`, ...)
-- **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
 - **Supports terminal I/O**, both "cooked" and raw
-- **Supports file I/O** (`_open`, `_close`, `_fstat`, `_lseek`, ...)
-- **Supports argc/argv arguments**
+- **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls** (`_write`, `_read`, `_exit`, ...)
+- **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
+- **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, ...)
+- **Supports argc/argv program arguments**
 - **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
-- **Supports logging** of register values, call traces, syscalls, invalid memory accesses, violations of invariants
+- **Supports logging** of register values, call traces, system calls, invalid memory accesses, violations of invariants
 - Compact and self-contained codebase (~250 lines for CPU+RAM logic, ~400 lines for host logic, ~150 lines for emulation control)
 
 ## 🔧 Requirements
