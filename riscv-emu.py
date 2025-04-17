@@ -67,6 +67,23 @@ LOG_COLORS = {
 }
 RESET_COLOR = "\033[0m"
 
+class RawTTYStreamHandler(logging.StreamHandler):
+    def __init__(self, stream=None, raw_tty=False):
+        super().__init__(stream)
+        self.raw_tty = raw_tty
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            if self.raw_tty:
+                msg = msg.replace('\n', '\r\n')
+            stream = self.stream
+            stream.write(msg)
+            stream.write('\r\n' if self.raw_tty else '\n')
+            self.flush()
+        except Exception:
+            self.handleError(record)
+
 class ColorFormatter(logging.Formatter):
     def __init__(self, fmt, use_color=True):
         super().__init__(fmt)
@@ -100,7 +117,7 @@ if __name__ == '__main__':
     else:
         # Log to terminal
         is_tty = sys.stdout.isatty()
-        console_handler = logging.StreamHandler()
+        console_handler = RawTTYStreamHandler(raw_tty=args.raw_tty)
         console_handler.setLevel(logging.DEBUG)
         console_handler.setFormatter(ColorFormatter('[%(levelname)s] %(message)s', use_color=is_tty and args.no_color))
         log.addHandler(console_handler)
