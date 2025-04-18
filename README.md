@@ -203,7 +203,7 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.
 
 ###  Performance notes
-Tested using the binaries in `prebuilt/` with Python 3.12 (Anaconda) on OSX Sequoia.
+Tested using the binaries in `prebuilt/` with Python 3.12 (Anaconda) on OSX Sequoia (~1.5 million instructions per second).
 ```
 time ./riscv-emu.py build/test_newlib2.elf
 ./riscv-emu.py build/test_newlib2.elf  16.86s user 0.04s system 98% cpu 17.103 total
