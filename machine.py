@@ -184,9 +184,9 @@ class Machine:
             if not (self.heap_end + MIN_GAP <= self.stack_bottom):
                 raise InvariantViolationError(f"Heap too close to stack: heap_end=0x{self.heap_end:08x}, stack_bottom=0x{self.stack_bottom:08x}")
 
-        # SP word alignment
-        if not(cpu.registers[2] % 4 == 0):
-            raise InvariantViolationError(f"SP not aligned: SP=0x{cpu.registers[2]:08x}")
+        # SP word alignment (commented out as word-unaligned SP is actually used in the RISC-V unit tests)
+        #if not(cpu.registers[2] % 4 == 0):
+        #    raise InvariantViolationError(f"SP not aligned: SP=0x{cpu.registers[2]:08x}")
 
         # Heap end word alignment
         if self.heap_end is not None:
