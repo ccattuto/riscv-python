@@ -25,12 +25,13 @@ class InvariantViolationError(MachineError):
     pass
 
 class Machine:
-    def __init__(self, cpu, ram, logger=None, check_start=None):
+    def __init__(self, cpu, ram, logger=None, args=None):
         self.cpu = cpu
         self.ram = ram
 
         self.logger = logger
-        self.check_start = check_start
+        self.args = args
+        self.check_start = args.check_start if args is not None else False;
         self.check_enable = False
 
         # text, stack and heap boundaries
@@ -196,4 +197,29 @@ class Machine:
         if self.text_snapshot is not None and \
             self.ram.memory[self.text_start:self.text_end] != self.text_snapshot:
                 raise InvariantViolationError("Text segment has been modified!")
+
+    def run_fast(self):
+        running = True
+        while running:
+            inst = self.ram.load_word(self.cpu.pc)
+            running = self.cpu.execute(inst)
+
+    def run_with_checks(self):
+        running = True
+        while running:
+            if self.args.regs:
+                self.logger.debug(f"REGS: PC={self.cpu.pc:08x}, ra={self.cpu.registers[1]:08x}, sp={self.cpu.registers[2]:08x}, gp={self.cpu.registers[3]:08x}, a0={self.cpu.registers[10]:08x}")
+            if self.args.check_inv:
+                self.check_invariants()
+            if self.args.trace and (self.cpu.pc in self.symbol_dict):
+                self.logger.debug(f"FUNC {self.symbol_dict[self.cpu.pc]}, PC={self.cpu.pc:08x}")
+
+            inst = self.ram.load_word(self.cpu.pc)
+            running = self.cpu.execute(inst)
+
+    def run(self):
+        if not(self.args.regs or self.args.check_inv or self.args.trace):
+            self.run_fast()
+        else:
+            self.run_with_checks()
 
