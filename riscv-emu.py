@@ -150,9 +150,9 @@ if __name__ == '__main__':
         tty_old_settings = termios.tcgetattr(fd)
         tty.setraw(fd)
 
-    # Execution loop
+    # RUN
     try:
-        machine.run()  # GO!
+        machine.run()
 
     except KeyboardInterrupt:
         if args.raw_tty: # Restore terminal settings
