@@ -125,7 +125,7 @@ if __name__ == '__main__':
     # Instantiate CPU + RAM + machine + syscall handler
     ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log) if not args.check_ram else SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
     cpu = CPU(ram, init_regs=args.init_regs, logger=log)
-    machine = Machine(cpu, ram, logger=log, check_start=args.check_start)
+    machine = Machine(cpu, ram, logger=log, args=args)
     syscall_handler = SyscallHandler(cpu, ram, machine, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
     cpu.set_ecall_handler(syscall_handler.handle)  # Set syscall handler
 
@@ -152,18 +152,7 @@ if __name__ == '__main__':
 
     # Execution loop
     try:
-        while True:
-            if args.regs:
-                log.debug(f"REGS: PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}, gp={cpu.registers[3]:08x}, a0={cpu.registers[10]:08x}")
-            if args.check_inv:
-                machine.check_invariants()
-            if args.trace and (cpu.pc in machine.symbol_dict):
-                log.debug(f"FUNC {machine.symbol_dict[cpu.pc]}, PC={cpu.pc:08x}")
-
-            inst = machine.ram.load_word(cpu.pc)
-            continue_exec = machine.cpu.execute(inst)
-            if not continue_exec:
-                break
+        machine.run()  # GO!
 
     except KeyboardInterrupt:
         if args.raw_tty: # Restore terminal settings
