@@ -36,6 +36,9 @@ def initialize_ram(ram, fill='0x00'):
         for i in range(ram.size):
             ram.memory[i] = value
 
+def signed32(val):
+    return val if val < 0x80000000 else val - 0x100000000
+
 # "Fast" RAM class: no address checks
 class RAM:
     def __init__(self, size, init=None, logger=None):
@@ -52,17 +55,23 @@ class RAM:
     def load_half(self, addr, signed=True):
         return int.from_bytes(self.memory[addr:addr+2], 'little', signed=signed)
 
-    def load_word(self, addr, signed=True):
-        return int.from_bytes(self.memory[addr:addr+4], 'little', signed=signed)
+    def load_word(self, addr):  # always unsigned
+        return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
 
     def store_byte(self, addr, value):
         self.memory[addr] = value & 0xFF
 
     def store_half(self, addr, value):
-        self.memory[addr:addr+2] = (value & 0xFFFF).to_bytes(2, 'little')
+        value &= 0xFFFF
+        self.memory[addr] = value & 0xFF
+        self.memory[addr+1] = (value >> 8) & 0xFF
 
     def store_word(self, addr, value):
-        self.memory[addr:addr+4] = (value & 0xFFFFFFFF).to_bytes(4, 'little')
+        value &= 0xFFFFFFFF
+        self.memory[addr] = value & 0xFF
+        self.memory[addr+1] = (value >> 8) & 0xFF
+        self.memory[addr+2] = (value >> 16) & 0xFF
+        self.memory[addr+3] = (value >> 24) & 0xFF
 
     def load_binary(self, addr, n):
         return self.memory[addr:addr+n]
@@ -100,21 +109,26 @@ class SafeRAM:
         self.check(addr, 2)
         return int.from_bytes(self.memory[addr:addr+2], 'little', signed=signed)
 
-    def load_word(self, addr, signed=True):
+    def load_word(self, addr):
         self.check(addr, 4)
-        return int.from_bytes(self.memory[addr:addr+4], 'little', signed=signed)
+        return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
 
     def store_byte(self, addr, value):
         self.check(addr, 1)
         self.memory[addr] = value & 0xFF
 
     def store_half(self, addr, value):
-        self.check(addr, 2)
-        self.memory[addr:addr+2] = (value & 0xFFFF).to_bytes(2, 'little')
+        value &= 0xFFFF
+        self.memory[addr] = value & 0xFF
+        self.memory[addr+1] = (value >> 8) & 0xFF
 
     def store_word(self, addr, value):
         self.check(addr, 4)
-        self.memory[addr:addr+4] = (value & 0xFFFFFFFF).to_bytes(4, 'little')
+        value &= 0xFFFFFFFF
+        self.memory[addr] = value & 0xFF
+        self.memory[addr+1] = (value >> 8) & 0xFF
+        self.memory[addr+2] = (value >> 16) & 0xFF
+        self.memory[addr+3] = (value >> 24) & 0xFF
 
     def load_binary(self, addr, n):
         self.check(addr, n)
