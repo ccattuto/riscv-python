@@ -105,7 +105,7 @@ Newlib C examples:
 
 ```
 
-Passing command-line arguments to the emulated program (the basename of the executable is automatically passed as argument 0):
+Use the `--` separator to pass command-line arguments to the emulated program (the basename of the executable is automatically passed as argument 0):
 ```
 ./riscv-emu.py build/test_newlib7.elf -- arg1 arg2 arg3    
 Number of arguments: 4
@@ -191,9 +191,9 @@ This script automatically runs all RV32UI .bin tests in `riscv-samples/unit-test
 All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/) pass.
 
 ## Design Goals
-- Simplicity over speed
+- Simplicity over speed (but highly optimized for speed, it performs at the limit of what is possible in pure Python)
 - Minimal dependencies
-- Good separation of concerns: core ISA, syscall, binary loading, and emulatio control
+- Good separation of concerns: core ISA, syscalls, binary loading, and emulation control
 - Useful for teaching, debugging, testing compiler output
 
 ## Notes
@@ -201,3 +201,13 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - The provided Makefile builds all Newlib examples using Newlib-nano (`--specs=nano.specs` linker option)
 - The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`
 - The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.
+
+###  Performance notes
+```
+time ./riscv-emu.py build/test_newlib4.elf
+./riscv-emu.py build/test_newlib4.elf  7.29s user 0.04s system 99% cpu 7.362 total
+```
+```
+time ./riscv-emu.py build/test_newlib6.elf
+./riscv-emu.py build/test_newlib6.elf  115.87s user 0.49s system 99% cpu 1:56.55 total
+```
