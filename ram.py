@@ -36,9 +36,6 @@ def initialize_ram(ram, fill='0x00'):
         for i in range(ram.size):
             ram.memory[i] = value
 
-def signed32(val):
-    return val if val < 0x80000000 else val - 0x100000000
-
 # "Fast" RAM class: no address checks
 class RAM:
     def __init__(self, size, init=None, logger=None):
@@ -53,21 +50,22 @@ class RAM:
         return val if not signed or val < 0x80 else val - 0x100
     
     def load_half(self, addr, signed=True):
-        return int.from_bytes(self.memory[addr:addr+2], 'little', signed=signed)
+        val = self.memory[addr] | (self.memory[addr+1] << 8)
+        return val if not signed or val < 0x8000 else val - 0x10000
 
-    def load_word(self, addr):  # always unsigned
+    def load_word(self, addr):  # always unsigned (performance)
         return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
 
     def store_byte(self, addr, value):
         self.memory[addr] = value & 0xFF
 
     def store_half(self, addr, value):
-        value &= 0xFFFF
+        value &= 0xFFFF  # make it unsigned
         self.memory[addr] = value & 0xFF
         self.memory[addr+1] = (value >> 8) & 0xFF
 
     def store_word(self, addr, value):
-        value &= 0xFFFFFFFF
+        value &= 0xFFFFFFFF  # make it unsigned
         self.memory[addr] = value & 0xFF
         self.memory[addr+1] = (value >> 8) & 0xFF
         self.memory[addr+2] = (value >> 16) & 0xFF
@@ -107,9 +105,10 @@ class SafeRAM:
  
     def load_half(self, addr, signed=True):
         self.check(addr, 2)
-        return int.from_bytes(self.memory[addr:addr+2], 'little', signed=signed)
+        val = self.memory[addr] | (self.memory[addr+1] << 8)
+        return val if not signed or val < 0x8000 else val - 0x10000
 
-    def load_word(self, addr):
+    def load_word(self, addr):  # always unsigned (performance)
         self.check(addr, 4)
         return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
 
@@ -118,13 +117,13 @@ class SafeRAM:
         self.memory[addr] = value & 0xFF
 
     def store_half(self, addr, value):
-        value &= 0xFFFF
+        value &= 0xFFFF  # make it unsigned
         self.memory[addr] = value & 0xFF
         self.memory[addr+1] = (value >> 8) & 0xFF
 
     def store_word(self, addr, value):
         self.check(addr, 4)
-        value &= 0xFFFFFFFF
+        value &= 0xFFFFFFFF  # make it unsigned
         self.memory[addr] = value & 0xFF
         self.memory[addr+1] = (value >> 8) & 0xFF
         self.memory[addr+2] = (value >> 16) & 0xFF
