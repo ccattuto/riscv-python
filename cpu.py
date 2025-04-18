@@ -31,18 +31,7 @@ def sign_extend(value, bits):
     sign_bit = 1 << (bits - 1)
     return (value & (sign_bit - 1)) - (value & sign_bit)
 
-# Instruction decoding
-def decode(inst):
-    opcode = inst & 0x7F
-    rd = (inst >> 7) & 0x1F
-    funct3 = (inst >> 12) & 0x7
-    rs1 = (inst >> 15) & 0x1F
-    rs2 = (inst >> 20) & 0x1F
-    funct7 = (inst >> 25) & 0x7F
-
-    return opcode, rd, funct3, rs1, rs2, funct7
-
-def exec_Rtype(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
+def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if funct3 == 0x0:  # ADD/SUB
         if funct7 == 0x00:  # ADD
             cpu.registers[rd] = (cpu.registers[rs1] + cpu.registers[rs2]) & 0xFFFFFFFF
@@ -73,7 +62,7 @@ def exec_Rtype(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
 
     return True
 
-def exec_Itype(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
+def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = sign_extend(inst >> 20, 12)
 
     if funct3 == 0x0:  # ADDI
@@ -101,7 +90,7 @@ def exec_Itype(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
 
     return True
 
-def exec_loads(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
+def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = sign_extend(inst >> 20, 12)
     addr = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
 
@@ -120,7 +109,7 @@ def exec_loads(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
 
     return True
 
-def exec_stores(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
+def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_s = sign_extend( ((inst >> 7) & 0x1F) | ((inst >> 25) << 5), 12)
     addr = (cpu.registers[rs1] + imm_s) & 0xFFFFFFFF
 
@@ -135,7 +124,7 @@ def exec_stores(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
 
     return True
 
-def exec_branches(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
+def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_b = sign_extend(
         (((inst >> 7) & 0x1) << 11) |
         (((inst >> 8) & 0xF) << 1) |
@@ -156,17 +145,17 @@ def exec_branches(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
 
     return True
 
-def exec_LUI(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
+def exec_LUI(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_u = inst >> 12
     cpu.registers[rd] = (imm_u << 12) & 0xFFFFFFFF
     return True
 
-def exec_AUIPC(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
+def exec_AUIPC(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_u = inst >> 12
     cpu.registers[rd] = (cpu.pc + (imm_u << 12)) & 0xFFFFFFFF
     return True
 
-def exec_JAL(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
+def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_j = sign_extend(
         (((inst >> 21) & 0x3FF) << 1) |
         (((inst >> 20) & 0x1) << 11) |
@@ -181,7 +170,7 @@ def exec_JAL(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
 
     return True
 
-def exec_JALR(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
+def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = sign_extend(inst >> 20, 12)
     addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
 
@@ -193,7 +182,7 @@ def exec_JALR(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
 
     return True
 
-def exec_SYSTEM(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
+def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = sign_extend(inst >> 20, 12)
 
     if imm_i == 0 and cpu.handle_ecall is not None:  # ECALL
@@ -245,13 +234,17 @@ class CPU:
 
     # Instruction execution
     def execute(self, inst):
-        decoded_inst = decode(inst)
-        opcode = decoded_inst[0]
+        opcode = inst & 0x7F
+        rd = (inst >> 7) & 0x1F
+        funct3 = (inst >> 12) & 0x7
+        rs1 = (inst >> 15) & 0x1F
+        rs2 = (inst >> 20) & 0x1F
+        funct7 = (inst >> 25) & 0x7F
 
         self.next_pc = (self.pc + 4) & 0xFFFFFFFF
 
         if opcode in opcode_handler:
-            continue_exec = (opcode_handler[opcode])(self, self.ram, inst, *decoded_inst)  # dispatch to opcode handler
+            continue_exec = (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)  # dispatch to opcode handler
         else:
             raise InvalidInstructionError(f"UNHANDLED INSTRUCTION at PC={self.pc:08x}: 0x{inst:08x}, opcode=0x{opcode:x}")
 
