@@ -22,9 +22,7 @@ class MemoryAccessError(MachineError):
     pass
 
 def initialize_ram(ram, fill='0x00'):
-    if fill == '0x00':
-        return
-    elif fill == 'random':
+    if fill == 'random':
         for i in range(ram.size):
             ram.memory[i] = random.getrandbits(8)
     elif fill == 'addr':
@@ -44,7 +42,7 @@ class RAM:
         self.memory = bytearray(size)
         self.size = size
         self.logger = logger
-        if init is not None:
+        if init is not None and init != 'zero':
             initialize_ram(self, init)
 
     def load_byte(self, addr, signed=True):
@@ -86,7 +84,7 @@ class SafeRAM:
         self.memory = bytearray(size)
         self.size = size
         self.logger = logger
-        if init is not None:
+        if init is not None and init != 'zero':
             initialize_ram(self, init)
 
     def check(self, addr, n):

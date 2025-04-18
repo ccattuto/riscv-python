@@ -208,7 +208,7 @@ class CPU:
         self.ram = ram
         self.handle_ecall = None
         self.logger = logger
-        if init_regs is not None:
+        if init_regs is not None and init_regs != 'zero':
             self.init_registers(init_regs)
 
     def set_ecall_handler(self, handler):
@@ -217,12 +217,9 @@ class CPU:
     def execute(self, inst):
         return execute(self, self.ram, inst)
 
-    def init_registers(self, mode):
+    def init_registers(self, mode='0x00000000'):
         self.registers[0] = 0
-        if mode == 'zero':
-            for i in range(1, 32):
-                self.registers[i] = 0
-        elif mode == 'random':
+        if mode == 'random':
             for i in range(1, 32):
                 self.registers[i] = random.getrandbits(32)
         else:
