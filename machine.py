@@ -199,10 +199,13 @@ class Machine:
                 raise InvariantViolationError("Text segment has been modified!")
 
     def run_fast(self):
+        cpu = self.cpu
+        ram = self.ram
         running = True
+        
         while running:
-            inst = self.ram.load_word(self.cpu.pc)
-            running = self.cpu.execute(inst)
+            inst = ram.load_word(cpu.pc)
+            running = cpu.execute(inst)
 
     def run_with_checks(self):
         running = True
@@ -222,4 +225,3 @@ class Machine:
             self.run_fast()
         else:
             self.run_with_checks()
-
