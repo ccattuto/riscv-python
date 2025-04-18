@@ -152,7 +152,7 @@ def exec_branches(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
         ):
         cpu.next_pc = (cpu.pc + imm_b) & 0xFFFFFFFF
     elif funct3 == 0x2 or funct3 == 0x3:
-        raise InvalidInstructionError(f"Illegal branch funct3=0x{funct3:X}")
+        raise InvalidInstructionError(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08x}")
 
     return True
 
@@ -194,8 +194,6 @@ def exec_JALR(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
     return True
 
 def exec_SYSTEM(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
-    #if cpu.logger is not None:
-    #    cpu.logger.debug(f"SYSTEM: opcode=0x{opcode:x}, imm_i={imm_i}")
     imm_i = sign_extend(inst >> 20, 12)
 
     if imm_i == 0 and cpu.handle_ecall is not None:  # ECALL
@@ -211,11 +209,11 @@ def exec_SYSTEM(cpu, ram, inst, opcode, rd, funct3, rs1, rs2, funct7):
         cpu.pc = cpu.next_pc
         return False
     else:
-        raise InvalidInstructionError(f"UNHANDLED SYSTEM INSTRUCTION at PC={cpu.pc:08x},: imm_i={imm_i}")
+        raise InvalidInstructionError(f"Unhandled system instruction imm_i={imm_i} at PC={cpu.pc:08x}")
 
     return True
 
-# opcode handler dispatch table
+# dispatch table for opcode handlers
 opcode_handler = {
     0x33:   exec_Rtype,     # R-type
     0x13:   exec_Itype,     # I-type
@@ -235,6 +233,7 @@ class CPU:
     def __init__(self, ram, init_regs=None, logger=None):
         self.registers = [0] * 32
         self.pc = 0
+        self.next_pc = 0
         self.ram = ram
         self.handle_ecall = None
         self.logger = logger
@@ -248,6 +247,7 @@ class CPU:
     def execute(self, inst):
         decoded_inst = decode(inst)
         opcode = decoded_inst[0]
+
         self.next_pc = (self.pc + 4) & 0xFFFFFFFF
 
         if opcode in opcode_handler:
@@ -255,8 +255,9 @@ class CPU:
         else:
             raise InvalidInstructionError(f"UNHANDLED INSTRUCTION at PC={self.pc:08x}: 0x{inst:08x}, opcode=0x{opcode:x}")
 
-        self.registers[0] = 0    # x0 is always 0
-        self.pc = self.next_pc    # update PC
+        self.registers[0] = 0       # x0 is always 0
+        self.pc = self.next_pc      # update PC
+
         return continue_exec
 
     # CPU register initialization
