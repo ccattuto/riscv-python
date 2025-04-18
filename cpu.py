@@ -27,10 +27,6 @@ class InvalidInstructionError(MachineError):
 def signed(val):
     return val if val < 0x80000000 else val - 0x100000000
 
-def sign_extend(value, bits):
-    sign_bit = 1 << (bits - 1)
-    return (value & (sign_bit - 1)) - (value & sign_bit)
-
 def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if funct3 == 0x0:  # ADD/SUB
         if funct7 == 0x00:  # ADD
@@ -63,7 +59,8 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     return True
 
 def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    imm_i = sign_extend(inst >> 20, 12)
+    imm_i = inst >> 20
+    if imm_i >= 0x800: imm_i -= 0x1000
 
     if funct3 == 0x0:  # ADDI
         cpu.registers[rd] = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
@@ -91,7 +88,8 @@ def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     return True
 
 def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    imm_i = sign_extend(inst >> 20, 12)
+    imm_i = inst >> 20
+    if imm_i >= 0x800: imm_i -= 0x1000
     addr = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
 
     if funct3 == 0x0:  # LB
@@ -110,7 +108,8 @@ def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     return True
 
 def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    imm_s = sign_extend( ((inst >> 7) & 0x1F) | ((inst >> 25) << 5), 12)
+    imm_s = ((inst >> 7) & 0x1F) | ((inst >> 25) << 5)
+    if imm_s >= 0x800: imm_s -= 0x1000                 
     addr = (cpu.registers[rs1] + imm_s) & 0xFFFFFFFF
 
     if funct3 == 0x0:  # SB
@@ -125,20 +124,19 @@ def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     return True
 
 def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    imm_b = sign_extend(
-        (((inst >> 7) & 0x1) << 11) |
-        (((inst >> 8) & 0xF) << 1) |
-        (((inst >> 25) & 0x3F) << 5) |
-        ((inst >> 31) << 12), 13)
-
     if (
         (funct3 == 0x0 and cpu.registers[rs1] == cpu.registers[rs2]) or  # BEQ
         (funct3 == 0x1 and cpu.registers[rs1] != cpu.registers[rs2]) or  # BNE
-        (funct3 == 0x4 and sign_extend(cpu.registers[rs1],32) < sign_extend(cpu.registers[rs2],32)) or  # BLT
-        (funct3 == 0x5 and sign_extend(cpu.registers[rs1],32) >= sign_extend(cpu.registers[rs2],32)) or  # BGE
+        (funct3 == 0x4 and signed(cpu.registers[rs1]) < signed(cpu.registers[rs2])) or  # BLT
+        (funct3 == 0x5 and signed(cpu.registers[rs1]) >= signed(cpu.registers[rs2])) or  # BGE
         (funct3 == 0x6 and (cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF)) or  # BLTU
         (funct3 == 0x7 and (cpu.registers[rs1] & 0xFFFFFFFF) >= (cpu.registers[rs2] & 0xFFFFFFFF))  # BGEU
         ):
+        imm_b = (((inst >> 7) & 0x1) << 11)  | \
+                (((inst >> 8) & 0xF) << 1)   | \
+                (((inst >> 25) & 0x3F) << 5) | \
+                ((inst >> 31) << 12)
+        if imm_b >= 0x1000: imm_b -= 0x2000
         cpu.next_pc = (cpu.pc + imm_b) & 0xFFFFFFFF
     elif funct3 == 0x2 or funct3 == 0x3:
         raise InvalidInstructionError(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08x}")
@@ -156,11 +154,11 @@ def exec_AUIPC(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     return True
 
 def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    imm_j = sign_extend(
-        (((inst >> 21) & 0x3FF) << 1) |
-        (((inst >> 20) & 0x1) << 11) |
-        (((inst >> 12) & 0xFF) << 12) |
-        ((inst >> 31) << 20), 21)
+    imm_j = (((inst >> 21) & 0x3FF) << 1) | \
+            (((inst >> 20) & 0x1) << 11)  | \
+            (((inst >> 12) & 0xFF) << 12) | \
+            ((inst >> 31) << 20)
+    if imm_j >= 0x100000: imm_j -= 0x200000
 
     if rd != 0:
         cpu.registers[rd] = cpu.next_pc
@@ -171,7 +169,8 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     return True
 
 def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    imm_i = sign_extend(inst >> 20, 12)
+    imm_i = inst >> 20
+    if imm_i >= 0x800: imm_i -= 0x1000
     addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
 
     if rd != 0:
@@ -183,7 +182,8 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     return True
 
 def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    imm_i = sign_extend(inst >> 20, 12)
+    imm_i = inst >> 20
+    if imm_i >= 0x800: imm_i -= 0x1000
 
     if imm_i == 0 and cpu.handle_ecall is not None:  # ECALL
         ecall_ret = cpu.handle_ecall()
