@@ -24,7 +24,7 @@ class InvalidInstructionError(MachineError):
 
 # Helper functions
 
-def signed(val):
+def signed32(val):
     return val if val < 0x80000000 else val - 0x100000000
 
 def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
@@ -38,7 +38,7 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif funct3 == 0x1:  # SLL
         cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
     elif funct3 == 0x2:  # SLT
-        cpu.registers[rd] = int(signed(cpu.registers[rs1]) < signed(cpu.registers[rs2]))
+        cpu.registers[rd] = int(signed32(cpu.registers[rs1]) < signed32(cpu.registers[rs2]))
     elif funct3 == 0x3:  # SLTU
         cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF))
     elif funct3 == 0x4:  # XOR
@@ -48,7 +48,7 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         if funct7 == 0x00:  # SRL
             cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
         elif funct7 == 0x20:  # SRA
-            cpu.registers[rd] = (signed(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
+            cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
         else:
             raise InvalidInstructionError(f"Invalid funct7=0x{funct7:02x} for SRL/SRA at PC=0x{cpu.pc:08x}")
     elif funct3 == 0x6:  # OR
@@ -67,7 +67,7 @@ def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif funct3 == 0x1:  # SLLI
         cpu.registers[rd] = (cpu.registers[rs1] << (imm_i & 0x1F)) & 0xFFFFFFFF
     elif funct3 == 0x2:  # SLTI
-        cpu.registers[rd] = int(signed(cpu.registers[rs1]) < signed(imm_i))
+        cpu.registers[rd] = int(signed32(cpu.registers[rs1]) < signed32(imm_i))
     elif funct3 == 0x3:  # SLTIU
         cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (imm_i & 0xFFFFFFFF))
     elif funct3 == 0x4:  # XORI
@@ -77,7 +77,7 @@ def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         if funct7 == 0x00:  # SRLI
             cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
         elif funct7 == 0x20:  # SRAI
-            cpu.registers[rd] = (signed(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
+            cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
         else:
             raise InvalidInstructionError(f"Invalid funct7=0x{funct7:02x} for SRLI/SRAI at PC=0x{cpu.pc:08x}")
     elif funct3 == 0x6: # ORI
@@ -127,8 +127,8 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if (
         (funct3 == 0x0 and cpu.registers[rs1] == cpu.registers[rs2]) or  # BEQ
         (funct3 == 0x1 and cpu.registers[rs1] != cpu.registers[rs2]) or  # BNE
-        (funct3 == 0x4 and signed(cpu.registers[rs1]) < signed(cpu.registers[rs2])) or  # BLT
-        (funct3 == 0x5 and signed(cpu.registers[rs1]) >= signed(cpu.registers[rs2])) or  # BGE
+        (funct3 == 0x4 and signed32(cpu.registers[rs1]) < signed32(cpu.registers[rs2])) or  # BLT
+        (funct3 == 0x5 and signed32(cpu.registers[rs1]) >= signed32(cpu.registers[rs2])) or  # BGE
         (funct3 == 0x6 and (cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF)) or  # BLTU
         (funct3 == 0x7 and (cpu.registers[rs1] & 0xFFFFFFFF) >= (cpu.registers[rs2] & 0xFFFFFFFF))  # BGEU
         ):
