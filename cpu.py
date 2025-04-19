@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from machine import MachineError, SetupError
+from machine import MachineError, ExecutionTerminated, SetupError
 import random
 
 # Helper functions
@@ -232,7 +232,11 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.registers[rd] = old
         
     elif inst == 0x00100073:  # EBREAK
-        cpu.trap(cause=3)  # 3 = breakpoint
+        if cpu.csrs[0x305] == 0: # no trap handler, terminate execution
+            cpu.print_registers()
+            raise ExecutionTerminated(f"BREAKPOINT at PC={cpu.pc:08x}")
+        else:  # trap
+            cpu.trap(cause=3)  # 3 = breakpoint
     
     else:
         if cpu.logger is not None:
