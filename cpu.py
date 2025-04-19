@@ -193,6 +193,9 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if inst == 0x00000073:  # ECALL
         if (cpu.csrs[0x305] == 0) and (cpu.handle_ecall is not None):  # no trap handler, Python handler set
             cpu.handle_ecall()
+            cpu.csrs[0x341] = cpu.pc        # mepc
+            cpu.csrs[0x342] = 11            # mcause
+            cpu.csrs[0x343] = 0             # mtval=0
         elif cpu.csrs[0x305] != 0:  # trap handler set
             cpu.trap(cause=11)  # cause 11 == machine ECALL
         else:
@@ -233,6 +236,9 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         
     elif inst == 0x00100073:  # EBREAK
         if cpu.csrs[0x305] == 0: # no trap handler, terminate execution
+            cpu.csrs[0x341] = cpu.pc    # mepc
+            cpu.csrs[0x342] = 3         # mcause
+            cpu.csrs[0x343] = 0         # mtval=0
             cpu.print_registers()
             raise ExecutionTerminated(f"BREAKPOINT at PC={cpu.pc:08x}")
         else:  # trap
