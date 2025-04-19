@@ -1,6 +1,6 @@
-# 🐍 RISC-V Emulator in Python (RV32I, user-space applications)
+# 🐍 RISC-V Emulator in Python (RV32I, minimal machine mode)
 
-This is a simple and readable **RISC-V RV32I emulator** written in pure Python and targeting user-space applications. It supports programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
+This is a simple and readable **RISC-V RV32I emulator** written in pure Python. It supports minimal machine mode, and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
 
 ## ✅ Features
 
@@ -8,13 +8,13 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python a
 - **Supports minimal machine mode**, including `ecall`, `ebreak`, illegal instruction detection, CSRs (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`) and `mret`.
 - **Supports ELF and flat binary formats**
 - **Supports terminal I/O**, both "cooked" and raw
-- **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib) system calls** (`_write`, `_read`, `_exit`, ...)
-- **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
+- **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls** (`_write`, `_read`, `_exit`, ...)
+- **Supports dynamic memory allocation** via Newlib (`_sbrk`)
 - **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, `_unlink`, `_mkdir`, `_rmdir`)
 - **Supports argc/argv program arguments**
 - **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
 - **Supports logging** of register values, call traces, system calls, invalid memory accesses, violations of invariants
-- Compact, self-contained, modular codebase
+- Self-contained, modular, extensible codebase
 
 ## 🔧 Requirements
 
@@ -193,8 +193,9 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 
 ## Design Goals
 - Simplicity over speed (but highly optimized for speed, it performs at the limit of what is possible in pure Python)
+- Emphasis on correctness and compliance with RISC-V specifications
 - Minimal dependencies
-- Good separation of concerns: core ISA, syscalls, binary loading, and emulation control
+- Separation of concerns: core ISA, syscalls, binary loading, and emulation control
 - Useful for teaching, debugging, testing compiler output
 
 ## Notes
