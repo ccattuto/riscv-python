@@ -66,7 +66,7 @@ Assembly examples (starts at PC=0):
 ./risc-emu.py build/test_asm1.bin
 ```
 
-Bare C examples (starts at PC=0):
+Bare C examples (starts at PC=0, `_start` in `start_bare.S`):
 ```
 ./risc-emu.py build/test_bare1.bin
 ```
@@ -130,7 +130,7 @@ Argument 3: arg3
 | `--check-all`        | Enable all checks                                                           |
 | `--check-start WHEN` | Condition to enable checks (default, early, main, first-call, 0xADDR)       |
 | `--init-regs VALUE`  | Initial register state (zero, random, 0xDEADBEEF)                           |
-| `--init-ram PATTERN` | Initialize RAM with pattern (random, addr, 0xAA)                            |
+| `--init-ram PATTERN` | Initialize RAM with pattern (zero, random, addr, 0xAA)                      |
 | `--raw-tty`          | Enable raw terminal mode                                                    |
 | `--no-color`         | Remove ANSI colors in debugging output                                      |
 | `--log LOG_FILE`     | Log debug information to file `LOG_FILE`                                    |
