@@ -76,7 +76,7 @@ class Machine:
             self.cpu.pc = 0  # entry point at start of the binary
             if self.check_start == 'main':
                 raise ConfigError("check_start=main is unsupported for flat binary executables")
-            if self.check_start is None or self.check_start == 'default':
+            if self.check_start is None or self.check_start == 'auto':
                 self.check_start = 'first-call'
 
     # load an ELF executable into RAM
@@ -126,7 +126,7 @@ class Machine:
                 if check_text:
                     self.text_snapshot = self.ram.memory[self.text_start:self.text_end]
 
-        if self.check_start is None or self.check_start == 'default':
+        if self.check_start is None or self.check_start == 'auto':
             self.check_start = 'main'
         if self.check_start == 'main' and self.main_addr is None:
             self.logger.warning("No symbol found for main() — invariants checks disabled")
