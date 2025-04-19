@@ -19,7 +19,7 @@ import sys, os, argparse
 import tty, termios
 import logging
 
-from machine import Machine, MachineError
+from machine import Machine, MachineError, ExecutionTerminated
 from cpu import CPU
 from ram import RAM, SafeRAM
 from syscalls import SyscallHandler
@@ -163,10 +163,14 @@ if __name__ == '__main__':
     except MachineError as e:
         if args.raw_tty:
             termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
-        print()
-        log.error(f"EMULATOR ERROR [{type(e).__name__}] at PC=0x{cpu.pc:08x}: {e}")
-        cpu.print_registers()
-        sys.exit(1)
+            print()
+        if type(e) == ExecutionTerminated:
+            log.info(f"Execution terminated: {e}")
+            sys.exit(0)
+        else:
+            log.error(f"EMULATOR ERROR [{type(e).__name__}] at PC=0x{cpu.pc:08x}: {e}")
+            cpu.print_registers()
+            sys.exit(1)
 
     except Exception:
         if args.raw_tty:

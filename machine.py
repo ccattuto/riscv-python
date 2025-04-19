@@ -19,9 +19,11 @@ from elftools.elf.elffile import ELFFile
 
 class MachineError(Exception):
     pass
-class ConfigError(MachineError):
+class SetupError(MachineError):
     pass
 class InvariantViolationError(MachineError):
+    pass
+class ExecutionTerminated(MachineError):
     pass
 
 class Machine:
@@ -75,7 +77,7 @@ class Machine:
             self.ram.store_binary(0, binary)
             self.cpu.pc = 0  # entry point at start of the binary
             if self.check_start == 'main':
-                raise ConfigError("check_start=main is unsupported for flat binary executables")
+                raise SetupError("check_start=main is unsupported for flat binary executables")
             if self.check_start is None or self.check_start == 'auto':
                 self.check_start = 'first-call'
 
@@ -146,7 +148,7 @@ class Machine:
                 value = int(self.check_start, 0) & 0xFFFFFFFF
                 return self.cpu.pc == value
             except ValueError:
-                raise ConfigError(f"Invalid --start-check value: {self.check_start}")
+                raise SetupError(f"Invalid --start-check value: {self.check_start}")
 
     # Invariants check
     def check_invariants(self):
@@ -201,15 +203,13 @@ class Machine:
     def run_fast(self):
         cpu = self.cpu
         ram = self.ram
-        running = True
         
-        while running:
+        while True:
             inst = ram.load_word(cpu.pc)
-            running = cpu.execute(inst)
+            cpu.execute(inst)
 
     def run_with_checks(self):
-        running = True
-        while running:
+        while True:
             if self.args.regs:
                 self.logger.debug(f"REGS: PC={self.cpu.pc:08x}, ra={self.cpu.registers[1]:08x}, sp={self.cpu.registers[2]:08x}, gp={self.cpu.registers[3]:08x}, a0={self.cpu.registers[10]:08x}")
             if self.args.check_inv:
@@ -218,7 +218,7 @@ class Machine:
                 self.logger.debug(f"FUNC {self.symbol_dict[self.cpu.pc]}, PC={self.cpu.pc:08x}")
 
             inst = self.ram.load_word(self.cpu.pc)
-            running = self.cpu.execute(inst)
+            self.cpu.execute(inst)
 
     def run(self):
         if not(self.args.regs or self.args.check_inv or self.args.trace):

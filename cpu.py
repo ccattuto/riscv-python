@@ -15,12 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from machine import MachineError, ConfigError
+from machine import MachineError, SetupError
 import random
-
-# CPU exceptions
-class InvalidInstructionError(MachineError):
-    pass
 
 # Helper functions
 
@@ -34,7 +30,9 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         elif funct7 == 0x20:  # SUB
             cpu.registers[rd] = (cpu.registers[rs1] - cpu.registers[rs2]) & 0xFFFFFFFF
         else:
-            raise InvalidInstructionError(f"Invalid funct7=0x{funct7:02x} for ADD/SUB at PC=0x{cpu.pc:08x}")
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for ADD/SUB at PC=0x{cpu.pc:08x}")
+            cpu.trap(cause=2)  # illegal instruction cause
     elif funct3 == 0x1:  # SLL
         cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
     elif funct3 == 0x2:  # SLT
@@ -50,7 +48,9 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         elif funct7 == 0x20:  # SRA
             cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
         else:
-            raise InvalidInstructionError(f"Invalid funct7=0x{funct7:02x} for SRL/SRA at PC=0x{cpu.pc:08x}")
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRL/SRA at PC=0x{cpu.pc:08x}")
+            cpu.trap(cause=2)  # illegal instruction cause
     elif funct3 == 0x6:  # OR
         cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
     elif funct3 == 0x7:  # AND
@@ -79,7 +79,9 @@ def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         elif funct7 == 0x20:  # SRAI
             cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
         else:
-            raise InvalidInstructionError(f"Invalid funct7=0x{funct7:02x} for SRLI/SRAI at PC=0x{cpu.pc:08x}")
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRLI/SRAI at PC=0x{cpu.pc:08x}")
+            cpu.trap(cause=2)  # illegal instruction cause
     elif funct3 == 0x6: # ORI
         cpu.registers[rd] = (cpu.registers[rs1] | imm_i) & 0xFFFFFFFF
     elif funct3 == 0x7: # ANDI
@@ -103,7 +105,9 @@ def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif funct3 == 0x5:  # LHU
         cpu.registers[rd] = ram.load_half(addr, signed=False) & 0xFFFF
     else:
-        raise InvalidInstructionError(f"Invalid funct3=0x{funct3:02x} for LOAD at PC=0x{cpu.pc:08x}")
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for LOAD at PC=0x{cpu.pc:08x}")
+        cpu.trap(cause=2)  # illegal instruction cause
 
     return True
 
@@ -119,7 +123,9 @@ def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif funct3 == 0x2:  # SW
         ram.store_word(addr, cpu.registers[rs2])
     else:
-        raise InvalidInstructionError(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08x}")
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08x}")
+        cpu.trap(cause=2)  # illegal instruction cause
 
     return True
 
@@ -139,7 +145,9 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         if imm_b >= 0x1000: imm_b -= 0x2000
         cpu.next_pc = (cpu.pc + imm_b) & 0xFFFFFFFF
     elif funct3 == 0x2 or funct3 == 0x3:
-        raise InvalidInstructionError(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08x}")
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08x}")
+        cpu.trap(cause=2)  # illegal instruction cause
 
     return True
 
@@ -182,24 +190,55 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     return True
 
 def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    imm_i = inst >> 20
-    if imm_i >= 0x800: imm_i -= 0x1000
+    if inst == 0x00000073:  # ECALL
+        if (cpu.csrs[0x305] == 0) and (cpu.handle_ecall is not None):  # no trap handler, Python handler set
+            cpu.handle_ecall()
+        elif cpu.csrs[0x305] != 0:  # trap handler set
+            cpu.trap(cause=11)  # cause 11 == machine ECALL
+        else:
+            raise MachineError("No trap handler and no Python ecall handler installed: cannot process ECALL instruction")
 
-    if imm_i == 0 and cpu.handle_ecall is not None:  # ECALL
-        ecall_ret = cpu.handle_ecall()
-        if not ecall_ret:
-            cpu.pc = cpu.next_pc
-            return False
-    elif imm_i == 1:  # EBREAK
-        if cpu.logger is not None:
-            cpu.logger.debug(f"BREAKPOINT: PC=0x{cpu.pc:08x}, a0=0x{cpu.registers[10]:08x}")
-        # print register values and stop execution
-        cpu.print_registers()
-        cpu.pc = cpu.next_pc
-        return False
+    elif inst == 0x30200073:  # MRET
+        mstatus = cpu.csrs[0x300]
+        # Restore MIE from MPIE
+        mie = (mstatus >> 7) & 1
+        mstatus = (mstatus & ~(1 << 3)) | (mie << 3)
+        # Set MPIE to 1
+        mstatus |= (1 << 7)
+        cpu.csrs[0x300] = mstatus
+        cpu.next_pc = cpu.csrs[0x341]  # mepc
+
+    elif funct3 in (0b001, 0b010, 0b011, 0b101, 0b110, 0b111):  # CSRRW, CSRRS, CSRRC
+        csr = (inst >> 20) & 0xFFF
+        old = cpu.csrs.get(csr, 0)
+
+        # handle register vs immediate operations
+        rs1_val = cpu.registers[rs1] if (funct3 < 0b101) else rs1
+
+        # handle read-only CSRs
+        if csr in CSR_RO and ((funct3 in (0b001, 0b101)) or (rs1_val != 0)):
+            cpu.trap(cause=2)  # 2 = illegal instruction
+
+        if funct3 in (0b001, 0b101):  # CSRRW / CSRRWI
+            cpu.csrs[csr] = rs1_val
+        elif funct3 in (0b010, 0b110):  # CSRRS / CSRRSI
+            if rs1_val != 0:
+                cpu.csrs[csr] = old | rs1_val
+        elif funct3 in (0b011, 0b111):  # CSRRC / CSRRCI
+            if rs1_val != 0:
+                cpu.csrs[csr] = old & ~rs1_val
+      
+        if rd != 0:
+            cpu.registers[rd] = old
+        
+    elif inst == 0x00100073:  # EBREAK
+        cpu.trap(cause=3)  # 3 = breakpoint
+    
     else:
-        raise InvalidInstructionError(f"Unhandled system instruction imm_i={imm_i} at PC={cpu.pc:08x}")
-
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Unhandled system instruction 0x{inst:08x} at PC={cpu.pc:08x}")
+        cpu.trap(cause=2)  # illegal instruction cause
+    
     return True
 
 # dispatch table for opcode handlers
@@ -216,11 +255,30 @@ opcode_handler = {
     0x73:   exec_SYSTEM     # SYSTEM (ECALL/EBREAK)
 }
 
+CSR_RO = {
+    0x301,  # misa
+    0xF11,  # mvendorid
+    0xF12,  # marchid
+    0xF13,  # mimpid
+    0xF14   # mhartid
+}
 
 # CPU class
 class CPU:
     def __init__(self, ram, init_regs=None, logger=None):
         self.registers = [0] * 32
+        self.csrs = {
+            0x300: 0x00000000,  # mstatus
+            0x301: 0x40000100,  # misa (RO, bits 30 and 8 set: RV32I)
+            0x305: 0x00000000,  # mtvec
+            0x340: 0x00000000,  # mscratch
+            0x341: 0x00000000,  # mepc
+            0x342: 0x00000000,  # mcause
+            0xF11: 0x00000000,  # mvendorid (RO)
+            0xF12: 0x00000000,  # marchid (RO)
+            0xF13: 0x00000000,  # mimpid (RO)
+            0xF14: 0x00000000   # mhartid (RO)
+        }
         self.pc = 0
         self.next_pc = 0
         self.ram = ram
@@ -246,12 +304,21 @@ class CPU:
         if opcode in opcode_handler:
             continue_exec = (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)  # dispatch to opcode handler
         else:
-            raise InvalidInstructionError(f"UNHANDLED INSTRUCTION at PC={self.pc:08x}: 0x{inst:08x}, opcode=0x{opcode:x}")
+            if self.logger is not None:
+                self.logger.warning(f"Invalid instruction at PC={self.pc:08x}: 0x{inst:08x}, opcode=0x{opcode:x}")
+            self.trap(cause=2)  # illegal instruction cause
+            continue_exec = True
 
         self.registers[0] = 0       # x0 is always 0
         self.pc = self.next_pc      # update PC
 
         return continue_exec
+    
+    def trap(self, cause):
+        self.csrs[0x341] = self.pc          # mepc
+        self.csrs[0x342] = cause            # mcause
+        self.csrs[0x300] &= ~(1 << 3)       # clear MIE (disable interrupts)
+        self.next_pc = self.csrs[0x305]     # mtvec
 
     # CPU register initialization
     def init_registers(self, mode='0x00000000'):
@@ -263,7 +330,7 @@ class CPU:
             try:
                 value = int(mode, 0) & 0xFFFFFFFF
             except ValueError:
-                raise ConfigError(f"Invalid --init-regs value: {mode}")
+                raise SetupError(f"Invalid --init-regs value: {mode}")
             for i in range(1, 32):
                 self.registers[i] = value
 

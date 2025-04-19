@@ -5,9 +5,10 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python a
 ## ✅ Features
 
 - **Implements the full RV32I base integer ISA**
+- **Supports minimal machine mode**, including `ecall`, `ebreak`, illegal instruction detection, CSRs (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`) and `mret`.
 - **Supports ELF and flat binary formats**
 - **Supports terminal I/O**, both "cooked" and raw
-- **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls** (`_write`, `_read`, `_exit`, ...) via a built-in syscall interface that intercepts ecall instructions (no full machine-mode trap handling).
+- **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib) system calls** (`_write`, `_read`, `_exit`, ...)
 - **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
 - **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, `_unlink`, `_mkdir`, `_rmdir`)
 - **Supports argc/argv program arguments**
@@ -197,10 +198,11 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - Useful for teaching, debugging, testing compiler output
 
 ## Notes
-- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12. The emulator can run complex code such as, e.g., minimal [MicroPython](https://micropython.org/)
-- The provided Makefile builds all Newlib examples using Newlib-nano (`--specs=nano.specs` linker option)
-- The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`
+- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12. The emulator can run complex code such as, e.g., minimal [MicroPython](https://micropython.org/).
+- The provided Makefile builds all Newlib examples using Newlib-nano (`--specs=nano.specs` linker option).
+- The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`.
 - The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.
+- If `mtvec` is zero, the emulator's trap handler is invoked, supporting Newlib's system calls. If you install your own trap handler (non-zero `mtvec`), the system calls won't work unless your trap handler supports them.
 
 ###  Performance notes
 Tested using the binaries in `prebuilt/` with Python 3.12 (Anaconda) on OSX Sequoia (~1.5 million instructions per second).

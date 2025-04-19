@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from machine import MachineError
+from machine import MachineError, ExecutionTerminated
 import sys, os, stat, errno, struct
 from enum import IntEnum
 
@@ -86,12 +86,12 @@ class SyscallHandler:
 
     # _exit syscall (Newlib standard)
     def handle_exit(self):
+        self.cpu.pc = self.cpu.next_pc      # advance PC
         exit_code = self.cpu.registers[10]  # a0
-        if exit_code >= 0x80000000:
-            exit_code -= 0x100000000
-        if self.logger is not None:
-            self.logger.info(f"SYSCALL _exit: exit code={exit_code}")
-        return False
+        if exit_code >= 0x80000000: exit_code -= 0x100000000
+        if self.logger is not None and self.trace_syscalls:
+            self.logger.debug(f"SYSCALL _exit: exit code={exit_code}")
+        raise ExecutionTerminated(f"exit code = {exit_code}")
 
     # _sbrk syscall (Newlib standard)
     def handle_sbrk(self):
