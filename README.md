@@ -1,13 +1,13 @@
-# 🐍 RISC-V Emulator in Python (RV32I, minimal machine mode)
+# 🐍 RISC-V Emulator in Python (RV32I, user-space applications)
 
-This is a simple and readable **RISC-V RV32I emulator** written in Python, targeting user-space applications running in minimal machine mode. It supports programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
+This is a simple and readable **RISC-V RV32I emulator** written in pure Python and targeting user-space applications. It supports programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
 
 ## ✅ Features
 
 - **Implements the full RV32I base integer ISA**
 - **Supports ELF and flat binary formats**
 - **Supports terminal I/O**, both "cooked" and raw
-- **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls** (`_write`, `_read`, `_exit`, ...)
+- **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls** (`_write`, `_read`, `_exit`, ...) via a built-in syscall interface that intercepts ecall instructions (no full machine-mode trap handling).
 - **Supports `malloc`/`free()`** via Newlib's `_sbrk()`
 - **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, `_unlink`, `_mkdir`, `_rmdir`)
 - **Supports argc/argv program arguments**
