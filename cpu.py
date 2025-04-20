@@ -193,21 +193,20 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if inst == 0x00000073:  # ECALL
         if (cpu.csrs[0x305] == 0) and (cpu.handle_ecall is not None):  # no trap handler, Python handler set
             cpu.handle_ecall()
-            cpu.emulated_trap_return(cause=11)
+            cpu.bypassed_trap_return(cause=11)
         elif cpu.csrs[0x305] != 0:  # trap handler set
             cpu.trap(cause=11)  # cause 11 == machine ECALL
         else:
             raise MachineError("No trap handler and no Python ecall handler installed: cannot process ECALL instruction")
 
     elif inst == 0x30200073:  # MRET
-        mstatus = cpu.csrs[0x300]
-        # Restore MIE from MPIE
-        mie = (mstatus >> 7) & 1
-        mstatus = (mstatus & ~(1 << 3)) | (mie << 3)
-        # Set MPIE to 1
-        mstatus |= (1 << 7)
+        cpu.next_pc = cpu.csrs[0x341]   # return address <- mepc
+
+        mstatus = cpu.csrs[0x300]       # mstatus
+        mpie = (mstatus >> 7) & 1       # extract MPIE
+        mstatus = (mstatus & ~(1 << 3)) | (mpie << 3)  # MIE <- MPIE
+        mstatus |= (1 << 7)             # MPIE = 1 (re-arm)
         cpu.csrs[0x300] = mstatus
-        cpu.next_pc = cpu.csrs[0x341]  # mepc
 
     elif funct3 in (0b001, 0b010, 0b011, 0b101, 0b110, 0b111):  # CSRRW, CSRRS, CSRRC
         csr = (inst >> 20) & 0xFFF
@@ -234,11 +233,11 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         
     elif inst == 0x00100073:  # EBREAK
         if cpu.csrs[0x305] == 0: # no trap handler, terminate execution
-            cpu.emulated_trap_return(cause=3)
+            cpu.bypassed_trap_return(cause=3)
             cpu.print_registers()
             raise ExecutionTerminated(f"BREAKPOINT at PC={cpu.pc:08x}")
         else:  # trap
-            cpu.trap(cause=3)  # 3 = breakpoint
+            cpu.trap(cause=3)  # 3 = machine EBREAK
     
     else:
         if cpu.logger is not None:
@@ -326,13 +325,20 @@ class CPU:
         self.csrs[0x343] = mtval            # mtval
         self.next_pc = self.csrs[0x305]     # mtvec
 
+        mstatus = self.csrs[0x300]
+        mie = (mstatus >> 3) & 1            # extract MIE
+        mstatus &= ~(1 << 3 | 1 << 7)       # clear MIE and MPIE
+        mstatus |= (mie << 7)               # MPIE <- MIE
+        self.csrs[0x300] = mstatus
+
     # Performs the side effects of trap + mret,
-    # for those cases when the trap call is handled by the emulator
-    def emulated_trap_return(self, cause, mtval=0):
+    # for those cases when the trap is handled by the emulator
+    def bypassed_trap_return(self, cause, mtval=0):
         self.csrs[0x341] = self.pc          # mepc
         self.csrs[0x342] = cause            # mcause
         self.csrs[0x343] = mtval            # mtval
-        self.csrs[0x300] |= (1 << 7)        # Set MPIE = 1 (trap system "armed")
+        self.csrs[0x300] |= (1 << 7)        # MPIE = 1
+        # (MIE, bit 3, stays unchanged)
 
     # CPU register initialization
     def init_registers(self, mode='0x00000000'):
