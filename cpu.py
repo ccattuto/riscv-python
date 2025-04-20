@@ -193,9 +193,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if inst == 0x00000073:  # ECALL
         if (cpu.csrs[0x305] == 0) and (cpu.handle_ecall is not None):  # no trap handler, Python handler set
             cpu.handle_ecall()
-            cpu.csrs[0x341] = cpu.pc        # mepc
-            cpu.csrs[0x342] = 11            # mcause
-            cpu.csrs[0x343] = 0             # mtval=0
+            cpu.emulated_trap_return(cause=11)
         elif cpu.csrs[0x305] != 0:  # trap handler set
             cpu.trap(cause=11)  # cause 11 == machine ECALL
         else:
@@ -236,9 +234,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         
     elif inst == 0x00100073:  # EBREAK
         if cpu.csrs[0x305] == 0: # no trap handler, terminate execution
-            cpu.csrs[0x341] = cpu.pc    # mepc
-            cpu.csrs[0x342] = 3         # mcause
-            cpu.csrs[0x343] = 0         # mtval=0
+            cpu.emulated_trap_return(cause=3)
             cpu.print_registers()
             raise ExecutionTerminated(f"BREAKPOINT at PC={cpu.pc:08x}")
         else:  # trap
@@ -329,6 +325,14 @@ class CPU:
         self.csrs[0x342] = cause            # mcause
         self.csrs[0x300] &= ~(1 << 3)       # clear MIE (disable interrupts)
         self.next_pc = self.csrs[0x305]     # mtvec
+
+    # Performs the side effects of trap + mret,
+    # for those cases when the trap call is handled by the emulator
+    def emulated_trap_return(self, cause, mtval=0):
+        self.csrs[0x341] = self.pc          # mepc
+        self.csrs[0x342] = cause            # mcause
+        self.csrs[0x343] = mtval            # mtval
+        self.csrs[0x300] |= (1 << 7)        # Set MPIE = 1 (trap system "armed")
 
     # CPU register initialization
     def init_registers(self, mode='0x00000000'):
