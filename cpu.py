@@ -279,6 +279,7 @@ class CPU:
             0x340: 0x00000000,  # mscratch
             0x341: 0x00000000,  # mepc
             0x342: 0x00000000,  # mcause
+            0x343: 0x00000000,  # mtval
             0xF11: 0x00000000,  # mvendorid (RO)
             0xF12: 0x00000000,  # marchid (RO)
             0xF13: 0x00000000,  # mimpid (RO)
