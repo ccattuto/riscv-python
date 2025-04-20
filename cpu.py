@@ -32,7 +32,7 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         else:
             if cpu.logger is not None:
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for ADD/SUB at PC=0x{cpu.pc:08x}")
-            cpu.trap(cause=2)  # illegal instruction cause
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     elif funct3 == 0x1:  # SLL
         cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
     elif funct3 == 0x2:  # SLT
@@ -50,7 +50,7 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         else:
             if cpu.logger is not None:
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRL/SRA at PC=0x{cpu.pc:08x}")
-            cpu.trap(cause=2)  # illegal instruction cause
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     elif funct3 == 0x6:  # OR
         cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
     elif funct3 == 0x7:  # AND
@@ -81,7 +81,7 @@ def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         else:
             if cpu.logger is not None:
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRLI/SRAI at PC=0x{cpu.pc:08x}")
-            cpu.trap(cause=2)  # illegal instruction cause
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     elif funct3 == 0x6: # ORI
         cpu.registers[rd] = (cpu.registers[rs1] | imm_i) & 0xFFFFFFFF
     elif funct3 == 0x7: # ANDI
@@ -107,7 +107,7 @@ def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     else:
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for LOAD at PC=0x{cpu.pc:08x}")
-        cpu.trap(cause=2)  # illegal instruction cause
+        cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
     return True
 
@@ -125,7 +125,7 @@ def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     else:
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08x}")
-        cpu.trap(cause=2)  # illegal instruction cause
+        cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
     return True
 
@@ -147,7 +147,7 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif funct3 == 0x2 or funct3 == 0x3:
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08x}")
-        cpu.trap(cause=2)  # illegal instruction cause
+        cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
     return True
 
@@ -218,7 +218,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 
         # handle read-only CSRs
         if csr in CSR_RO and ((funct3 in (0b001, 0b101)) or (rs1_val != 0)):
-            cpu.trap(cause=2)  # 2 = illegal instruction
+            cpu.trap(cause=2, mtval=inst)  # 2 = illegal instruction
 
         if funct3 in (0b001, 0b101):  # CSRRW / CSRRWI
             cpu.csrs[csr] = rs1_val
@@ -243,7 +243,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     else:
         if cpu.logger is not None:
             cpu.logger.warning(f"Unhandled system instruction 0x{inst:08x} at PC={cpu.pc:08x}")
-        cpu.trap(cause=2)  # illegal instruction cause
+        cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     
     return True
 
@@ -312,7 +312,7 @@ class CPU:
         else:
             if self.logger is not None:
                 self.logger.warning(f"Invalid instruction at PC={self.pc:08x}: 0x{inst:08x}, opcode=0x{opcode:x}")
-            self.trap(cause=2)  # illegal instruction cause
+            self.trap(cause=2, mtval=inst)  # illegal instruction cause
             continue_exec = True
 
         self.registers[0] = 0       # x0 is always 0
@@ -320,10 +320,10 @@ class CPU:
 
         return continue_exec
     
-    def trap(self, cause):
+    def trap(self, cause, mtval=0):
         self.csrs[0x341] = self.pc          # mepc
         self.csrs[0x342] = cause            # mcause
-        self.csrs[0x300] &= ~(1 << 3)       # clear MIE (disable interrupts)
+        self.csrs[0x343] = mtval            # mtval
         self.next_pc = self.csrs[0x305]     # mtvec
 
     # Performs the side effects of trap + mret,

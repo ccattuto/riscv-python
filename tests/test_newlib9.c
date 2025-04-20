@@ -36,12 +36,17 @@ __asm__ (
 "    lui t0, %hi(trap_mcause)\n"
 "    sw s0, %lo(trap_mcause)(t0)\n"
 
-"    lui t0, %hi(trap_mepc)\n"
-"    sw s1, %lo(trap_mepc)(t0)\n"
+"    csrr s0, mtval\n"
+
+"    lui t0, %hi(trap_mtval)\n"
+"    sw s0, %lo(trap_mtval)(t0)\n"
 
 "    lui t0, %hi(trap_entered)\n"
 "    li  t1, 1\n"
 "    sw  t1, %lo(trap_entered)(t0)\n"
+
+"    lui t0, %hi(trap_mepc)\n"
+"    sw s1, %lo(trap_mepc)(t0)\n"
 
 "    addi s1, s1, 4\n"
 "    csrw mepc, s1\n"
@@ -58,6 +63,7 @@ extern void trap_entry(void);
 volatile int trap_entered = 0;
 volatile uint32_t trap_mcause = 0;
 volatile uint32_t trap_mepc = 0;
+volatile uint32_t trap_mtval = 0;
 
 // Type for trap test functions
 typedef void (*trap_trigger_fn)(void);
@@ -76,6 +82,7 @@ void test_trap(const char* name, trap_trigger_fn trigger) {
         printf("[PASS] Trap handled.\n");
         printf("       mcause = 0x%08x\n", trap_mcause);
         printf("       mepc   = 0x%08x\n", trap_mepc);
+        printf("       mtval  = 0x%08x\n", trap_mtval);
     } else {
         printf("[FAIL] Trap was NOT handled!\n");
     }
