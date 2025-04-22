@@ -208,6 +208,15 @@ class Machine:
             inst = ram.load_word(cpu.pc)
             cpu.execute(inst)
 
+    def run_fast_timer(self):
+        cpu = self.cpu
+        ram = self.ram
+        
+        while True:
+            inst = ram.load_word(cpu.pc)
+            cpu.execute(inst)
+            cpu.timer_update()
+
     def run_with_checks(self):
         while True:
             if self.args.regs:
@@ -219,9 +228,13 @@ class Machine:
 
             inst = self.ram.load_word(self.cpu.pc)
             self.cpu.execute(inst)
+            self.cpu.timer_update()
 
     def run(self):
         if not(self.args.regs or self.args.check_inv or self.args.trace):
-            self.run_fast()
+            if not self.args.timer:
+                self.run_fast()
+            else:
+                self.run_fast_timer()
         else:
             self.run_with_checks()

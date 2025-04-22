@@ -5,15 +5,15 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 ## ✅ Features
 
 - **Implements the full RV32I base integer ISA**
-- **Supports minimal machine mode**, including `ecall`, `ebreak`, illegal instruction detection, CSRs (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`) and `mret`.
+- **Supports machine mode**, including traps (`ecall`, `ebreak`, illegal instruction trap, `mret`), machine timer interrupt, CSR instructions and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`)
 - **Supports ELF and flat binary formats**
 - **Supports terminal I/O**, both "cooked" and raw
 - **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls** (`_write`, `_read`, `_exit`, ...)
 - **Supports dynamic memory allocation** via Newlib (`_sbrk`)
-- **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, `_unlink`, `_mkdir`, `_rmdir`)
+- **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, `_unlink`, `_mkdir`, `_rmdir`, ...)
 - **Supports argc/argv program arguments**
 - **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
-- **Supports logging** of register values, call traces, system calls, invalid memory accesses, violations of invariants
+- **Supports logging** of register values, call traces, system calls, traps, invalid memory accesses, violations of invariants
 - Self-contained, modular, extensible codebase
 
 ## 🔧 Requirements
@@ -125,13 +125,15 @@ Argument 3: arg3
 | `--regs`             | Print selected registers (`pc`, `ra`, `sp`, `gp`, `a0`) at each instruction |
 | `--trace`            | Log the names of functions traversed during execution                       |
 | `--syscalls`         | Log Newlib syscalls                                                         |
+| `--traps`            | Enable trap tracing                                                         |
 | `--check-inv`        | Enable runtime invariant checks on stack/heap alignment and boundaries      |
 | `--check-ram`        | Check validity of memory accesses                                           |
 | `--check-text`       | Ensure the `.text` segment remains unmodified during execution              |
 | `--check-all`        | Enable all checks                                                           |
-| `--check-start WHEN` | Condition to enable checks (default, early, main, first-call, 0xADDR)       |
+| `--check-start WHEN` | Condition to enable checks (auto, early, main, first-call, 0xADDR)          |
 | `--init-regs VALUE`  | Initial register state (zero, random, 0xDEADBEEF)                           |
 | `--init-ram PATTERN` | Initialize RAM with pattern (zero, random, addr, 0xAA)                      |
+| `--timer`            | Enable machine timer                                                        |
 | `--raw-tty`          | Enable raw terminal mode                                                    |
 | `--no-color`         | Remove ANSI colors in debugging output                                      |
 | `--log LOG_FILE`     | Log debug information to file `LOG_FILE`                                    |
@@ -203,7 +205,7 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - The provided Makefile builds all Newlib examples using Newlib-nano (`--specs=nano.specs` linker option).
 - The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`.
 - The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.
-- If `mtvec` is zero, the emulator's trap handler is invoked, supporting Newlib's system calls. If you install your own trap handler (non-zero `mtvec`), the system calls won't work unless your trap handler supports them.
+- When a trap condition is triggered, if `mtvec` is set to zero, the emulator's trap handler is invoked and supports Newlib's system calls. If you install your own trap handler (non-zero `mtvec`), you are responsible for all trap behavior including system calls.
 
 ###  Performance notes
 Tested using the binaries in `prebuilt/` with Python 3.12 (Anaconda) on OSX Sequoia (~1.5 million instructions per second).

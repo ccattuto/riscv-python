@@ -43,6 +43,7 @@ def parse_args():
     parser.add_argument("--regs", action="store_true", help="Print registers at each instruction")
     parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
     parser.add_argument("--syscalls", action="store_true", help="Enable Newlib syscall tracing")
+    parser.add_argument("--traps", action="store_true", help="Enable trap tracing")
     parser.add_argument("--check-inv", action="store_true", help="Check invariants on each step")
     parser.add_argument("--check-ram", action="store_true", help="Check memory accesses")
     parser.add_argument("--check-text", action="store_true", help="Ensure text segment is not modified")
@@ -50,6 +51,7 @@ def parse_args():
     parser.add_argument("--check-start", metavar="WHEN", default="auto", help="Condition to enable checks (auto, early, main, first-call, 0xADDR)")
     parser.add_argument("--init-regs", metavar="VALUE", default="zero", help='Initial register state (zero, random, 0xDEADBEEF)')
     parser.add_argument('--init-ram', metavar='PATTERN', default='zero', help='Initialize RAM with pattern (zero, random, addr, 0xAA)')
+    parser.add_argument('--timer', action="store_true", help='Enable machine timer')
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
     parser.add_argument("--no-color", action="store_false", help="Remove ANSI colors in terminal output")
     parser.add_argument("--log", help="Path to log file")
@@ -124,7 +126,7 @@ if __name__ == '__main__':
     
     # Instantiate CPU + RAM + machine + syscall handler
     ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log) if not args.check_ram else SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
-    cpu = CPU(ram, init_regs=args.init_regs, logger=log)
+    cpu = CPU(ram, init_regs=args.init_regs, logger=log, args=args)
     machine = Machine(cpu, ram, logger=log, args=args)
     syscall_handler = SyscallHandler(cpu, ram, machine, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
     cpu.set_ecall_handler(syscall_handler.handle)  # Set syscall handler
@@ -158,7 +160,7 @@ if __name__ == '__main__':
         if args.raw_tty: # Restore terminal settings
             termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
         print()
-        log.info("Execution interrupted by user.")
+        log.info(f"Execution interrupted by user at PC=0x{cpu.pc:08x}")
 
     except MachineError as e:
         if args.raw_tty:

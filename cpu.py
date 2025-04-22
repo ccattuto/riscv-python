@@ -200,37 +200,14 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             raise MachineError("No trap handler and no Python ecall handler installed: cannot process ECALL instruction")
 
     elif inst == 0x30200073:  # MRET
-        cpu.next_pc = cpu.csrs[0x341]   # return address <- mepc
+        cpu.next_pc = cpu.csrs[0x341]                   # return address <- mepc
 
-        mstatus = cpu.csrs[0x300]       # mstatus
-        mpie = (mstatus >> 7) & 1       # extract MPIE
-        mstatus = (mstatus & ~(1 << 3)) | (mpie << 3)  # MIE <- MPIE
-        mstatus |= (1 << 7)             # MPIE = 1 (re-arm)
+        mstatus = cpu.csrs[0x300]                       # mstatus
+        mpie = (mstatus >> 7) & 1                       # extract MPIE
+        mstatus = (mstatus & ~(1 << 3)) | (mpie << 3)   # MIE <- MPIE
+        mstatus |= (1 << 7)                             # MPIE = 1 (re-arm)
         cpu.csrs[0x300] = mstatus
-
-    elif funct3 in (0b001, 0b010, 0b011, 0b101, 0b110, 0b111):  # CSRRW, CSRRS, CSRRC
-        csr = (inst >> 20) & 0xFFF
-        old = cpu.csrs.get(csr, 0)
-
-        # handle register vs immediate operations
-        rs1_val = cpu.registers[rs1] if (funct3 < 0b101) else rs1
-
-        # handle read-only CSRs
-        if csr in CSR_RO and ((funct3 in (0b001, 0b101)) or (rs1_val != 0)):
-            cpu.trap(cause=2, mtval=inst)  # 2 = illegal instruction
-
-        if funct3 in (0b001, 0b101):  # CSRRW / CSRRWI
-            cpu.csrs[csr] = rs1_val
-        elif funct3 in (0b010, 0b110):  # CSRRS / CSRRSI
-            if rs1_val != 0:
-                cpu.csrs[csr] = old | rs1_val
-        elif funct3 in (0b011, 0b111):  # CSRRC / CSRRCI
-            if rs1_val != 0:
-                cpu.csrs[csr] = old & ~rs1_val
-      
-        if rd != 0:
-            cpu.registers[rd] = old
-        
+    
     elif inst == 0x00100073:  # EBREAK
         if cpu.csrs[0x305] == 0: # no trap handler, terminate execution
             cpu.bypassed_trap_return(cause=3)
@@ -238,6 +215,58 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             raise ExecutionTerminated(f"BREAKPOINT at PC={cpu.pc:08x}")
         else:  # trap
             cpu.trap(cause=3)  # 3 = machine EBREAK
+    
+    elif funct3 in (0b001, 0b010, 0b011, 0b101, 0b110, 0b111):  # CSRRW/CSRRWI, CSRRS/CSRRSI, CSRRC/CSRRCI
+        csr = (inst >> 20) & 0xFFF
+        old = cpu.csrs.get(csr, 0)
+        
+        # handle register vs immediate operations
+        rs1_val = cpu.registers[rs1] if (funct3 < 0b101) else rs1
+        
+        # handle read-only CSRs
+        if csr in CSR_RO and ((funct3 in (0b001, 0b101)) or (rs1_val != 0)):
+            cpu.trap(cause=2, mtval=inst)  # 2 = illegal instruction
+
+        if funct3 in (0b001, 0b101):  # CSRRW / CSRRWI
+            cpu.csrs[csr] = rs1_val
+
+           # Atomic update of mtime
+            if csr in (0x7C0, 0x7C1):
+                cpu.mtime_lo_updated |= (csr == 0x7C0)
+                cpu.mtime_hi_updated |= (csr == 0x7C1)
+                if cpu.mtime_lo_updated and cpu.mtime_hi_updated:
+                    cpu.mtime = (cpu.csrs[0x7C1] << 32) | cpu.csrs[0x7C0]
+                    cpu.mtime_lo_updated = False
+                    cpu.mtime_hi_updated = False
+
+            # Atomic update of mtimecmp
+            if csr in (0x7C2, 0x7C3):
+                cpu.mtimecmp_lo_updated |= (csr == 0x7C2)
+                cpu.mtimecmp_hi_updated |= (csr == 0x7C3)
+                if cpu.mtimecmp_lo_updated and cpu.mtimecmp_hi_updated:
+                    cpu.mtimecmp = (cpu.csrs[0x7C3] << 32) | cpu.csrs[0x7C2]
+                    cpu.mtimecmp_lo_updated = False
+                    cpu.mtimecmp_hi_updated = False
+        
+        elif funct3 in (0b010, 0b110):  # CSRRS / CSRRSI
+            if rs1_val != 0:
+                cpu.csrs[csr] = old | rs1_val
+        
+        elif funct3 in (0b011, 0b111):  # CSRRC / CSRRCI
+            if rs1_val != 0:
+                cpu.csrs[csr] = old & ~rs1_val
+
+        if rd != 0:
+            if csr == 0x7C0:
+                old = cpu.mtime & 0xFFFFFFFF
+            elif csr == 0x7C1:
+                old = (cpu.mtime >> 32) & 0xFFFFFFFF
+            elif csr == 0x7C2:
+                old = cpu.mtimecmp & 0xFFFFFFFF
+            elif csr == 0x7C3:
+                old = (cpu.mtimecmp >> 32) & 0xFFFFFFFF
+            
+            cpu.registers[rd] = old
     
     else:
         if cpu.logger is not None:
@@ -270,28 +299,45 @@ CSR_RO = {
 
 # CPU class
 class CPU:
-    def __init__(self, ram, init_regs=None, logger=None):
+    def __init__(self, ram, init_regs=None, logger=None, args=None):
         self.registers = [0] * 32
+        if init_regs is not None and init_regs != 'zero':
+            self.init_registers(init_regs)
+        self.pc = 0
+        self.next_pc = 0
+
+        self.ram = ram
+        self.handle_ecall = None
+        self.logger = logger
+        self.args = args
+ 
         self.csrs = {
             0x300: 0x00000000,  # mstatus
             0x301: 0x40000100,  # misa (RO, bits 30 and 8 set: RV32I)
+            0x304: 0x00000000,  # mie
             0x305: 0x00000000,  # mtvec
             0x340: 0x00000000,  # mscratch
             0x341: 0x00000000,  # mepc
             0x342: 0x00000000,  # mcause
             0x343: 0x00000000,  # mtval
+            0x344: 0x00000000,  # mip
+
+            0x7C0: 0x00000000,  # mtime (low 32 bits)
+            0x7C1: 0x00000000,  # mtime (high 32 bits)
+            0x7C2: 0xFFFFFFFF,  # mtimecmp (low 32 bits)
+            0x7C3: 0xFFFFFFFF,  # mtimecmp (high 32 bits)
+
             0xF11: 0x00000000,  # mvendorid (RO)
             0xF12: 0x00000000,  # marchid (RO)
             0xF13: 0x00000000,  # mimpid (RO)
             0xF14: 0x00000000   # mhartid (RO)
         }
-        self.pc = 0
-        self.next_pc = 0
-        self.ram = ram
-        self.handle_ecall = None
-        self.logger = logger
-        if init_regs is not None and init_regs != 'zero':
-            self.init_registers(init_regs)
+        self.mtime = 0x00000000_00000000
+        self.mtimecmp = 0xFFFFFFFF_FFFFFFFF
+        self.mtime_lo_updated = False
+        self.mtime_hi_updated = False
+        self.mtimecmp_lo_updated = False
+        self.mtimecmp_hi_updated = False
 
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
@@ -320,11 +366,22 @@ class CPU:
 
         return continue_exec
     
-    def trap(self, cause, mtval=0):
+    # trap handling
+    def trap(self, cause, mtval=0, immediate=True):
+        if self.csrs[0x305] == 0:
+            raise ExecutionTerminated(f"Trap at PC={self.pc:08x} without trap handler installed – execution terminated.")
+        
         self.csrs[0x341] = self.pc          # mepc
         self.csrs[0x342] = cause            # mcause
         self.csrs[0x343] = mtval            # mtval
-        self.next_pc = self.csrs[0x305]     # mtvec
+
+        if self.args.traps and self.logger is not None:
+            self.logger.debug(f"TRAP at PC={self.pc:08x}: mcause=0x{cause:08x}, mtvec={self.csrs[0x305]:08x}, mtval={mtval}");
+
+        if not immediate:
+            self.next_pc = self.csrs[0x305] # mtvec
+        else:
+            self.pc = self.csrs[0x305]      # mtvec
 
         mstatus = self.csrs[0x300]
         mie = (mstatus >> 3) & 1            # extract MIE
@@ -340,6 +397,19 @@ class CPU:
         self.csrs[0x343] = mtval            # mtval
         self.csrs[0x300] |= (1 << 7)        # MPIE = 1
         # (MIE, bit 3, stays unchanged)
+
+    def timer_update(self):
+        csrs = self.csrs
+        self.mtime = (self.mtime + 1) & 0xFFFFFFFF_FFFFFFFF
+
+        # trigger Machine Timer Interrupt
+        if self.mtime >= self.mtimecmp:
+            csrs[0x344] |= (1 << 7)     # set MTIP (timer interrupt)
+        else:
+            csrs[0x344] &= ~(1 << 7)    # clear MTIP
+
+        if (csrs[0x300] & (1<<3)) and (csrs[0x304] & (1<<7)) and (csrs[0x344] & (1<<7)):
+            self.trap(0x80000007, immediate=True)  # fire interrupt
 
     # CPU register initialization
     def init_registers(self, mode='0x00000000'):
