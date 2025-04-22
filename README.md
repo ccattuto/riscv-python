@@ -207,7 +207,7 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.
 - When a trap condition is triggered, if `mtvec` is set to zero, the emulator's trap handler is invoked and supports Newlib's system calls. If you install your own trap handler (non-zero `mtvec`), you are responsible for all trap behavior including system calls.
 - The emulated architecure supports unaligned memory accesses and will not trap when they occur.
-- The 64-bit registers `mtime` and `mtimecmp` are accessible via CSR instructions (rather than being mmemory-mapped) at addresses ``0x7C0` (low 32 bits of `mtime`), `0x7C1` (high 32 bits of `mtime`), `0x7C2` (low 32 bits of `mtimecmp`), and `0x7C3` (high 32 bits of `mtimecmp`). Writes to `mtime` and `mtimecmp` are atomic for the whole 64-bit register and are triggered by the second word being written.
+- The 64-bit registers `mtime` and `mtimecmp` are accessible via CSR instructions (rather than being mmemory-mapped) at addresses `0x7C0` (low 32 bits of `mtime`), `0x7C1` (high 32 bits of `mtime`), `0x7C2` (low 32 bits of `mtimecmp`), and `0x7C3` (high 32 bits of `mtimecmp`). Writes to `mtime` and `mtimecmp` are atomic for the whole 64-bit register and are triggered by the second word being written.
 
 ###  Performance notes
 Tested using the binaries in `prebuilt/` with Python 3.12 (Anaconda) on OSX Sequoia (~1.5 million instructions per second).
