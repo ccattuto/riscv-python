@@ -354,40 +354,32 @@ class CPU:
         self.next_pc = (self.pc + 4) & 0xFFFFFFFF
 
         if opcode in opcode_handler:
-            continue_exec = (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)  # dispatch to opcode handler
+            (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)  # dispatch to opcode handler
         else:
             if self.logger is not None:
                 self.logger.warning(f"Invalid instruction at PC={self.pc:08x}: 0x{inst:08x}, opcode=0x{opcode:x}")
             self.trap(cause=2, mtval=inst)  # illegal instruction cause
-            continue_exec = True
 
         self.registers[0] = 0       # x0 is always 0
-        self.pc = self.next_pc      # update PC
-
-        return continue_exec
     
     # trap handling
-    def trap(self, cause, mtval=0, immediate=True):
+    def trap(self, cause, mtval=0):
         if self.csrs[0x305] == 0:
             raise ExecutionTerminated(f"Trap at PC={self.pc:08x} without trap handler installed – execution terminated.")
         
+        self.next_pc = self.csrs[0x305]     # next PC <- mtvec
         self.csrs[0x341] = self.pc          # mepc
         self.csrs[0x342] = cause            # mcause
         self.csrs[0x343] = mtval            # mtval
-
-        if self.args.traps and self.logger is not None:
-            self.logger.debug(f"TRAP at PC={self.pc:08x}: mcause=0x{cause:08x}, mtvec={self.csrs[0x305]:08x}, mtval={mtval}");
-
-        if not immediate:
-            self.next_pc = self.csrs[0x305] # mtvec
-        else:
-            self.pc = self.csrs[0x305]      # mtvec
 
         mstatus = self.csrs[0x300]
         mie = (mstatus >> 3) & 1            # extract MIE
         mstatus &= ~(1 << 3 | 1 << 7)       # clear MIE and MPIE
         mstatus |= (mie << 7)               # MPIE <- MIE
         self.csrs[0x300] = mstatus
+
+        if self.args.traps and self.logger is not None:
+            self.logger.debug(f"TRAP at PC={self.pc:08x}: mcause=0x{cause:08x}, mtvec={self.csrs[0x305]:08x}, mtval={mtval}");
 
     # Performs the side effects of trap + mret,
     # for those cases when the trap is handled by the emulator
@@ -409,7 +401,7 @@ class CPU:
             csrs[0x344] &= ~(1 << 7)    # clear MTIP
 
         if (csrs[0x300] & (1<<3)) and (csrs[0x304] & (1<<7)) and (csrs[0x344] & (1<<7)):
-            self.trap(0x80000007, immediate=True)  # fire interrupt
+            self.trap(cause=0x80000007)  # fire interrupt
 
     # CPU register initialization
     def init_registers(self, mode='0x00000000'):

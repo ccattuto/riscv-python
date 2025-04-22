@@ -207,6 +207,7 @@ class Machine:
         while True:
             inst = ram.load_word(cpu.pc)
             cpu.execute(inst)
+            cpu.pc = cpu.next_pc
 
     def run_fast_timer(self):
         cpu = self.cpu
@@ -216,19 +217,24 @@ class Machine:
             inst = ram.load_word(cpu.pc)
             cpu.execute(inst)
             cpu.timer_update()
+            cpu.pc = cpu.next_pc
 
     def run_with_checks(self):
+        cpu = self.cpu
+        ram = self.ram
+
         while True:
             if self.args.regs:
-                self.logger.debug(f"REGS: PC={self.cpu.pc:08x}, ra={self.cpu.registers[1]:08x}, sp={self.cpu.registers[2]:08x}, gp={self.cpu.registers[3]:08x}, a0={self.cpu.registers[10]:08x}")
+                self.logger.debug(f"REGS: PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}, gp={cpu.registers[3]:08x}, a0={cpu.registers[10]:08x}")
             if self.args.check_inv:
                 self.check_invariants()
-            if self.args.trace and (self.cpu.pc in self.symbol_dict):
-                self.logger.debug(f"FUNC {self.symbol_dict[self.cpu.pc]}, PC={self.cpu.pc:08x}")
+            if self.args.trace and (cpu.pc in self.symbol_dict):
+                self.logger.debug(f"FUNC {self.symbol_dict[cpu.pc]}, PC={cpu.pc:08x}")
 
-            inst = self.ram.load_word(self.cpu.pc)
-            self.cpu.execute(inst)
-            self.cpu.timer_update()
+            inst = ram.load_word(cpu.pc)
+            cpu.execute(inst)
+            cpu.timer_update()
+            cpu.pc = cpu.next_pc
 
     def run(self):
         if not(self.args.regs or self.args.check_inv or self.args.trace):

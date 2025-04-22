@@ -1,4 +1,4 @@
-# 🐍 RISC-V Emulator in Python (RV32I, minimal machine mode, Newlib support)
+# 🐍 RISC-V Emulator in Python (RV32I, machine mode, Newlib support)
 
 This is a simple and readable **RISC-V RV32I emulator** written in pure Python. It supports minimal machine mode, and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
 
