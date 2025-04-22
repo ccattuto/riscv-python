@@ -56,8 +56,6 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif funct3 == 0x7:  # AND
         cpu.registers[rd] = cpu.registers[rs1] & cpu.registers[rs2]
 
-    return True
-
 def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
@@ -87,8 +85,6 @@ def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif funct3 == 0x7: # ANDI
         cpu.registers[rd] = (cpu.registers[rs1] & imm_i) & 0xFFFFFFFF
 
-    return True
-
 def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
@@ -109,8 +105,6 @@ def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for LOAD at PC=0x{cpu.pc:08x}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-    return True
-
 def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_s = ((inst >> 7) & 0x1F) | ((inst >> 25) << 5)
     if imm_s >= 0x800: imm_s -= 0x1000                 
@@ -126,8 +120,6 @@ def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08x}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
-
-    return True
 
 def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if (
@@ -149,17 +141,13 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08x}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-    return True
-
 def exec_LUI(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_u = inst >> 12
     cpu.registers[rd] = (imm_u << 12) & 0xFFFFFFFF
-    return True
 
 def exec_AUIPC(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_u = inst >> 12
     cpu.registers[rd] = (cpu.pc + (imm_u << 12)) & 0xFFFFFFFF
-    return True
 
 def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_j = (((inst >> 21) & 0x3FF) << 1) | \
@@ -174,8 +162,6 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     #if cpu.logger is not None:
     #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08x}, rd={rd}, target=0x{cpu.next_pc:08x}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08x}")
 
-    return True
-
 def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
@@ -186,8 +172,6 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     cpu.next_pc = addr_target
     #if cpu.logger is not None:
     #    cpu.logger.debug(f"[JALR] jumping to 0x{cpu.next_pc:08x} from rs1=0x{cpu.registers[rs1]:08x}, imm={imm_i}")
-
-    return True
 
 def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if inst == 0x00000073:  # ECALL
@@ -272,8 +256,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         if cpu.logger is not None:
             cpu.logger.warning(f"Unhandled system instruction 0x{inst:08x} at PC={cpu.pc:08x}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
-    
-    return True
+
 
 # dispatch table for opcode handlers
 opcode_handler = {
