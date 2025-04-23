@@ -242,7 +242,8 @@ class Machine:
 
             inst = ram.load_word(cpu.pc)
             cpu.execute(inst)
-            cpu.timer_update()
+            if self.args.timer:
+                cpu.timer_update()
             cpu.pc = cpu.next_pc
 
     # EXECUTION LOOP: minimal version (fast)
