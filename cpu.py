@@ -193,13 +193,14 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         cpu.csrs[0x300] = mstatus
     
     elif inst == 0x00100073:  # EBREAK
-
-        # syscalls > 0xFFFF0000 bypass the rest of the EBREAK logic and are used for logging.
+        # syscalls >= 0xFFFF0000 bypass the rest of the EBREAK logic and are used for logging.
         a7 = cpu.registers[17]
-        if a7 > 0xFFFF0000 and cpu.logger is not None:
+        if a7 >= 0xFFFF0000:
+            if cpu.logger is None:
+                return
             a0 = cpu.registers[10]
             if a7 == 0xFFFF0001:  # log integer
-                cpu.logger.info(f"EBREAK LOG INT: {a0}")
+                cpu.logger.info(f"EBREAK LOG INT: 0x{a0:08X} ({a0})")
             elif a7 == 0xFFFF0002:  # log string
                 str = cpu.ram.load_cstring(a0)
                 cpu.logger.info(f"EBREAK LOG STR: {str}")

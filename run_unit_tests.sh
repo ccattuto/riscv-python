@@ -6,7 +6,7 @@ PASS=0
 FAIL=0
 
 for BIN in "$TEST_DIR"/*.bin; do
-    A0_DEC=$( "$EMU" "$BIN" 2>/dev/null | grep '(x10)' | awk -F'[()]' '{ print $4 }' )
+    A0_DEC=$( "$EMU" "$BIN" 2>&1 | grep '(x10)' | awk -F'[()]' '{ print $4 }' )
 
     if [[ "$A0_DEC" == "257" ]]; then
         echo "[PASS] $(basename "$BIN")"
