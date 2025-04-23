@@ -82,7 +82,7 @@ class RAM:
         memory_slice = self.memory[addr:end]
         nul_index = memory_slice.find(0)
         if nul_index == -1:
-            raise MemoryAccessError(f"Exceeded maximum length while reading C string: 0x{addr:08x}")
+            raise MemoryAccessError(f"Exceeded maximum length while reading C string at 0x{addr:08x}")
         return memory_slice[:nul_index].decode('utf-8', errors='replace')
 
 # Safe RAM class: checks all addresses
@@ -144,5 +144,5 @@ class SafeRAM:
         memory_slice = self.memory[addr:end]
         nul_index = memory_slice.find(0)
         if nul_index == -1:
-            raise MemoryAccessError(f"Exceeded maximum length while reading C string: 0x{addr:08x}")
+            raise MemoryAccessError(f"Exceeded maximum length while reading C string at 0x{addr:08x}")
         return memory_slice[:nul_index].decode('utf-8', errors='replace')
