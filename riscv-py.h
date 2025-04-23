@@ -39,6 +39,14 @@
         :: "r"(ptr) : "a0", "a7");                          \
 } while (0)
 
+#define EMU_LOG_REGS() do {                                 \
+    asm volatile (                                          \
+        "lui a7, 0xFFFF0\n"                                 \
+        "addi a7, a7, 3\n"                                  \
+        "ebreak\n"                                          \
+        ::  : "a7");                                        \
+} while (0)
+
 
 // suspend/restore traps
 
