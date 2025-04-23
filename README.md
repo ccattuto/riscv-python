@@ -5,7 +5,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 ## ✅ Features
 
 - **Implements the full RV32I base integer ISA**
-- **Supports machine mode**, including traps (`ecall`, `ebreak`, illegal instruction trap, `mret`), machine timer interrupt, CSR instructions and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`)
+- **Supports machine mode**, including synchronous traps (`ecall`, `ebreak`, illegal instruction trap), asynchronous traps (machine timer interrupt), `mret`, CSR instructions and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`, ...)
 - **Supports ELF and flat binary formats**
 - **Supports terminal I/O**, both "cooked" and raw
 - **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls** (`_write`, `_read`, `_exit`, ...)
@@ -13,7 +13,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 - **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, `_unlink`, `_mkdir`, `_rmdir`, ...)
 - **Supports argc/argv program arguments**
 - **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
-- **Supports logging** of register values, call traces, system calls, traps, invalid memory accesses, violations of invariants
+- **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, violations of invariants
 - Self-contained, modular, extensible codebase
 
 ## 🔧 Requirements
