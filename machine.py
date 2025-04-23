@@ -33,7 +33,7 @@ class Machine:
 
         self.logger = logger
         self.args = args
-        self.check_start = args.check_start if args is not None else False;
+        self.start_checks = args.start_checks if args is not None else False;
         self.check_enable = False
 
         # text, stack and heap boundaries
@@ -76,10 +76,10 @@ class Machine:
             binary = f.read()
             self.ram.store_binary(0, binary)
             self.cpu.pc = 0  # entry point at start of the binary
-            if self.check_start == 'main':
-                raise SetupError("check_start=main is unsupported for flat binary executables")
-            if self.check_start is None or self.check_start == 'auto':
-                self.check_start = 'first-call'
+            if self.start_checks == 'main':
+                raise SetupError("start_checks=main is unsupported for flat binary executables")
+            if self.start_checks is None or self.start_checks == 'auto':
+                self.start_checks = 'first-call'
 
     # load an ELF executable into RAM
     def load_elf(self, fname, load_symbols=False, check_text=False):
@@ -128,27 +128,27 @@ class Machine:
                 if check_text:
                     self.text_snapshot = self.ram.memory[self.text_start:self.text_end]
 
-        if self.check_start is None or self.check_start == 'auto':
-            self.check_start = 'main'
-        if self.check_start == 'main' and self.main_addr is None:
+        if self.start_checks is None or self.start_checks == 'auto':
+            self.start_checks = 'main'
+        if self.start_checks == 'main' and self.main_addr is None:
             self.logger.warning("No symbol found for main() — invariants checks disabled")
     
     # Invariant check trigger
     def trigger_check(self):
-        if self.check_start == 'early':
+        if self.start_checks == 'early':
             return True
-        elif self.check_start == 'main':
+        elif self.start_checks == 'main':
             return self.cpu.pc == self.main_addr
-        elif self.check_start == 'first-call':
+        elif self.start_checks == 'first-call':
             inst = self.ram.load_word(self.cpu.pc)
             opcode = inst & 0x7F
             return opcode in (0x6F, 0x67)
         else:
             try:
-                value = int(self.check_start, 0) & 0xFFFFFFFF
+                value = int(self.start_checks, 0) & 0xFFFFFFFF
                 return self.cpu.pc == value
             except ValueError:
-                raise SetupError(f"Invalid --start-check value: {self.check_start}")
+                raise SetupError(f"Invalid --start-checks value: {self.start_checks}")
 
     # Invariants check
     def check_invariants(self):
@@ -160,7 +160,7 @@ class Machine:
             if not self.check_enable:
                 return
             else:
-                self.logger.debug(f"Invariants checking started ({self.check_start})")
+                self.logger.debug(f"Invariants checking started ({self.start_checks})")
 
         # x0 = 0
         if not (cpu.registers[0] == 0):
@@ -200,7 +200,7 @@ class Machine:
             self.ram.memory[self.text_start:self.text_end] != self.text_snapshot:
                 raise InvariantViolationError("Text segment has been modified!")
 
-    # Returns a lambda function that formats the requeste register svalues
+    # Returns a lambda function that formats the requested register values
     def make_regformatter_lambda(self, regstring='pc,sp,ra,a0'):
         names = [s.strip().lower() for s in regstring.split(',')]
         cpu = self.cpu
@@ -222,7 +222,7 @@ class Machine:
             else:
                 raise SetupError(f"Unknown register/CSR while setting up register logging: '{name}'")
 
-        return lambda x: ', '.join( f"{name}=0x{getter(x):08X}" for name, getter in getters)
+        return lambda x: ', '.join( f"{name}=0x{getter(x):08X}" for name, getter in getters)  # register formatter
 
     # EXECUTION LOOP: debug version (slow)
     def run_with_checks(self):

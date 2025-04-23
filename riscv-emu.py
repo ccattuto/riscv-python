@@ -19,7 +19,7 @@ import sys, os, argparse
 import tty, termios
 import logging
 
-from machine import Machine, MachineError, ExecutionTerminated
+from machine import Machine, MachineError, SetupError, ExecutionTerminated
 from cpu import CPU
 from ram import RAM, SafeRAM
 from syscalls import SyscallHandler
@@ -48,7 +48,7 @@ def parse_args():
     parser.add_argument("--check-ram", action="store_true", help="Check memory accesses")
     parser.add_argument("--check-text", action="store_true", help="Ensure text segment is not modified")
     parser.add_argument("--check-all", action="store_true", help="Enable all checks")
-    parser.add_argument("--check-start", metavar="WHEN", default="auto", help="Condition to enable checks (auto, early, main, first-call, 0xADDR)")
+    parser.add_argument("--start-checks", metavar="WHEN", default="auto", help="Condition to enable checks (auto, early, main, first-call, 0xADDR)")
     parser.add_argument("--init-regs", metavar="VALUE", default="zero", help='Initial register state (zero, random, 0xDEADBEEF)')
     parser.add_argument('--init-ram', metavar='PATTERN', default='zero', help='Initialize RAM with pattern (zero, random, addr, 0xAA)')
     parser.add_argument('--timer', action="store_true", help='Enable machine timer')
