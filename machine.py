@@ -210,6 +210,10 @@ class Machine:
             if name in cpu.REG_NAME_NUM:
                 idx = cpu.REG_NAME_NUM[name]
                 getters.append( (name, lambda cpu, idx=idx: cpu.registers[idx]) )
+            elif name in ['mtime_lo', 'mtimecmp_lo']:
+                getters.append( (name, lambda cpu, name=name: getattr(cpu, name[:-3]) & 0xFFFFFFFF) )
+            elif name in ['mtime_hi', 'mtimecmp_hi']:
+                getters.append( (name, lambda cpu, name=name: getattr(cpu, name[:-3]) >> 32) )
             elif name in cpu.CSR_NAME_ADDR:
                 addr = cpu.CSR_NAME_ADDR[name]
                 getters.append( (name, lambda cpu, addr=addr: cpu.csrs[addr]) )
