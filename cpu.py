@@ -18,7 +18,6 @@
 from machine import MachineError, ExecutionTerminated, SetupError
 import random
 
-# Helper functions
 
 def signed32(val):
     return val if val < 0x80000000 else val - 0x100000000
@@ -237,6 +236,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                     cpu.mtime = (cpu.csrs[0x7C1] << 32) | cpu.csrs[0x7C0]
                     cpu.mtime_lo_updated = False
                     cpu.mtime_hi_updated = False
+                    cpu.mtip = (cpu.mtime >= cpu.mtimecmp)
 
             # Atomic update of mtimecmp
             if csr in (0x7C2, 0x7C3):
@@ -246,7 +246,9 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                     cpu.mtimecmp = (cpu.csrs[0x7C3] << 32) | cpu.csrs[0x7C2]
                     cpu.mtimecmp_lo_updated = False
                     cpu.mtimecmp_hi_updated = False
-        
+                    cpu.mtime_countdown = cpu.mtimecmp - cpu.mtime
+                    cpu.mtip = (cpu.mtime >= cpu.mtimecmp)
+
         elif funct3 in (0b010, 0b110):  # CSRRS / CSRRSI
             if rs1_val != 0:
                 cpu.csrs[csr] = old | rs1_val
@@ -335,6 +337,7 @@ class CPU:
         self.mtime_hi_updated = False
         self.mtimecmp_lo_updated = False
         self.mtimecmp_hi_updated = False
+        self.mtip = False
 
         # name - ID register maps
         self.REG_NUM_NAME = {}
@@ -418,20 +421,30 @@ class CPU:
         self.csrs[0x300] |= (1 << 7)        # MPIE = 1
         # (MIE, bit 3, stays unchanged)
 
+    # Machine timer interrupt logic
     def timer_update(self):
         csrs = self.csrs
-        self.mtime = (self.mtime + 1) & 0xFFFFFFFF_FFFFFFFF
+        mtime = self.mtime
 
-        # trigger Machine Timer Interrupt
-        if self.mtime >= self.mtimecmp:
-            csrs[0x344] |= (1 << 7)     # set MTIP (timer interrupt)
-        else:
-            csrs[0x344] &= ~(1 << 7)    # clear MTIP
+        self.mtime = (mtime + 1) # & 0xFFFFFFFF_FFFFFFFF  # the counter should wrap, but it's unlikely to ever happen ;)
+        mtip_asserted = (mtime >= self.mtimecmp)
 
-        if (csrs[0x300] & (1<<3)) and (csrs[0x304] & (1<<7)) and (csrs[0x344] & (1<<7)):
-            self.trap(cause=0x80000007, sync=False)  # fire interrupt as an asynchronous trap
+        # Set interrupt pending flag
+        if mtip_asserted != self.mtip:
+            if mtip_asserted:
+                csrs[0x344] |= (1 << 7)     # set MTIP
+            else:
+                csrs[0x344] &= ~(1 << 7)    # clear MTIP
+            self.mtip = mtip_asserted
 
-    # CPU register initialization
+        if not mtip_asserted:
+            return
+        
+        # Trigger Machine Timer Interrupt
+        if (csrs[0x300] & (1<<3)) and (csrs[0x304] & (1<<7)):
+            self.trap(cause=0x80000007, sync=False)  # fire timer interrupt as an asynchronous trap
+
+    # CPU registers initialization
     def init_registers(self, mode='0x00000000'):
         self.registers[0] = 0
         if mode == 'random':

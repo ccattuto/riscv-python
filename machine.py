@@ -207,17 +207,17 @@ class Machine:
 
         getters = []
         for name in names:
-            if name in cpu.REG_NAME_NUM:
+            if name in cpu.REG_NAME_NUM:  # registers
                 idx = cpu.REG_NAME_NUM[name]
                 getters.append( (name, lambda cpu, idx=idx: cpu.registers[idx]) )
-            elif name in ['mtime_lo', 'mtimecmp_lo']:
+            elif name in ['mtime_lo', 'mtimecmp_lo']:  # mtime/mtimecmp
                 getters.append( (name, lambda cpu, name=name: getattr(cpu, name[:-3]) & 0xFFFFFFFF) )
-            elif name in ['mtime_hi', 'mtimecmp_hi']:
+            elif name in ['mtime_hi', 'mtimecmp_hi']:  # mtime/mtimecmp
                 getters.append( (name, lambda cpu, name=name: getattr(cpu, name[:-3]) >> 32) )
-            elif name in cpu.CSR_NAME_ADDR:
+            elif name in cpu.CSR_NAME_ADDR:  # CSRs
                 addr = cpu.CSR_NAME_ADDR[name]
                 getters.append( (name, lambda cpu, addr=addr: cpu.csrs[addr]) )
-            elif name in ['pc']:
+            elif name in ['pc']:  #PC
                 getters.append( (name, lambda cpu, name=name: getattr(cpu, name)) )
             else:
                 raise SetupError(f"Unknown register/CSR while setting up register logging: '{name}'")
