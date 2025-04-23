@@ -82,7 +82,7 @@ class RAM:
         memory_slice = self.memory[addr:end]
         nul_index = memory_slice.find(0)
         if nul_index == -1:
-            raise MemoryAccessError(f"Exceeded maximum length while reading C string at 0x{addr:08x}")
+            raise MemoryAccessError(f"Exceeded maximum length while reading C string at 0x{addr:08X}")
         return memory_slice[:nul_index].decode('utf-8', errors='replace')
 
 # Safe RAM class: checks all addresses
@@ -96,7 +96,7 @@ class SafeRAM:
 
     def check(self, addr, n):
         if addr < 0 or addr + n > self.size:
-            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08x} (+{n})")
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{n})")
 
     def load_byte(self, addr, signed=True):
         self.check(addr, 1)
@@ -139,10 +139,10 @@ class SafeRAM:
 
     def load_cstring(self, addr, max_len=1024):
         if addr < 0 or addr >= self.size:
-            raise MemoryAccessError(f"Invalid start address reading C string: 0x{addr:08x}")
+            raise MemoryAccessError(f"Invalid start address reading C string: 0x{addr:08X}")
         end = min(addr + max_len, self.size)
         memory_slice = self.memory[addr:end]
         nul_index = memory_slice.find(0)
         if nul_index == -1:
-            raise MemoryAccessError(f"Exceeded maximum length while reading C string at 0x{addr:08x}")
+            raise MemoryAccessError(f"Exceeded maximum length while reading C string at 0x{addr:08X}")
         return memory_slice[:nul_index].decode('utf-8', errors='replace')

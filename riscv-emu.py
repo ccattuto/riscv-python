@@ -160,7 +160,7 @@ if __name__ == '__main__':
         if args.raw_tty: # Restore terminal settings
             termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
         print()
-        log.info(f"Execution interrupted by user at PC=0x{cpu.pc:08x}")
+        log.info(f"Execution interrupted by user at PC=0x{cpu.pc:08X}")
 
     except MachineError as e:
         if args.raw_tty:
@@ -170,8 +170,9 @@ if __name__ == '__main__':
             log.info(f"Execution terminated: {e}")
             sys.exit(0)
         else:
-            log.error(f"EMULATOR ERROR [{type(e).__name__}] at PC=0x{cpu.pc:08x}: {e}")
-            cpu.print_registers()
+            log.error(f"EMULATOR ERROR [{type(e).__name__}] at PC=0x{cpu.pc:08X}: {e}")
+            if type(e) != SetupError:
+                cpu.print_registers()
             sys.exit(1)
 
     except Exception:

@@ -31,7 +31,7 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.registers[rd] = (cpu.registers[rs1] - cpu.registers[rs2]) & 0xFFFFFFFF
         else:
             if cpu.logger is not None:
-                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for ADD/SUB at PC=0x{cpu.pc:08x}")
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for ADD/SUB at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     elif funct3 == 0x1:  # SLL
         cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
@@ -49,7 +49,7 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
         else:
             if cpu.logger is not None:
-                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRL/SRA at PC=0x{cpu.pc:08x}")
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRL/SRA at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     elif funct3 == 0x6:  # OR
         cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
@@ -78,7 +78,7 @@ def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
         else:
             if cpu.logger is not None:
-                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRLI/SRAI at PC=0x{cpu.pc:08x}")
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRLI/SRAI at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     elif funct3 == 0x6: # ORI
         cpu.registers[rd] = (cpu.registers[rs1] | imm_i) & 0xFFFFFFFF
@@ -102,7 +102,7 @@ def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         cpu.registers[rd] = ram.load_half(addr, signed=False) & 0xFFFF
     else:
         if cpu.logger is not None:
-            cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for LOAD at PC=0x{cpu.pc:08x}")
+            cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for LOAD at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
 def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
@@ -118,7 +118,7 @@ def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         ram.store_word(addr, cpu.registers[rs2])
     else:
         if cpu.logger is not None:
-            cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08x}")
+            cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
 def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
@@ -138,7 +138,7 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         cpu.next_pc = (cpu.pc + imm_b) & 0xFFFFFFFF
     elif funct3 == 0x2 or funct3 == 0x3:
         if cpu.logger is not None:
-            cpu.logger.warning(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08x}")
+            cpu.logger.warning(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
 def exec_LUI(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
@@ -160,7 +160,7 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
     cpu.next_pc = (cpu.pc + imm_j) & 0xFFFFFFFF
     #if cpu.logger is not None:
-    #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08x}, rd={rd}, target=0x{cpu.next_pc:08x}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08x}")
+    #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08X}, rd={rd}, target=0x{cpu.next_pc:08X}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08X}")
 
 def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
@@ -171,7 +171,7 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
     cpu.next_pc = addr_target
     #if cpu.logger is not None:
-    #    cpu.logger.debug(f"[JALR] jumping to 0x{cpu.next_pc:08x} from rs1=0x{cpu.registers[rs1]:08x}, imm={imm_i}")
+    #    cpu.logger.debug(f"[JALR] jumping to 0x{cpu.next_pc:08X} from rs1=0x{cpu.registers[rs1]:08X}, imm={imm_i}")
 
 def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if inst == 0x00000073:  # ECALL
@@ -211,7 +211,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         if cpu.csrs[0x305] == 0: # no trap handler, terminate execution
             cpu.bypassed_trap_return(cause=3)
             cpu.print_registers()
-            raise ExecutionTerminated(f"BREAKPOINT at PC={cpu.pc:08x}")
+            raise ExecutionTerminated(f"BREAKPOINT at PC={cpu.pc:08X}")
         else:  # trap
             cpu.trap(cause=3)  # 3 = machine EBREAK
     
@@ -269,7 +269,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     
     else:
         if cpu.logger is not None:
-            cpu.logger.warning(f"Unhandled system instruction 0x{inst:08x} at PC={cpu.pc:08x}")
+            cpu.logger.warning(f"Unhandled system instruction 0x{inst:08X} at PC={cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
 
@@ -383,7 +383,7 @@ class CPU:
             (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)  # dispatch to opcode handler
         else:
             if self.logger is not None:
-                self.logger.warning(f"Invalid instruction at PC={self.pc:08x}: 0x{inst:08x}, opcode=0x{opcode:x}")
+                self.logger.warning(f"Invalid instruction at PC={self.pc:08X}: 0x{inst:08X}, opcode=0x{opcode:x}")
             self.trap(cause=2, mtval=inst)  # illegal instruction cause
 
         self.registers[0] = 0       # x0 is always 0
@@ -391,7 +391,7 @@ class CPU:
     # trap handling
     def trap(self, cause, mtval=0, sync=True):
         if self.csrs[0x305] == 0:
-            raise ExecutionTerminated(f"Trap at PC={self.pc:08x} without trap handler installed – execution terminated.")
+            raise ExecutionTerminated(f"Trap at PC={self.pc:08X} without trap handler installed – execution terminated.")
         
         # for synchronous trapa, MEPC <- PC, for asynchronous ones (e.g., timer) MEPC <- next instruction
         self.csrs[0x341] = self.pc if sync else self.next_pc  # mepc
@@ -407,7 +407,7 @@ class CPU:
         self.next_pc = self.csrs[0x305]     # next PC <- mtvec
 
         if self.args.traps and self.logger is not None:
-            self.logger.debug(f"TRAP at PC={self.pc:08x}: mcause=0x{cause:08x}, mtvec={self.csrs[0x305]:08x}, mtval=0x{mtval:08x}, sync={sync}");
+            self.logger.debug(f"TRAP at PC={self.pc:08X}: mcause=0x{cause:08X}, mtvec={self.csrs[0x305]:08X}, mtval=0x{mtval:08X}, sync={sync}");
 
     # Performs the side effects of trap + mret,
     # for those cases when the trap is handled by the emulator
@@ -452,11 +452,11 @@ class CPU:
 
         self.logger.info("REGISTER STATE:")
 
-        self.logger.info(f"{"pc":<12}        {self.pc:08x} ({self.pc})")
+        self.logger.info(f"{"pc":<12}        {self.pc:08X} ({self.pc})")
         for i, name in enumerate(self.REG_NAMES):
             value = self.registers[i]
-            self.logger.info(f"{name:<12} (x{i:02}): {value:08x} ({value})")
+            self.logger.info(f"{name:<12} (x{i:02}): {value:08X} ({value})")
 
         for name, addr in self.CSR_NAME_ADDR.items():
             value = self.csrs[addr]
-            self.logger.info(f"{name:<12} ({addr:03X}): {value:08x} ({value})")
+            self.logger.info(f"{name:<12} ({addr:03X}): {value:08X} ({value})")

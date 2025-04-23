@@ -173,33 +173,75 @@ class Machine:
         # SP below stack top
         if self.stack_top is not None and cpu.registers[3] != 0:
             if not(cpu.registers[2] <= self.stack_top):
-                raise InvariantViolationError(f"SP above stack top: SP=0x{cpu.registers[2]:08x} > 0x{self.stack_top:08x}")
+                raise InvariantViolationError(f"SP above stack top: SP=0x{cpu.registers[2]:08X} > 0x{self.stack_top:08X}")
 
         # SP above stack bottom (stack overflow check)
         if self.stack_bottom is not None and cpu.registers[3] != 0:
             if not(cpu.registers[2] >= self.stack_bottom):
-                raise InvariantViolationError(f"SP below stack bottom (stack overlow): SP=0x{cpu.registers[2]:08x} < 0x{self.stack_bottom:08x}")
+                raise InvariantViolationError(f"SP below stack bottom (stack overlow): SP=0x{cpu.registers[2]:08X} < 0x{self.stack_bottom:08X}")
 
         # Stack and heap separation
         MIN_GAP = 256
         if self.heap_end is not None and self.stack_bottom is not None:
             if not (self.heap_end + MIN_GAP <= self.stack_bottom):
-                raise InvariantViolationError(f"Heap too close to stack: heap_end=0x{self.heap_end:08x}, stack_bottom=0x{self.stack_bottom:08x}")
+                raise InvariantViolationError(f"Heap too close to stack: heap_end=0x{self.heap_end:08X}, stack_bottom=0x{self.stack_bottom:08X}")
 
         # SP word alignment (commented out as word-unaligned SP is actually used in the RISC-V unit tests)
         #if not(cpu.registers[2] % 4 == 0):
-        #    raise InvariantViolationError(f"SP not aligned: SP=0x{cpu.registers[2]:08x}")
+        #    raise InvariantViolationError(f"SP not aligned: SP=0x{cpu.registers[2]:08X}")
 
         # Heap end word alignment
         if self.heap_end is not None:
             if not(self.heap_end % 4 == 0):
-                raise InvariantViolationError(f"Heap end not aligned: 0x{self.heap_end:08x}")
+                raise InvariantViolationError(f"Heap end not aligned: 0x{self.heap_end:08X}")
             
         # Text segment integrity check
         if self.text_snapshot is not None and \
             self.ram.memory[self.text_start:self.text_end] != self.text_snapshot:
                 raise InvariantViolationError("Text segment has been modified!")
 
+    # Returns a lambda function that formats the requeste register svalues
+    def make_regformatter_lambda(self, regstring):
+        names = [s.strip().lower() for s in regstring.split(',')]
+        cpu = self.cpu
+
+        getters = []
+        for name in names:
+            if name in cpu.REG_NAME_NUM:
+                idx = cpu.REG_NAME_NUM[name]
+                getters.append( (name, lambda cpu, idx=idx: cpu.registers[idx]) )
+            elif name in cpu.CSR_NAME_ADDR:
+                addr = cpu.CSR_NAME_ADDR[name]
+                getters.append( (name, lambda cpu, addr=addr: cpu.csrs[addr]) )
+            elif name in ['pc']:
+                getters.append( (name, lambda cpu, name=name: getattr(cpu, name)) )
+            else:
+                raise SetupError(f"Unknown register/CSR while setting up register logging: '{name}'")
+
+        return lambda x: ', '.join( f"{name}=0x{getter(x):08X}" for name, getter in getters)
+
+    # EXECUTION LOOP: debug version (slow)
+    def run_with_checks(self):
+        cpu = self.cpu
+        ram = self.ram
+
+        if self.args.regs:
+            regformatter = self.make_regformatter_lambda(self.args.regs)
+
+        while True:
+            if self.args.regs:
+                self.logger.debug(f"REGS: " + regformatter(cpu))
+            if self.args.check_inv:
+                self.check_invariants()
+            if self.args.trace and (cpu.pc in self.symbol_dict):
+                self.logger.debug(f"FUNC {self.symbol_dict[cpu.pc]}, PC={cpu.pc:08X}")
+
+            inst = ram.load_word(cpu.pc)
+            cpu.execute(inst)
+            cpu.timer_update()
+            cpu.pc = cpu.next_pc
+
+    # EXECUTION LOOP: minimal version (fast)
     def run_fast(self):
         cpu = self.cpu
         ram = self.ram
@@ -209,6 +251,7 @@ class Machine:
             cpu.execute(inst)
             cpu.pc = cpu.next_pc
 
+    # EXECUTION LOOP: minimal version + timer (mtime/mtimecmp)
     def run_fast_timer(self):
         cpu = self.cpu
         ram = self.ram
@@ -219,23 +262,7 @@ class Machine:
             cpu.timer_update()
             cpu.pc = cpu.next_pc
 
-    def run_with_checks(self):
-        cpu = self.cpu
-        ram = self.ram
-
-        while True:
-            if self.args.regs:
-                self.logger.debug(f"REGS: PC={cpu.pc:08x}, ra={cpu.registers[1]:08x}, sp={cpu.registers[2]:08x}, gp={cpu.registers[3]:08x}, a0={cpu.registers[10]:08x}")
-            if self.args.check_inv:
-                self.check_invariants()
-            if self.args.trace and (cpu.pc in self.symbol_dict):
-                self.logger.debug(f"FUNC {self.symbol_dict[cpu.pc]}, PC={cpu.pc:08x}")
-
-            inst = ram.load_word(cpu.pc)
-            cpu.execute(inst)
-            cpu.timer_update()
-            cpu.pc = cpu.next_pc
-
+    # Run the emulator loop
     def run(self):
         if not(self.args.regs or self.args.check_inv or self.args.trace):
             if not self.args.timer:

@@ -108,7 +108,7 @@ class SyscallHandler:
             self.machine.heap_end = new_heap_end
             self.cpu.registers[10] = old_heap_end  # return old break
         if self.logger is not None and self.trace_syscalls:
-            self.logger.debug(f"SYSCALL _sbrk: increment={increment}, old_heap_end={old_heap_end:08x}, new_heap_end={new_heap_end:08x}")
+            self.logger.debug(f"SYSCALL _sbrk: increment={increment}, old_heap_end={old_heap_end:08X}, new_heap_end={new_heap_end:08X}")
         return True
         
     # _write syscall (Newlib standard)
@@ -117,7 +117,7 @@ class SyscallHandler:
         addr = self.cpu.registers[11]    # a1
         count = self.cpu.registers[12]   # a2
         if self.logger is not None and self.trace_syscalls:
-            self.logger.debug(f"SYSCALL _write: fd={fd}, addr={addr:08x}, count={count}")
+            self.logger.debug(f"SYSCALL _write: fd={fd}, addr={addr:08X}, count={count}")
         data = self.ram.load_binary(addr, count)
         if fd == 1 or fd == 2:  # stdout or stderr
             if not self.raw_tty:
@@ -145,7 +145,7 @@ class SyscallHandler:
         addr = self.cpu.registers[11]    # a1
         count = self.cpu.registers[12]   # a2
         if self.logger is not None and self.trace_syscalls:
-            self.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08x}, count={count}")
+            self.logger.debug(f"SYSCALL _read: fd={fd}, addr=0x{addr:08X}, count={count}")
         if fd == 0:  # stdin
             if not self.raw_tty:
                 try:  # normal (cooked) terminal mode
@@ -244,7 +244,7 @@ class SyscallHandler:
         fd = self.cpu.registers[10]         # a0
         buf_ptr = self.cpu.registers[11]    # a1
         if self.logger and self.trace_syscalls:
-            self.logger.debug(f"SYSCALL _fstat: fd={fd}, buf_ptr=0x{buf_ptr:08x}")
+            self.logger.debug(f"SYSCALL _fstat: fd={fd}, buf_ptr=0x{buf_ptr:08X}")
 
         if fd == 0 or fd == 1 or fd == 2:  # pretend it's a tty
             mode = stat.S_IFCHR | 0o666
