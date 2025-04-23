@@ -40,7 +40,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 ├── syscalls_newlib.S      # Syscall stubs for Newlib-nano
 ├── linker_bare.ld         # Simple linker script, no heap support
 ├── linker_newlib.ld       # Linker script supporting Newlib-nano
-├── riscv-py.h             # Emulator macros
+├── riscv-py.h             # Emulator macros for user programs
 ├── tests/test_asm*.S      # Example assembly programs
 ├── tests/test_bare*.C     # Example C programs without Newlib support
 ├── tests/test_newlib*.C   # Example C programs with Newlib-nano support
@@ -134,6 +134,7 @@ Argument 3: arg3
 | `--start-checks WHEN` | Condition to enable checks (auto, early, main, first-call, 0xADDR)          |
 | `--init-regs VALUE`   | Initial register state (zero, random, 0xDEADBEEF)                           |
 | `--init-ram PATTERN`  | Initialize RAM with pattern (zero, random, addr, 0xAA)                      |
+| `--ram-size KBS`      | Emulated RAM size (kB, default 1024)                                        |
 | `--timer`             | Enable machine timer                                                        |
 | `--raw-tty`           | Enable raw terminal mode                                                    |
 | `--no-color`          | Remove ANSI colors in debugging output                                      |
@@ -208,7 +209,7 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.
 - When a trap condition is triggered, if `mtvec` is set to zero, the emulator's trap handler is invoked and supports Newlib's system calls. If you install your own trap handler (non-zero `mtvec`), you are responsible for all trap behavior including system calls.
 - `EBREAK` traps with `a7 >= 0xFFFF0000` are used as a debug bridge, regardless of `mtvec`. See `riscv-py.h` for simple logging macros using this facility. These logging macros do not depend on Newlib.
-- The emulated architecure supports unaligned memory accesses and will not trap when they occur.
+- The emulated architecture supports unaligned memory accesses and will not trap when they occur.
 - The 64-bit registers `mtime` and `mtimecmp` are accessible via CSR instructions (rather than being memory-mapped) at addresses `0x7C0` (low 32 bits of `mtime`), `0x7C1` (high 32 bits of `mtime`), `0x7C2` (low 32 bits of `mtimecmp`), and `0x7C3` (high 32 bits of `mtimecmp`). Writes to `mtime` and `mtimecmp` are atomic for the whole 64-bit register and occur when the second word of the register is written.
 
 ###  Performance notes

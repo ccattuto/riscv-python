@@ -24,8 +24,6 @@ from cpu import CPU
 from ram import RAM, SafeRAM
 from syscalls import SyscallHandler
 
-MEMORY_SIZE = 1024 * 1024  # 1 Mb
-
 def parse_args():
     if "--" in sys.argv:
         split_index = sys.argv.index("--")
@@ -51,6 +49,7 @@ def parse_args():
     parser.add_argument("--start-checks", metavar="WHEN", default="auto", help="Condition to enable checks (auto, early, main, first-call, 0xADDR)")
     parser.add_argument("--init-regs", metavar="VALUE", default="zero", help='Initial register state (zero, random, 0xDEADBEEF)')
     parser.add_argument('--init-ram', metavar='PATTERN', default='zero', help='Initialize RAM with pattern (zero, random, addr, 0xAA)')
+    parser.add_argument('--ram-size', metavar="KBS", type=int, default=1024, help='Emulated RAM size (kB, default 1024)')
     parser.add_argument('--timer', action="store_true", help='Enable machine timer')
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
     parser.add_argument("--no-color", action="store_false", help="Remove ANSI colors in terminal output")
@@ -106,6 +105,8 @@ if __name__ == '__main__':
         args.check_inv = True
         args.check_ram = True
         args.check_text = True
+
+    MEMORY_SIZE = 1024 * args.ram_size  # (default 1 Mb)
 
     log = logging.getLogger("riscv-emu")
     log.setLevel(logging.DEBUG)

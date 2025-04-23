@@ -38,7 +38,7 @@ def initialize_ram(ram, fill='0x00'):
 
 # "Fast" RAM class: no address checks
 class RAM:
-    def __init__(self, size, init=None, logger=None):
+    def __init__(self, size=1024*1024, init=None, logger=None):
         self.memory = bytearray(size)
         self.size = size
         self.logger = logger
@@ -87,7 +87,7 @@ class RAM:
 
 # Safe RAM class: checks all addresses
 class SafeRAM:
-    def __init__(self, size, init=None, logger=None):
+    def __init__(self, size=1024*1024, init=None, logger=None):
         self.memory = bytearray(size)
         self.size = size
         self.logger = logger
