@@ -223,7 +223,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         rs1_val = cpu.registers[rs1] if (funct3 < 0b101) else rs1
         
         # handle read-only CSRs
-        if csr in CSR_RO and ((funct3 in (0b001, 0b101)) or (rs1_val != 0)):
+        if csr in cpu.CSR_RO and ((funct3 in (0b001, 0b101)) or (rs1_val != 0)):
             cpu.trap(cause=2, mtval=inst)  # 2 = illegal instruction
 
         if funct3 in (0b001, 0b101):  # CSRRW / CSRRWI
@@ -287,17 +287,11 @@ opcode_handler = {
     0x73:   exec_SYSTEM     # SYSTEM (ECALL/EBREAK)
 }
 
-CSR_RO = {
-    0x301,  # misa
-    0xF11,  # mvendorid
-    0xF12,  # marchid
-    0xF13,  # mimpid
-    0xF14   # mhartid
-}
 
 # CPU class
 class CPU:
     def __init__(self, ram, init_regs=None, logger=None, args=None):
+        # registers
         self.registers = [0] * 32
         if init_regs is not None and init_regs != 'zero':
             self.init_registers(init_regs)
@@ -309,6 +303,7 @@ class CPU:
         self.logger = logger
         self.args = args
  
+        # CSRs
         self.csrs = {
             0x300: 0x00000000,  # mstatus
             0x301: 0x40000100,  # misa (RO, bits 30 and 8 set: RV32I)
@@ -326,16 +321,49 @@ class CPU:
             0x7C3: 0xFFFFFFFF,  # mtimecmp_high
 
             0xF11: 0x00000000,  # mvendorid (RO)
-            0xF12: 0x00000000,  # marchid (RO)
-            0xF13: 0x00000000,  # mimpid (RO)
+            0xF12: 0x00000001,  # marchid (RO)
+            0xF13: 0x20250400,  # mimpid (RO)
             0xF14: 0x00000000   # mhartid (RO)
         }
+
+        # read-only CSRs
+        self.CSR_RO = { 0x301, 0xF11, 0xF12, 0xF13, 0xF14 }
+
         self.mtime = 0x00000000_00000000
         self.mtimecmp = 0xFFFFFFFF_FFFFFFFF
         self.mtime_lo_updated = False
         self.mtime_hi_updated = False
         self.mtimecmp_lo_updated = False
         self.mtimecmp_hi_updated = False
+
+        # name - ID register maps
+        self.REG_NUM_NAME = {}
+        self.REG_NAME_NUM = {}
+        self.REG_NAMES = [
+            'zero', 'ra', 'sp', 'gp', 'tp',
+            't0', 't1', 't2', 's0/fp', 's1',
+            'a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7',
+            's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10', 's11',
+            't3', 't4', 't5', 't6'
+        ]
+        for num, name in enumerate(self.REG_NAMES):
+            self.REG_NUM_NAME[num] = name
+            self.REG_NAME_NUM[name] = num
+            self.REG_NAME_NUM[f"x{num}"] = num
+        self.REG_NAME_NUM['s0'] = 8
+        self.REG_NAME_NUM['fp'] = 8
+
+        # name - addr CSR maps
+        self.CSR_NAME_ADDR = {}
+        self.CSR_ADDR_NAME = {}
+        csr_names = {
+            'mstatus': 0x300, 'misa': 0x301, 'mie': 0x304, 'mtvec': 0x305,
+            'mscratch': 0x340, 'mepc': 0x341, 'mcause': 0x342, 'mtval': 0x343, 'mip': 0x344,
+            'mtime_lo': 0x7C0, 'mtime_hi': 0x7C1, 'mtimecmp_lo': 0x7C2, 'mtimecmp_hi': 0x7C3
+        }
+        for name, addr in csr_names.items():
+            self.CSR_NAME_ADDR[name] = addr
+            self.CSR_ADDR_NAME[addr] = name
 
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
@@ -421,26 +449,14 @@ class CPU:
     def print_registers(self):
         if self.logger is None:
             return
-        
-        reg_names = [
-            'zero', 'ra', 'sp', 'gp', 'tp',
-            't0', 't1', 't2', 's0/fp', 's1',
-            'a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7',
-            's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10', 's11',
-            't3', 't4', 't5', 't6'
-        ]
-
-        csr_names = {
-            'mstatus': 0x300, 'mie': 0x304, 'mip': 0x344, 'mepc': 0x341, 'mcause': 0x342, 'mtvec': 0x305, 'mtval': 0x343
-        }
 
         self.logger.info("REGISTER STATE:")
 
-        self.logger.info(f"{"pc":<8}        {self.pc:08x} ({self.pc})")
-        for i, name in enumerate(reg_names):
+        self.logger.info(f"{"pc":<12}        {self.pc:08x} ({self.pc})")
+        for i, name in enumerate(self.REG_NAMES):
             value = self.registers[i]
-            self.logger.info(f"{name:<8} (x{i:02}): {value:08x} ({value})")
+            self.logger.info(f"{name:<12} (x{i:02}): {value:08x} ({value})")
 
-        for name, addr in csr_names.items():
+        for name, addr in self.CSR_NAME_ADDR.items():
             value = self.csrs[addr]
-            self.logger.info(f"{name:<8} ({addr:03X}): {value:08x} ({value})")
+            self.logger.info(f"{name:<12} ({addr:03X}): {value:08x} ({value})")
