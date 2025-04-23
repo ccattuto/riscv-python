@@ -157,7 +157,7 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if imm_j >= 0x100000: imm_j -= 0x200000
 
     if rd != 0:
-        cpu.registers[rd] = cpu.next_pc
+        cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
     cpu.next_pc = (cpu.pc + imm_j) & 0xFFFFFFFF
     #if cpu.logger is not None:
     #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08x}, rd={rd}, target=0x{cpu.next_pc:08x}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08x}")
@@ -361,14 +361,14 @@ class CPU:
         self.registers[0] = 0       # x0 is always 0
     
     # trap handling
-    def trap(self, cause, mtval=0):
+    def trap(self, cause, mtval=0, sync=True):
         if self.csrs[0x305] == 0:
             raise ExecutionTerminated(f"Trap at PC={self.pc:08x} without trap handler installed – execution terminated.")
         
-        self.next_pc = self.csrs[0x305]     # next PC <- mtvec
-        self.csrs[0x341] = self.pc          # mepc
-        self.csrs[0x342] = cause            # mcause
-        self.csrs[0x343] = mtval            # mtval
+        # for synchronous trapa, MEPC <- PC, for asynchronous ones (e.g., timer) MEPC <- next instruction
+        self.csrs[0x341] = self.pc if sync else self.next_pc  # mepc
+        self.csrs[0x342] = cause  # mcause
+        self.csrs[0x343] = mtval  # mtval
 
         mstatus = self.csrs[0x300]
         mie = (mstatus >> 3) & 1            # extract MIE
@@ -376,8 +376,10 @@ class CPU:
         mstatus |= (mie << 7)               # MPIE <- MIE
         self.csrs[0x300] = mstatus
 
+        self.next_pc = self.csrs[0x305]     # next PC <- mtvec
+
         if self.args.traps and self.logger is not None:
-            self.logger.debug(f"TRAP at PC={self.pc:08x}: mcause=0x{cause:08x}, mtvec={self.csrs[0x305]:08x}, mtval=0x{mtval:08x}");
+            self.logger.debug(f"TRAP at PC={self.pc:08x}: mcause=0x{cause:08x}, mtvec={self.csrs[0x305]:08x}, mtval=0x{mtval:08x}, sync={sync}");
 
     # Performs the side effects of trap + mret,
     # for those cases when the trap is handled by the emulator
@@ -399,7 +401,7 @@ class CPU:
             csrs[0x344] &= ~(1 << 7)    # clear MTIP
 
         if (csrs[0x300] & (1<<3)) and (csrs[0x304] & (1<<7)) and (csrs[0x344] & (1<<7)):
-            self.trap(cause=0x80000007)  # fire interrupt
+            self.trap(cause=0x80000007, sync=False)  # fire interrupt as an asynchronous trap
 
     # CPU register initialization
     def init_registers(self, mode='0x00000000'):
