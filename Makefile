@@ -3,7 +3,7 @@ CC = riscv64-unknown-elf-gcc
 OBJCOPY = riscv64-unknown-elf-objcopy
 
 # Flags
-CFLAGS_COMMON = -march=rv32i -mabi=ilp32 -O2 -D_REENT_SMALL
+CFLAGS_COMMON = -march=rv32i -mabi=ilp32 -O2 -D_REENT_SMALL -I .
 LDFLAGS_COMMON = -nostartfiles -static
 LINKER_SCRIPT_NEWLIB = -Tlinker_newlib.ld
 LINKER_SCRIPT_BARE = -Tlinker_bare.ld
@@ -13,7 +13,7 @@ NEWLIB_SPECS = --specs=nano.specs
 ASM_TARGETS = test_asm1
 BARE_TARGETS = test_bare1
 NEWLIB_TARGETS = test_newlib1 test_newlib2 test_newlib3 test_newlib4 test_newlib5 \
-                 test_newlib6 test_newlib7 test_newlib8 test_newlib9 test_newlib10
+                 test_newlib6 test_newlib7 test_newlib8 test_newlib9 test_newlib10 test_newlib11
 
 ALL_ELF_TARGETS = $(addprefix build/,$(addsuffix .elf,$(ASM_TARGETS) $(BARE_TARGETS) $(NEWLIB_TARGETS)))
 ALL_BIN_TARGETS = $(addprefix build/,$(addsuffix .bin,$(ASM_TARGETS) $(BARE_TARGETS)))

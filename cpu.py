@@ -199,10 +199,12 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         if a7 > 0xFFFF0000 and cpu.logger is not None:
             a0 = cpu.registers[10]
             if a7 == 0xFFFF0001:  # log integer
-                cpu.logger.info(f"EBREAK LOG NUM: {a0}")
+                cpu.logger.info(f"EBREAK LOG INT: {a0}")
             elif a7 == 0xFFFF0002:  # log string
                 str = cpu.ram.load_cstring(a0)
                 cpu.logger.info(f"EBREAK LOG STR: {str}")
+            elif a7 == 0xFFFF0003:  # print registers
+                cpu.print_registers()
             return
 
         if cpu.csrs[0x305] == 0: # no trap handler, terminate execution
@@ -317,10 +319,10 @@ class CPU:
             0x343: 0x00000000,  # mtval
             0x344: 0x00000000,  # mip
 
-            0x7C0: 0x00000000,  # mtime (low 32 bits)
-            0x7C1: 0x00000000,  # mtime (high 32 bits)
-            0x7C2: 0xFFFFFFFF,  # mtimecmp (low 32 bits)
-            0x7C3: 0xFFFFFFFF,  # mtimecmp (high 32 bits)
+            0x7C0: 0x00000000,  # mtime_low
+            0x7C1: 0x00000000,  # mtime_high
+            0x7C2: 0xFFFFFFFF,  # mtimecmp_low
+            0x7C3: 0xFFFFFFFF,  # mtimecmp_high
 
             0xF11: 0x00000000,  # mvendorid (RO)
             0xF12: 0x00000000,  # marchid (RO)
@@ -374,7 +376,7 @@ class CPU:
         self.csrs[0x300] = mstatus
 
         if self.args.traps and self.logger is not None:
-            self.logger.debug(f"TRAP at PC={self.pc:08x}: mcause=0x{cause:08x}, mtvec={self.csrs[0x305]:08x}, mtval={mtval}");
+            self.logger.debug(f"TRAP at PC={self.pc:08x}: mcause=0x{cause:08x}, mtvec={self.csrs[0x305]:08x}, mtval=0x{mtval:08x}");
 
     # Performs the side effects of trap + mret,
     # for those cases when the trap is handled by the emulator
@@ -414,6 +416,9 @@ class CPU:
 
     # print state of all CPU registers
     def print_registers(self):
+        if self.logger is None:
+            return
+        
         reg_names = [
             'zero', 'ra', 'sp', 'gp', 'tp',
             't0', 't1', 't2', 's0/fp', 's1',
@@ -422,7 +427,17 @@ class CPU:
             't3', 't4', 't5', 't6'
         ]
 
-        print("\r\nRegister State:\r\n", end='')
+        csr_names = {
+            'mstatus': 0x300, 'mie': 0x304, 'mip': 0x344, 'mepc': 0x341, 'mcause': 0x342, 'mtvec': 0x305, 'mtval': 0x343
+        }
+
+        self.logger.info("REGISTER STATE:")
+
+        self.logger.info(f"{"pc":<8}        {self.pc:08x} ({self.pc})")
         for i, name in enumerate(reg_names):
             value = self.registers[i]
-            print(f"{name:<6} (x{i:02}): 0x{value:08x} ({value})\r\n", end='')
+            self.logger.info(f"{name:<8} (x{i:02}): {value:08x} ({value})")
+
+        for name, addr in csr_names.items():
+            value = self.csrs[addr]
+            self.logger.info(f"{name:<8} ({addr:03X}): {value:08x} ({value})")
