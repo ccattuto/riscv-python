@@ -40,7 +40,7 @@ def parse_args():
         epilog=("For ELF executables, arguments after '--' are passed to the emulated program as argv[], "
                 "with argv[0] set to the basename of the executable.") )
     parser.add_argument("executable", help=".elf or .bin file")
-    parser.add_argument("--regs", action="store_true", help="Print registers at each instruction")
+    parser.add_argument("--regs", metavar="REGS", default=None, help="Print selected registers at each instruction")
     parser.add_argument("--trace", action="store_true", help="Enable symbol-based call tracing")
     parser.add_argument("--syscalls", action="store_true", help="Enable Newlib syscall tracing")
     parser.add_argument("--traps", action="store_true", help="Enable trap tracing")

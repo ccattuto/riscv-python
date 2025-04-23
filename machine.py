@@ -201,7 +201,7 @@ class Machine:
                 raise InvariantViolationError("Text segment has been modified!")
 
     # Returns a lambda function that formats the requeste register svalues
-    def make_regformatter_lambda(self, regstring):
+    def make_regformatter_lambda(self, regstring='pc,sp,ra,a0'):
         names = [s.strip().lower() for s in regstring.split(',')]
         cpu = self.cpu
 
