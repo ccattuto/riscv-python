@@ -18,6 +18,7 @@
 from machine import MachineError, ExecutionTerminated, SetupError
 import random
 
+# Opcode handlers
 
 def signed32(val):
     return val if val < 0x80000000 else val - 0x100000000
@@ -216,7 +217,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     
     elif funct3 in (0b001, 0b010, 0b011, 0b101, 0b110, 0b111):  # CSRRW/CSRRWI, CSRRS/CSRRSI, CSRRC/CSRRCI
         csr = (inst >> 20) & 0xFFF
-        old = cpu.csrs.get(csr, 0)
+        old = cpu.csrs[csr]
         
         # handle register vs immediate operations
         rs1_val = cpu.registers[rs1] if (funct3 < 0b101) else rs1
@@ -306,27 +307,30 @@ class CPU:
         self.args = args
  
         # CSRs
-        self.csrs = {
-            0x300: 0x00000000,  # mstatus
-            0x301: 0x40000100,  # misa (RO, bits 30 and 8 set: RV32I)
-            0x304: 0x00000000,  # mie
-            0x305: 0x00000000,  # mtvec
-            0x340: 0x00000000,  # mscratch
-            0x341: 0x00000000,  # mepc
-            0x342: 0x00000000,  # mcause
-            0x343: 0x00000000,  # mtval
-            0x344: 0x00000000,  # mip
+        self.csrs = [0] * 4096
+        # 0x300 mstatus
+        # 0x301 misa (RO, bits 30 and 8 set: RV32I)
+        # 0x304 mie
+        # 0x305 mtvec
+        # 0x340 mscratch
+        # 0x341 mepc
+        # 0x342 mcause
+        # 0x343 mtval
+        # 0x344 mip
+        # 0x7C0 mtime_low
+        # 0x7C1 mtime_high
+        # 0x7C2 mtimecmp_low
+        # 0x7C3 mtimecmp_high
+        # 0xF11 mvendorid (RO)
+        # 0xF12 marchid (RO)
+        # 0xF13 mimpid (RO)
+        # 0xF14 mhartid (RO)
 
-            0x7C0: 0x00000000,  # mtime_low
-            0x7C1: 0x00000000,  # mtime_high
-            0x7C2: 0xFFFFFFFF,  # mtimecmp_low
-            0x7C3: 0xFFFFFFFF,  # mtimecmp_high
-
-            0xF11: 0x00000000,  # mvendorid (RO)
-            0xF12: 0x00000001,  # marchid (RO)
-            0xF13: 0x20250400,  # mimpid (RO)
-            0xF14: 0x00000000   # mhartid (RO)
-        }
+        self.csrs[0x301] = 0x40000100  # misa (RO, bits 30 and 8 set: RV32I)
+        self.csrs[0x7C2] = 0xFFFFFFFF  # mtimecmp_low
+        self.csrs[0x7C3] = 0xFFFFFFFF  # mtimecmp_hi
+        self.csrs[0xF12] = 0x00000001  # marchid (RO)
+        self.csrs[0xF13] = 0x20250400  # mimpid (RO)
 
         # read-only CSRs
         self.CSR_RO = { 0x301, 0xF11, 0xF12, 0xF13, 0xF14 }
@@ -368,6 +372,7 @@ class CPU:
             self.CSR_NAME_ADDR[name] = addr
             self.CSR_ADDR_NAME[addr] = name
 
+    # Set handler for system calls
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
 
@@ -391,7 +396,7 @@ class CPU:
 
         self.registers[0] = 0       # x0 is always 0
     
-    # trap handling
+    # Trap handling
     def trap(self, cause, mtval=0, sync=True):
         if self.csrs[0x305] == 0:
             raise ExecutionTerminated(f"Trap at PC={self.pc:08X} without trap handler installed – execution terminated.")
