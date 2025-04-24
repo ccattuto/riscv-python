@@ -1,4 +1,4 @@
-// This example implements simple pre-emptive task switching between two tasks
+// This example implements timer-based round-robin preemptive scheduling for two tasks.
 // Use "--timer" to run it.
 
 #include <stdint.h>
@@ -176,7 +176,7 @@ int main(void) {
     SET_CSR(mie, 1 << 7);
     SET_CSR(mstatus, 1 << 3);
 
-    EMU_LOG_STR("Starting round-robin task scheduler");
+    EMU_LOG_STR("Starting preemptive task scheduler");
     start_first_task(task_current);
 
     while (1);  // never reached

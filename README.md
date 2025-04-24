@@ -41,6 +41,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 ├── linker_bare.ld         # Simple linker script, no heap support
 ├── linker_newlib.ld       # Linker script supporting Newlib-nano
 ├── riscv-py.h             # Emulator macros for user programs
+├── tests/README.md        # Documentation for example programs
 ├── tests/test_asm*.S      # Example assembly programs
 ├── tests/test_bare*.C     # Example C programs without Newlib support
 ├── tests/test_newlib*.C   # Example C programs with Newlib-nano support
@@ -203,17 +204,17 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - Useful for teaching, debugging, testing compiler output
 
 ## Notes
-- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12. The emulator can run complex code such as, e.g., minimal [MicroPython](https://micropython.org/).
+- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12. The emulator can run complex code such as, e.g., [MicroPython](https://micropython.org/).
 - The provided Makefile builds all Newlib examples using Newlib-nano (`--specs=nano.specs` linker option).
 - The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`.
 - The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.
 - When a trap condition is triggered, if `mtvec` is set to zero, the emulator's trap handler is invoked and supports Newlib's system calls. If you install your own trap handler (non-zero `mtvec`), you are responsible for all trap behavior including system calls.
-- `EBREAK` traps with `a7 >= 0xFFFF0000` are used as a debug bridge, regardless of `mtvec`. See `riscv-py.h` for simple logging macros using this facility. These logging macros do not depend on Newlib.
+- `EBREAK` traps with `a7 >= 0xFFFF0000` are used as a debug bridge, regardless of `mtvec`. See `riscv-py.h` for simple logging macros using this feature. These logging macros do not depend on Newlib.
 - The emulated architecture supports unaligned memory accesses and will not trap when they occur.
 - The 64-bit registers `mtime` and `mtimecmp` are accessible via CSR instructions (rather than being memory-mapped) at addresses `0x7C0` (low 32 bits of `mtime`), `0x7C1` (high 32 bits of `mtime`), `0x7C2` (low 32 bits of `mtimecmp`), and `0x7C3` (high 32 bits of `mtimecmp`). Writes to `mtime` and `mtimecmp` are atomic for the whole 64-bit register and occur when the second word of the register is written.
 
 ###  Performance notes
-Tested using the binaries in `prebuilt/` with Python 3.12 (Anaconda) on OSX Sequoia (~1.5 million instructions per second).
+The emulator achieves **~1.5 MIPS** (million instructions per second) using Python 3.12 (Anaconda) on a Macbook Pro (M1, 2020) running OSX Sequoia. Execution times for some binaries in `prebuilt/`:
 ```
 time ./riscv-emu.py build/test_newlib2.elf
 ./riscv-emu.py build/test_newlib2.elf  16.86s user 0.04s system 98% cpu 17.103 total
