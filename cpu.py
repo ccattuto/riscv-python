@@ -293,7 +293,7 @@ opcode_handler = {
 
 # CPU class
 class CPU:
-    def __init__(self, ram, init_regs=None, logger=None, args=None):
+    def __init__(self, ram, init_regs=None, logger=None, trace_traps=False):
         # registers
         self.registers = [0] * 32
         if init_regs is not None and init_regs != 'zero':
@@ -302,9 +302,10 @@ class CPU:
         self.next_pc = 0
 
         self.ram = ram
-        self.handle_ecall = None
+        self.handle_ecall = None  # system calls handler
+
         self.logger = logger
-        self.args = args
+        self.trace_traps = trace_traps
  
         # CSRs
         self.csrs = [0] * 4096
@@ -414,7 +415,7 @@ class CPU:
 
         self.next_pc = self.csrs[0x305]     # next PC <- mtvec
 
-        if self.args.traps and self.logger is not None:
+        if self.trace_traps and self.logger is not None:
             self.logger.debug(f"TRAP at PC={self.pc:08X}: mcause=0x{cause:08X}, mtvec={self.csrs[0x305]:08X}, mtval=0x{mtval:08X}, sync={sync}");
 
     # Performs the side effects of trap + mret,
