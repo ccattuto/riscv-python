@@ -24,6 +24,14 @@ from cpu import CPU
 from ram import RAM, SafeRAM
 from syscalls import SyscallHandler
 
+LOG_COLORS = {
+    logging.DEBUG: "\033[36m",      # Cyan
+    logging.INFO: "\033[32m",       # Green
+    logging.WARNING: "\033[33m",    # Yellow
+    logging.ERROR: "\033[31m"       # Red
+}
+RESET_COLOR = "\033[0m"
+
 def parse_args():
     if "--" in sys.argv:
         split_index = sys.argv.index("--")
@@ -60,14 +68,6 @@ def parse_args():
     args.program_args = [os.path.basename(args.executable)] + program_args
     return args
 
-LOG_COLORS = {
-    logging.DEBUG: "\033[36m",      # Cyan
-    logging.INFO: "\033[32m",       # Green
-    logging.WARNING: "\033[33m",    # Yellow
-    logging.ERROR: "\033[31m"       # Red
-}
-RESET_COLOR = "\033[0m"
-
 class RawTTYStreamHandler(logging.StreamHandler):
     def __init__(self, stream=None, raw_tty=False):
         super().__init__(stream)
@@ -97,6 +97,10 @@ class ColorFormatter(logging.Formatter):
             return f"{color}{message}{RESET_COLOR}"
         return message
 
+# helper function to restore terminal from raw mode
+def restore_terminal(fd, settings):
+    termios.tcsetattr(fd, termios.TCSADRAIN, settings)
+
 
 # MAIN
 if __name__ == '__main__':
@@ -118,7 +122,7 @@ if __name__ == '__main__':
         file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
         log.addHandler(file_handler)
     else:
-        # Log to terminal
+        # Log to terminal (handle both raw and "cooked" terminal modes)
         is_tty = sys.stdout.isatty()
         console_handler = RawTTYStreamHandler(raw_tty=args.raw_tty)
         console_handler.setLevel(logging.DEBUG)
@@ -149,9 +153,9 @@ if __name__ == '__main__':
 
     # If requested, set raw terminal mode
     if args.raw_tty:
-        fd = sys.stdin.fileno()
-        tty_old_settings = termios.tcgetattr(fd)
-        tty.setraw(fd)
+        stdin_fd = sys.stdin.fileno()
+        tty_old_settings = termios.tcgetattr(stdin_fd)
+        tty.setraw(stdin_fd)
 
     # RUN
     try:
@@ -159,13 +163,13 @@ if __name__ == '__main__':
 
     except KeyboardInterrupt:
         if args.raw_tty: # Restore terminal settings
-            termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
+            restore_terminal(stdin_fd, tty_old_settings)
         print()
         log.info(f"Execution interrupted by user at PC=0x{cpu.pc:08X}")
 
     except MachineError as e:
         if args.raw_tty:
-            termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
+            restore_terminal(stdin_fd, tty_old_settings)
             print()
         if type(e) == ExecutionTerminated:
             log.info(f"Execution terminated: {e}")
@@ -178,11 +182,11 @@ if __name__ == '__main__':
 
     except Exception:
         if args.raw_tty:
-            termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
+            restore_terminal(stdin_fd, tty_old_settings)
         print()
         raise
     
     finally:
         if args.raw_tty:
-            termios.tcsetattr(fd, termios.TCSADRAIN, tty_old_settings)
+            restore_terminal(stdin_fd, tty_old_settings)
         print()
