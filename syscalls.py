@@ -77,12 +77,12 @@ class SyscallHandler:
     # main syscall dispatch
     def handle(self):
         syscall_id = self.cpu.registers[17]  # a7
-        handler = self.syscall_handlers[syscall_id]
+        handler = self.syscall_handlers.get(syscall_id)
         if handler:
             return handler()
         else:        
             # unhandled syscall
-            raise InvalidSyscallError(f"SYSCALL {syscall_id} UNKNOWN")
+            raise InvalidSyscallError(f"UNKNOWN SYSCALL 0x{syscall_id:08X} ({syscall_id})")
 
     # _exit syscall (Newlib standard)
     def handle_exit(self):
