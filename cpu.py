@@ -199,13 +199,21 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             if cpu.logger is None:
                 return
             a0 = cpu.registers[10]
-            if a7 == 0xFFFF0001:  # log integer
+            if a7 == 0xFFFF0000:  # print all registers
+                cpu.print_registers()
+            elif a7 == 0xFFFF0001:  # log integer
                 cpu.logger.info(f"EBREAK LOG INT: 0x{a0:08X} ({a0})")
             elif a7 == 0xFFFF0002:  # log string
                 str = cpu.ram.load_cstring(a0)
                 cpu.logger.info(f"EBREAK LOG STR: {str}")
-            elif a7 == 0xFFFF0003:  # print registers
-                cpu.print_registers()
+            elif a7 == 0xFFFF0003:  # log string + integer (decimal)
+                str = cpu.ram.load_cstring(a0)
+                a1 = cpu.registers[11]
+                cpu.logger.info(f"EBREAK LOG STR_INT: {str}{a1}")
+            elif a7 == 0xFFFF0004:  # log string + integer (hex)
+                str = cpu.ram.load_cstring(a0)
+                a1 = cpu.registers[11]
+                cpu.logger.info(f"EBREAK LOG STR_XINT: {str}0x{a1:08X}")
             return
 
         if cpu.csrs[0x305] == 0: # no trap handler, terminate execution
