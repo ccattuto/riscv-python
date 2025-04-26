@@ -1,6 +1,6 @@
 # 🐍 RISC-V Emulator in Python (RV32I, machine mode, Newlib support)
 
-This is a simple and readable **RISC-V RV32I emulator** written in pure Python. It supports minimal machine mode, and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
+This is a simple and readable **RISC-V RV32I emulator** written in pure Python. It supports machine mode, and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
 
 ## ✅ Features
 
@@ -205,9 +205,9 @@ All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie
 - Useful for teaching, debugging, testing compiler output
 
 ## Notes
-- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12. The emulator can run complex code such as, e.g., [MicroPython](https://micropython.org/) and [FreeRTOS](https://www.freertos.org/).
+- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12.
 - The provided Makefile builds all Newlib examples using Newlib-nano (`--specs=nano.specs` linker option).
-- The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update both the linker scripts and the `MEMORY_SIZE` constant in `risc-emu.py`.
+- The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update the linker scripts and specify RAM size using the `--ram-size` option.
 - The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.
 - When a trap condition is triggered, if `mtvec` is set to zero, the emulator's trap handler is invoked and supports Newlib's system calls. If you install your own trap handler (non-zero `mtvec`), you are responsible for all trap behavior including system calls.
 - `EBREAK` traps with `a7 >= 0xFFFF0000` are used as a debug bridge, regardless of `mtvec`. See `riscv-py.h` for simple logging macros using this feature. These logging macros do not depend on Newlib.

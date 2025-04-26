@@ -17,7 +17,7 @@
 
 import sys, os, argparse
 import tty, termios
-import logging
+import logging, time
 
 from machine import Machine, MachineError, SetupError, ExecutionTerminated
 from cpu import CPU
@@ -85,9 +85,17 @@ class RawTTYStreamHandler(logging.StreamHandler):
         except Exception:
             self.handleError(record)
 
-class ColorFormatter(logging.Formatter):
-    def __init__(self, fmt, use_color=True):
-        super().__init__(fmt)
+class RelativeTimeFormatter(logging.Formatter):
+    def __init__(self, stream=None, t0=0):
+        super().__init__(stream)
+        self.t0 = t0
+    def formatTime(self, record, datefmt=None):
+        elapsed = record.created - self.t0
+        return f"{elapsed:07.3f}s"
+
+class ColorFormatter(RelativeTimeFormatter):
+    def __init__(self, fmt, t0=0, use_color=True):
+        super().__init__(fmt, t0)
         self.use_color = use_color
 
     def format(self, record):
@@ -119,18 +127,19 @@ if __name__ == '__main__':
         # Log to file only
         file_handler = logging.FileHandler(args.log)
         file_handler.setLevel(getattr(logging, args.log_level.upper(), logging.DEBUG))
-        file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+        file_handler.setFormatter(RelativeTimeFormatter('%(asctime)s [%(levelname)s] %(message)s', t0=time.time()))
         log.addHandler(file_handler)
     else:
         # Log to terminal (handle both raw and "cooked" terminal modes)
         is_tty = sys.stdout.isatty()
         console_handler = RawTTYStreamHandler(raw_tty=args.raw_tty)
         console_handler.setLevel(logging.DEBUG)
-        console_handler.setFormatter(ColorFormatter('[%(levelname)s] %(message)s', use_color=is_tty and args.no_color))
+        console_handler.setFormatter(ColorFormatter('%(asctime)s [%(levelname)s] %(message)s', t0=time.time(), use_color=is_tty and args.no_color))
         log.addHandler(console_handler)
     
     # Instantiate CPU + RAM + machine + syscall handler
-    ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log) if not args.check_ram else SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
+    ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log) if not args.check_ram else \
+          SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
     cpu = CPU(ram, init_regs=args.init_regs, logger=log, trace_traps=args.traps)
     machine = Machine(cpu, ram, logger=log, args=args)
     syscall_handler = SyscallHandler(cpu, ram, machine, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
