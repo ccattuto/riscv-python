@@ -235,7 +235,10 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.trap(cause=2, mtval=inst)  # 2 = illegal instruction
 
         if funct3 in (0b001, 0b101):  # CSRRW / CSRRWI
-            cpu.csrs[csr] = rs1_val
+            if csr == 0x305:  # we don't support vectored interrupts, so mask away lower 2 bits of mtvect
+                cpu.csrs[csr] = rs1_val & ~0x3
+            elif not (csr in cpu.CSR_NOWRITE):
+                cpu.csrs[csr] = rs1_val
 
            # Atomic update of mtime
             if csr in (0x7C0, 0x7C1):
@@ -259,11 +262,11 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                     cpu.mtip = (cpu.mtime >= cpu.mtimecmp)
 
         elif funct3 in (0b010, 0b110):  # CSRRS / CSRRSI
-            if rs1_val != 0:
+            if rs1_val != 0 and not (csr in cpu.CSR_NOWRITE):
                 cpu.csrs[csr] = old | rs1_val
         
         elif funct3 in (0b011, 0b111):  # CSRRC / CSRRCI
-            if rs1_val != 0:
+            if rs1_val != 0 and not (csr in cpu.CSR_NOWRITE):
                 cpu.csrs[csr] = old & ~rs1_val
 
         if rd != 0:
@@ -277,6 +280,9 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 old = (cpu.mtimecmp >> 32) & 0xFFFFFFFF
             
             cpu.registers[rd] = old
+
+    elif inst == 0x10500073:  # WFI
+        pass  # implemented as a no-operation
     
     else:
         if cpu.logger is not None:
@@ -351,6 +357,8 @@ class CPU:
 
         # read-only CSRs
         self.CSR_RO = { 0x301, 0xF11, 0xF12, 0xF13, 0xF14 }
+        # read-only CSRs: writing is ignored
+        self.CSR_NOWRITE ={0x7A0, 0x7A1, 0x7A2}
 
         self.mtime = 0x00000000_00000000
         self.mtimecmp = 0xFFFFFFFF_FFFFFFFF
