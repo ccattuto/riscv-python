@@ -27,14 +27,17 @@ class ExecutionTerminated(MachineError):
     pass
 
 class Machine:
-    def __init__(self, cpu, ram, logger=None, args=None):
+    def __init__(self, cpu, ram, timer=False, logger=None, trace=False, regs=None, check_inv=False, start_checks=None):
         self.cpu = cpu
         self.ram = ram
 
+        self.timer = timer
         self.logger = logger
-        self.args = args
-        self.start_checks = args.start_checks if args is not None else False;
+        self.start_checks = start_checks
         self.check_enable = False
+        self.regs = regs
+        self.trace = trace
+        self.check_inv = check_inv
 
         # text, stack and heap boundaries
         self.stack_top = None
@@ -229,20 +232,20 @@ class Machine:
         cpu = self.cpu
         ram = self.ram
 
-        if self.args.regs:
-            regformatter = self.make_regformatter_lambda(self.args.regs)
+        if self.regs:
+            regformatter = self.make_regformatter_lambda(self.regs)
 
         while True:
-            if self.args.regs:
+            if self.regs:
                 self.logger.debug(f"REGS: " + regformatter(cpu))
-            if self.args.check_inv:
+            if self.check_inv:
                 self.check_invariants()
-            if self.args.trace and (cpu.pc in self.symbol_dict):
+            if self.trace and (cpu.pc in self.symbol_dict):
                 self.logger.debug(f"FUNC {self.symbol_dict[cpu.pc]}, PC={cpu.pc:08X}")
 
             inst = ram.load_word(cpu.pc)
             cpu.execute(inst)
-            if self.args.timer:
+            if self.timer:
                 cpu.timer_update()
             cpu.pc = cpu.next_pc
 
@@ -269,8 +272,8 @@ class Machine:
 
     # Run the emulator loop
     def run(self):
-        if not(self.args.regs or self.args.check_inv or self.args.trace):
-            if not self.args.timer:
+        if not(self.regs or self.check_inv or self.trace):
+            if not self.timer:
                 self.run_fast()
             else:
                 self.run_fast_timer()

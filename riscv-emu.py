@@ -140,8 +140,12 @@ if __name__ == '__main__':
     # Instantiate CPU + RAM + machine + syscall handler
     ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log) if not args.check_ram else \
           SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
+    
     cpu = CPU(ram, init_regs=args.init_regs, logger=log, trace_traps=args.traps)
-    machine = Machine(cpu, ram, logger=log, args=args)
+
+    machine = Machine(cpu, ram, timer=args.timer, logger=log,
+                      trace=args.trace, regs=args.regs, check_inv=args.check_inv, start_checks=args.start_checks)
+    
     syscall_handler = SyscallHandler(cpu, ram, machine, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
     cpu.set_ecall_handler(syscall_handler.handle)  # Set syscall handler
 
