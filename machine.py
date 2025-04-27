@@ -31,13 +31,17 @@ class Machine:
         self.cpu = cpu
         self.ram = ram
 
+        # machine options
         self.timer = timer
         self.logger = logger
+        self.trace = trace
+        self.regs = regs
+        self.check_inv = check_inv
         self.start_checks = start_checks
         self.check_enable = False
-        self.regs = regs
-        self.trace = trace
-        self.check_inv = check_inv
+
+        if (self.trace or self.regs) and (self.logger is None):
+            raise SetupError("Tracing or register logging require a valid logger")
 
         # text, stack and heap boundaries
         self.stack_top = None
@@ -133,7 +137,7 @@ class Machine:
 
         if self.start_checks is None or self.start_checks == 'auto':
             self.start_checks = 'main'
-        if self.start_checks == 'main' and self.main_addr is None:
+        if self.start_checks == 'main' and self.main_addr is None and self.logger is not None:
             self.logger.warning("No symbol found for main() — invariants checks disabled")
     
     # Invariant check trigger
@@ -163,7 +167,8 @@ class Machine:
             if not self.check_enable:
                 return
             else:
-                self.logger.debug(f"Invariants checking started ({self.start_checks})")
+                if self.logger is not None:
+                    self.logger.debug(f"Invariants checking started ({self.start_checks})")
 
         # x0 = 0
         if not (cpu.registers[0] == 0):
