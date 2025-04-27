@@ -287,7 +287,8 @@ def exec_MISCMEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if funct3 in (0b000, 0b001):  # FENCE / FENCE.I
         pass  # NOP
     else:
-        cpu.logger.warning(f"Invalid misc-mem instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Invalid misc-mem instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
 # dispatch table for opcode handlers
@@ -430,7 +431,7 @@ class CPU:
 
         self.next_pc = self.csrs[0x305]     # next PC <- mtvec
 
-        if self.trace_traps and self.logger is not None:
+        if self.logger is not None and self.trace_traps: 
             self.logger.debug(f"TRAP at PC={self.pc:08X}: mcause=0x{cause:08X}, mtvec={self.csrs[0x305]:08X}, mtval=0x{mtval:08X}, sync={sync}");
 
     # Performs the side effects of trap + mret,
