@@ -63,7 +63,12 @@ def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if funct3 == 0x0:  # ADDI
         cpu.registers[rd] = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
     elif funct3 == 0x1:  # SLLI
-        cpu.registers[rd] = (cpu.registers[rs1] << (imm_i & 0x1F)) & 0xFFFFFFFF
+        if funct7 == 0x00:
+            cpu.registers[rd] = (cpu.registers[rs1] << (imm_i & 0x1F)) & 0xFFFFFFFF
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SLLI at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     elif funct3 == 0x2:  # SLTI
         cpu.registers[rd] = int(signed32(cpu.registers[rs1]) < signed32(imm_i))
     elif funct3 == 0x3:  # SLTIU
@@ -355,7 +360,7 @@ class CPU:
         self.csrs[0xF12] = 0x00000001  # marchid (RO)
         self.csrs[0xF13] = 0x20250400  # mimpid (RO)
 
-        # read-only CSRs
+        # read-only CSRs: writing should trap
         self.CSR_RO = { 0x301, 0xF11, 0xF12, 0xF13, 0xF14 }
         # read-only CSRs: writing is ignored
         self.CSR_NOWRITE ={0x7A0, 0x7A1, 0x7A2}
