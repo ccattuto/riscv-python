@@ -283,6 +283,12 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Unhandled system instruction 0x{inst:08X} at PC={cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
+def exec_MISCMEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+    if funct3 in (0b000, 0b001):  # FENCE / FENCE.I
+        pass  # NOP
+    else:
+        cpu.logger.warning(f"Invalid misc-mem instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
+        cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
 # dispatch table for opcode handlers
 opcode_handler = {
@@ -295,7 +301,8 @@ opcode_handler = {
     0x17:   exec_AUIPC,     # AUIPC
     0x6F:   exec_JAL,       # JAL
     0x67:   exec_JALR,      # JALR
-    0x73:   exec_SYSTEM     # SYSTEM (ECALL/EBREAK)
+    0x73:   exec_SYSTEM,    # SYSTEM (ECALL/EBREAK)
+    0x0F:   exec_MISCMEM    # MISC-MEM
 }
 
 
