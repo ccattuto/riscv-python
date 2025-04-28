@@ -1,6 +1,6 @@
-[submodule "riscv-samples"]
-	path = riscv-samples
-	url = https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples.git
 [submodule "riscv-tests"]
 	path = riscv-tests
 	url = https://github.com/riscv-software-src/riscv-tests.git
+[submodule "advanced/freertos/FreeRTOS-Kernel"]
+	path = advanced/freertos/FreeRTOS-Kernel
+	url = https://github.com/FreeRTOS/FreeRTOS-Kernel

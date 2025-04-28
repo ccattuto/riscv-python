@@ -18,6 +18,7 @@
 import sys, os, argparse
 import tty, termios
 import logging, time
+#import cProfile, pstats
 
 from machine import Machine, MachineError, SetupError, ExecutionTerminated
 from cpu import CPU
@@ -112,6 +113,9 @@ def restore_terminal(fd, settings):
 
 # MAIN
 if __name__ == '__main__':
+    # profiler = cProfile.Profile()
+    # profiler.enable()
+
     args = parse_args()
     if args.check_all:
         args.check_inv = True
@@ -203,3 +207,7 @@ if __name__ == '__main__':
         if args.raw_tty:
             restore_terminal(stdin_fd, tty_old_settings)
         print()
+
+        # profiler.disable()
+        # stats = pstats.Stats(profiler).sort_stats("cumtime")
+        # stats.print_stats(30)
