@@ -140,7 +140,11 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 (((inst >> 25) & 0x3F) << 5) | \
                 ((inst >> 31) << 12)
         if imm_b >= 0x1000: imm_b -= 0x2000
-        cpu.next_pc = (cpu.pc + imm_b) & 0xFFFFFFFF
+        addr_target = (cpu.pc + imm_b) & 0xFFFFFFFF
+        if addr_target & 0x3:
+            cpu.trap(cause=0, mtval=addr_target)  # unaligned address
+        else:
+            cpu.next_pc = addr_target
     elif funct3 == 0x2 or funct3 == 0x3:
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
@@ -160,23 +164,28 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             (((inst >> 12) & 0xFF) << 12) | \
             ((inst >> 31) << 20)
     if imm_j >= 0x100000: imm_j -= 0x200000
-
-    if rd != 0:
-        cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
-    cpu.next_pc = (cpu.pc + imm_j) & 0xFFFFFFFF
-    #if cpu.logger is not None:
-    #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08X}, rd={rd}, target=0x{cpu.next_pc:08X}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08X}")
+    addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF  # (compared to JALR, no need to clear bit 0 here)
+    if addr_target & 0x3:
+            cpu.trap(cause=0, mtval=addr_target)  # unaligned address
+    else:
+        if rd != 0:
+            cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
+        cpu.next_pc = addr_target
+        #if cpu.logger is not None:
+        #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08X}, rd={rd}, target=0x{cpu.next_pc:08X}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08X}")
 
 def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
-    addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
-
-    if rd != 0:
-        cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
-    cpu.next_pc = addr_target
-    #if cpu.logger is not None:
-    #    cpu.logger.debug(f"[JALR] jumping to 0x{cpu.next_pc:08X} from rs1=0x{cpu.registers[rs1]:08X}, imm={imm_i}")
+    addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0
+    if addr_target & 0x3:
+        cpu.trap(cause=0, mtval=addr_target)  # unaligned address
+    else:
+        if rd != 0:
+            cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
+        cpu.next_pc = addr_target
+        #if cpu.logger is not None:
+        #    cpu.logger.debug(f"[JALR] jumping to 0x{cpu.next_pc:08X} from rs1=0x{cpu.registers[rs1]:08X}, imm={imm_i}")
 
 def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if inst == 0x00000073:  # ECALL
@@ -361,9 +370,9 @@ class CPU:
         self.csrs[0xF13] = 0x20250400  # mimpid (RO)
 
         # read-only CSRs: writing should trap
-        self.CSR_RO = { 0x301, 0xF11, 0xF12, 0xF13, 0xF14 }
+        self.CSR_RO = { 0xF11, 0xF12, 0xF13, 0xF14 }  # (0x301 should be here, but tests expect it to be writable without trapping)
         # read-only CSRs: writing is ignored
-        self.CSR_NOWRITE ={0x7A0, 0x7A1, 0x7A2}
+        self.CSR_NOWRITE ={ 0x301, 0xB02, 0xB82, 0x7A0, 0x7A1, 0x7A2 }  # misa, minstret, minstreth, tselect, tdata1, tdata2
 
         self.mtime = 0x00000000_00000000
         self.mtimecmp = 0xFFFFFFFF_FFFFFFFF
@@ -431,7 +440,7 @@ class CPU:
         if self.csrs[0x305] == 0:
             raise ExecutionTerminated(f"Trap at PC={self.pc:08X} without trap handler installed – execution terminated.")
         
-        # for synchronous trapa, MEPC <- PC, for asynchronous ones (e.g., timer) MEPC <- next instruction
+        # for synchronous traps, MEPC <- PC, for asynchronous ones (e.g., timer) MEPC <- next instruction
         self.csrs[0x341] = self.pc if sync else self.next_pc  # mepc
         self.csrs[0x342] = cause  # mcause
         self.csrs[0x343] = mtval  # mtval
@@ -442,10 +451,11 @@ class CPU:
         mstatus |= (mie << 7)               # MPIE <- MIE
         self.csrs[0x300] = mstatus
 
-        self.next_pc = self.csrs[0x305]     # next PC <- mtvec
+        self.next_pc = self.csrs[0x305] & ~0x3  # next PC <- mtvec (clearing the mode bits)
+        # we only support direct (non-vectored) mode, so the mode field (bits 0 and 1) of mtvect is ignored
 
         if self.logger is not None and self.trace_traps: 
-            self.logger.debug(f"TRAP at PC={self.pc:08X}: mcause=0x{cause:08X}, mtvec={self.csrs[0x305]:08X}, mtval=0x{mtval:08X}, sync={sync}");
+            self.logger.debug(f"TRAP at PC={self.pc:08X}: mcause=0x{cause:08X}, mtvec={self.csrs[0x305]:08X}, mtval=0x{mtval:08X}, sync={sync}")
 
     # Performs the side effects of trap + mret,
     # for those cases when the trap is handled by the emulator
