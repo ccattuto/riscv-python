@@ -4,3 +4,6 @@
 [submodule "advanced/freertos/FreeRTOS-Kernel"]
 	path = advanced/freertos/FreeRTOS-Kernel
 	url = https://github.com/FreeRTOS/FreeRTOS-Kernel
+[submodule "advanced/micropython/micropython"]
+	path = advanced/micropython/micropython
+	url = https://github.com/micropython/micropython
