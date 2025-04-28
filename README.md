@@ -4,8 +4,8 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 
 ## ✅ Features
 
-- **Implements the full RV32I base integer ISA and all RV32MI machine-mode instructions**
-- **Supports machine mode**, including synchronous traps (`ecall`, `ebreak`, illegal instruction trap), asynchronous traps (machine timer interrupt), `mret`, CSR instructions and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`, ...)
+- **Implements the full RV32I base integer ISA**
+- **Implements all RV32MI machine-mode instructions and trap mechanisms**, including synchronous traps (`ecall`, `ebreak`, illegal instruction trap), asynchronous traps (machine timer interrupt), `mret`, CSR instructions and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`, ...)
 - **Supports ELF and flat binary formats**
 - **Supports terminal I/O**, both "cooked" and raw
 - **Supports most of [Newlib](https://en.wikipedia.org/wiki/Newlib)'s system calls** (`_write`, `_read`, `_exit`, ...)
