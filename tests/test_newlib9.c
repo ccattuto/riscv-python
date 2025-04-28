@@ -79,12 +79,12 @@ void test_trap(const char* name, trap_trigger_fn trigger) {
 
     // check
     if (trap_entered) {
-        printf("[PASS] Trap handled.\n");
+        printf("[PASS] Trap occurred.\n");
         printf("       mcause = 0x%08x\n", trap_mcause);
         printf("       mepc   = 0x%08x\n", trap_mepc);
         printf("       mtval  = 0x%08x\n", trap_mtval);
     } else {
-        printf("[FAIL] Trap was NOT handled!\n");
+        printf("[FAIL] Trap did NOT occur!\n");
     }
     printf("\n");
 }
@@ -124,7 +124,7 @@ void trigger_misaligned_store(void) {
 // Write to a read-only CSR
 void trigger_invalid_csr(void) {
     register uint32_t value = 0xFFFFFFFF;
-    __asm__ volatile("csrw misa, %0" :: "r"(value));
+    __asm__ volatile("csrw mhartid, %0" :: "r"(value));
 }
 
 
@@ -143,8 +143,8 @@ int main(void) {
     test_trap("EBREAK (mcause = 3)", trigger_ebreak);
     test_trap("ECALL  (mcause = 11)", trigger_ecall);
     test_trap("Illegal instruction (mcause = 2)", trigger_illegal);
-    test_trap("Misaligned LOAD (mcause = 4)", trigger_misaligned_load);
-    test_trap("Misaligned STORE (mcause = 6)", trigger_misaligned_store);
+    test_trap("Misaligned LOAD (mcause = 4) - will not trap", trigger_misaligned_load);
+    test_trap("Misaligned STORE (mcause = 6) - will not trap", trigger_misaligned_store);
     test_trap("Invalid CSR write (mcause = 2)", trigger_invalid_csr);
 
     printf("All trap tests complete.\n");

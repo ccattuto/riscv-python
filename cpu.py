@@ -283,6 +283,9 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             if rs1_val != 0 and not (csr in cpu.CSR_NOWRITE):
                 cpu.csrs[csr] = old & ~rs1_val
 
+        if csr == 0x300:  # MPP field of mstatus is forced to 0b11 as we only support machine mode
+            cpu.csrs[0x300] |= 0x00001800  # set bits 12 and 11
+
         if rd != 0:
             if csr == 0x7C0:
                 old = cpu.mtime & 0xFFFFFFFF
@@ -364,15 +367,20 @@ class CPU:
         # 0xF14 mhartid (RO)
 
         self.csrs[0x301] = 0x40000100  # misa (RO, bits 30 and 8 set: RV32I)
+        self.csrs[0x300] = 0x00001800  # mstatus (machine mode only: MPP field kept = 0b11)
         self.csrs[0x7C2] = 0xFFFFFFFF  # mtimecmp_low
         self.csrs[0x7C3] = 0xFFFFFFFF  # mtimecmp_hi
         self.csrs[0xF12] = 0x00000001  # marchid (RO)
         self.csrs[0xF13] = 0x20250400  # mimpid (RO)
 
-        # read-only CSRs: writing should trap
-        self.CSR_RO = { 0xF11, 0xF12, 0xF13, 0xF14 }  # (0x301 should be here, but tests expect it to be writable without trapping)
-        # read-only CSRs: writing is ignored
-        self.CSR_NOWRITE ={ 0x301, 0xB02, 0xB82, 0x7A0, 0x7A1, 0x7A2 }  # misa, minstret, minstreth, tselect, tdata1, tdata2
+        # read-only CSRs: writres cause a trap
+        self.CSR_RO = { 0xF11, 0xF12, 0xF13, 0xF14 }
+        # mvendorid, marchid, mimpid, mhartid
+        # (misa should be here, but tests expect it to be writable without trapping)
+
+        # read-only CSRs: writes are ignored
+        self.CSR_NOWRITE ={ 0x301, 0xB02, 0xB82, 0x7A0, 0x7A1, 0x7A2 }
+        # misa, minstret, minstreth, tselect, tdata1, tdata2
 
         self.mtime = 0x00000000_00000000
         self.mtimecmp = 0xFFFFFFFF_FFFFFFFF
