@@ -12,9 +12,9 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 - **Supports dynamic memory allocation** via Newlib (`_sbrk`)
 - **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, `_unlink`, `_mkdir`, `_rmdir`, ...)
 - **Supports argc/argv program arguments**
-- **Passes all `rv32ui` unit tests** from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/)
+- **Passes all `rv32ui` and `rv32mi` unit tests** from [riscv-samples](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, violations of invariants
-- Runs [MicroPython](https://micropython.org/) and [FreeRTOS](https://www.freertos.org/)
+- Runs [MicroPython](https://micropython.org/) and [FreeRTOS](https://www.freertos.org/) (with preemptive multitasking)
 - Self-contained, modular, extensible codebase
 
 ## 🔧 Requirements
@@ -48,8 +48,8 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 ├── tests/test_newlib*.C   # Example C programs with Newlib-nano support
 ├── build/                 # Executable and binaries
 ├── prebuilt/              # Pre-built examples
-├── run_unit_tests.sh      # Runs RISC-V unit tests (RV32I only, user-mode only)
-├── riscv-samples/         # Git submodule with unit tests
+├── run_unit_tests.py      # Runs RISC-V unit tests (RV32UI and RV32MI)
+├── riscv-tests/           # Git submodule with unit tests
 └── README.md              # You're here!
 ```
 
@@ -144,58 +144,75 @@ Argument 3: arg3
 | `--help`              | Show usage help and available options                                       |
 
 ## 🧪 Running Unit Tests
-(on OSX, you might need to force `TOOLCHAIN=riscv64-unknown-elf` in the Makefile)
 ```
-cd riscv-samples/unit-tests
+cd riscv-tests
+./configure
 make
 cd -
 ```
 
+The script automatically runs all RV32UI and RV32MI [RISC-V unit tests](https://github.com/riscv-software-src/riscv-tests) in `riscv-tests/`. The emulator passes all of them.
 ```
-./run_unit_tests.sh
-[PASS] add.bin
-[PASS] addi.bin
-[PASS] and.bin
-[PASS] andi.bin
-[PASS] auipc.bin
-[PASS] beq.bin
-[PASS] bge.bin
-[PASS] bgeu.bin
-[PASS] blt.bin
-[PASS] bltu.bin
-[PASS] bne.bin
-[PASS] jal.bin
-[PASS] jalr.bin
-[PASS] lb.bin
-[PASS] lbu.bin
-[PASS] lh.bin
-[PASS] lhu.bin
-[PASS] lui.bin
-[PASS] lw.bin
-[PASS] ma_data.bin
-[PASS] or.bin
-[PASS] ori.bin
-[PASS] sb.bin
-[PASS] sh.bin
-[PASS] simple.bin
-[PASS] sll.bin
-[PASS] slli.bin
-[PASS] slt.bin
-[PASS] slti.bin
-[PASS] sltiu.bin
-[PASS] sltu.bin
-[PASS] sra.bin
-[PASS] srai.bin
-[PASS] srl.bin
-[PASS] srli.bin
-[PASS] sub.bin
-[PASS] sw.bin
-[PASS] xor.bin
-[PASS] xori.bin
-Summary: 39 passed, 0 failed
+./run_unit_tests.py
+Test rv32ui-p-bltu                 : PASS
+Test rv32ui-p-xori                 : PASS
+Test rv32ui-p-blt                  : PASS
+Test rv32ui-p-add                  : PASS
+Test rv32ui-p-and                  : PASS
+Test rv32ui-p-srli                 : PASS
+Test rv32ui-p-sub                  : PASS
+Test rv32ui-p-sh                   : PASS
+Test rv32ui-p-srai                 : PASS
+Test rv32ui-p-srl                  : PASS
+Test rv32ui-p-ld_st                : PASS
+Test rv32ui-p-or                   : PASS
+Test rv32ui-p-lbu                  : PASS
+Test rv32ui-p-bge                  : PASS
+Test rv32ui-p-lhu                  : PASS
+Test rv32ui-p-lh                   : PASS
+Test rv32ui-p-jal                  : PASS
+Test rv32ui-p-slt                  : PASS
+Test rv32ui-p-bne                  : PASS
+Test rv32ui-p-sltiu                : PASS
+Test rv32ui-p-beq                  : PASS
+Test rv32ui-p-slli                 : PASS
+Test rv32ui-p-slti                 : PASS
+Test rv32ui-p-sltu                 : PASS
+Test rv32ui-p-fence_i              : PASS
+Test rv32ui-p-sb                   : PASS
+Test rv32ui-p-xor                  : PASS
+Test rv32ui-p-andi                 : PASS
+Test rv32ui-p-addi                 : PASS
+Test rv32ui-p-sw                   : PASS
+Test rv32ui-p-auipc                : PASS
+Test rv32ui-p-lui                  : PASS
+Test rv32ui-p-simple               : PASS
+Test rv32ui-p-ma_data              : PASS
+Test rv32ui-p-sra                  : PASS
+Test rv32ui-p-lb                   : PASS
+Test rv32ui-p-bgeu                 : PASS
+Test rv32ui-p-lw                   : PASS
+Test rv32ui-p-sll                  : PASS
+Test rv32ui-p-st_ld                : PASS
+Test rv32ui-p-jalr                 : PASS
+Test rv32ui-p-ori                  : PASS
+Test rv32mi-p-mcsr                 : PASS
+Test rv32mi-p-illegal              : PASS
+Test rv32mi-p-shamt                : PASS
+Test rv32mi-p-scall                : PASS
+Test rv32mi-p-sw-misaligned        : PASS
+Test rv32mi-p-zicntr               : PASS
+Test rv32mi-p-ma_addr              : PASS
+Test rv32mi-p-lw-misaligned        : PASS
+Test rv32mi-p-breakpoint           : PASS
+Test rv32mi-p-lh-misaligned        : PASS
+Test rv32mi-p-sh-misaligned        : PASS
+Test rv32mi-p-csr                  : PASS
+Test rv32mi-p-pmpaddr              : PASS
+Test rv32mi-p-instret_overflow     : PASS
+Test rv32mi-p-ma_fetch             : PASS
+Test rv32mi-p-sbreak               : PASS
 ```
-This script automatically runs all RV32UI .bin tests in `riscv-samples/unit-tests/rv32ui/`.
-All unit tests from [riscv-samples](https://gitlab.univ-lille.fr/michael.hauspie/riscv-samples/) pass.
 
 ## Design Goals
 - Simplicity over speed (but highly optimized for speed, it performs at the limit of what is possible in pure Python)
