@@ -49,7 +49,9 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 ├── build/                 # Executable and binaries
 ├── prebuilt/              # Pre-built examples
 ├── run_unit_tests.py      # Runs RISC-V unit tests (RV32UI and RV32MI)
-├── riscv-tests/           # Git submodule with unit tests
+├── riscv-tests/           # Git submodule with RISC-V unit tests
+├── advanced/micropython/  # MicroPython port
+├── advanced/freertos/     # FreeRTOS port
 └── README.md              # You're here!
 ```
 
@@ -117,6 +119,20 @@ Argument 0: test_newlib7.elf
 Argument 1: arg1
 Argument 2: arg2
 Argument 3: arg3
+```
+
+Run MicroPython:
+```
+./riscv-emu.py --raw-tty --ram-size=4096 prebuilt/micropython.elf
+Welcome to MicroPython on RISC-V!
+MicroPython v1.25.0-preview.545.g959063d82.dirty on 2025-04-17; minimal with risc-emu.py
+Type "help()" for more information.
+>>>
+```
+
+Run a sample FreeRTOS application:
+```
+./riscv-emu.py --timer prebuilt/freertos_app1.elf
 ```
 
 ### ▶️ Command-Line Options
