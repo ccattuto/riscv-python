@@ -3,7 +3,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
-#include "riscvpy.h"
+#include "riscv-py.h"
 
 // Task 1: increments a counter
 void task1(void *params) {

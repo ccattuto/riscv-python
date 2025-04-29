@@ -4,7 +4,7 @@
 #include "task.h"
 #include "timers.h"
 #include "semphr.h"
-#include "riscvpy.h"
+#include "riscv-py.h"
 
 #define STORM_WORKER_LIFETIME_MS   10
 #define STORM_SPAWN_INTERVAL_MS    100

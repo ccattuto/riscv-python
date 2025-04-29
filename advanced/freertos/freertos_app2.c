@@ -4,7 +4,7 @@
 #include "task.h"
 #include "timers.h"
 #include "semphr.h"
-#include "riscvpy.h"
+#include "riscv-py.h"
 
 #define NUM_WORKERS 10
 

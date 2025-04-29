@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
-#include "portmacro_mtime.h"
-#include "riscvpy.h"
+#include "riscv-py.h"
 
 // CSR-based timer access
 
