@@ -15,8 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef __RISCV_EMU__
-#define __RISCV_EMU__
+#ifndef __RISCV_PY_EMU__
+#define __RISCV_PY_EMU__
 
 #include <stdint.h>
 
@@ -105,4 +105,4 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 } while (0)
 
 
-#endif /* __RISCV_EMU__ */
+#endif /* __RISCV_PY_EMU__ */

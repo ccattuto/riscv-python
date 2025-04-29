@@ -72,11 +72,9 @@ __asm__ (
 "    sw t2, 92(t1)\n"
 
      // increment mtimecmp by 100000
-"    csrr t2, 0x7C3\n"
-"    csrr t1, 0x7C2\n"
-"    csrr t3, 0x7C3\n"
-"    bne  t2, t3, 1b\n"
 "    li   t0, 100000\n"
+"    csrr t1, 0x7C2\n"
+"    csrr t2, 0x7C3\n"
 "    add  t1, t1, t0\n"
 "    sltu t3, t1, t0\n"
 "    add  t2, t2, t3\n"
