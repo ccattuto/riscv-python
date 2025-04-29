@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include "riscv-py.h"
 
-// Task context
+// Task context type
 typedef struct {
     uint32_t ra;
     uint32_t sp;
@@ -15,7 +15,7 @@ typedef struct {
     uint32_t mstatus;
 } context_t;
 
-// Two task contexts
+// Task contexts
 context_t ctx1, ctx2;
 context_t *task_current, *task_next;
 
@@ -27,9 +27,9 @@ uint8_t stack2[STACK_SIZE];
 
 __asm__ (
 ".globl start_first_task\n"
-".globl trap_entry\n"
+".globl trap_handler\n"
 
-// launch first task (set up SP, mepc, mstatus)
+// trampoline: launch first task (set up SP, mepc, mstatus)
 "start_first_task:\n"
 "    lw sp, 4(a0)\n"
 "    lw ra, 0(a0)\n"
@@ -40,7 +40,7 @@ __asm__ (
 "    mret\n"
 
 // trap handler
-"trap_entry:\n"
+"trap_handler:\n"
      // save current state
 "    la t0, task_current\n"
 "    lw t1, 0(t0)\n"
@@ -72,9 +72,11 @@ __asm__ (
 "    sw t2, 92(t1)\n"
 
      // increment mtimecmp by 100000
-"    li   t0, 100000\n"
-"    csrr t1, 0x7C2\n"
 "    csrr t2, 0x7C3\n"
+"    csrr t1, 0x7C2\n"
+"    csrr t3, 0x7C3\n"
+"    bne  t2, t3, 1b\n"
+"    li   t0, 100000\n"
 "    add  t1, t1, t0\n"
 "    sltu t3, t1, t0\n"
 "    add  t2, t2, t3\n"
@@ -120,7 +122,7 @@ __asm__ (
 
 "    mret\n"
 );
-extern void trap_entry(void);
+extern void trap_handler(void);
 extern void start_first_task(context_t*);
 
 // Set up task context
@@ -166,18 +168,18 @@ int main(void) {
     task_next = &ctx2;
 
     // Set mtimecmp <- mtime + 100000
-    uint64_t mtime  = (((uint64_t) READ_CSR(0x7C1)) << 32) | READ_CSR(0x7C0);
+    uint64_t mtime  = (((uint64_t) READ_CSR(0x7C1)) << 32) | READ_CSR(0x7C0);  // (no risk mtime_lo will wrap)
     mtime += 100000;
     WRITE_CSR(0x7C2, (uint32_t) (mtime & 0xFFFFFFFF));  // mtimecmp lo
     WRITE_CSR(0x7C3, (uint32_t) (mtime >> 32));         // mtimecmp hi
 
     // Install trap handler and enable timer interrupt
-    WRITE_CSR(mtvec, (uint32_t) trap_entry);
+    WRITE_CSR(mtvec, (uint32_t) trap_handler);
     SET_CSR(mie, 1 << 7);
     SET_CSR(mstatus, 1 << 3);
 
     EMU_LOG_STR("Starting preemptive task scheduler");
-    start_first_task(task_current);
+    start_first_task(task_current);  // trampoline
 
     while (1);  // never reached
 }
