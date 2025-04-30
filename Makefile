@@ -7,15 +7,17 @@ CFLAGS_COMMON = -march=rv32i -mabi=ilp32 -O2 -D_REENT_SMALL -I .
 LDFLAGS_COMMON = -nostartfiles -static
 LINKER_SCRIPT_NEWLIB = -Tlinker_newlib.ld
 LINKER_SCRIPT_BARE = -Tlinker_bare.ld
-NEWLIB_SPECS = --specs=nano.specs
+NEWLIB_SPECS = --specs=nosys.specs
+NEWLIB_NANO_SPECS = --specs=nano.specs
 
 # Source file groups
 ASM_TARGETS = test_asm1
 BARE_TARGETS = test_bare1
-NEWLIB_TARGETS = test_newlib1 test_newlib2 test_newlib3 test_newlib4 test_newlib5 \
+NEWLIB_NANO_TARGETS = test_newlib1 test_newlib2 test_newlib3 test_newlib4 test_newlib5 \
                  test_newlib6 test_newlib7 test_newlib8 test_newlib9 test_newlib10 test_newlib11
+NEWLIB_TARGETS = test_newlib12
 
-ALL_ELF_TARGETS = $(addprefix build/,$(addsuffix .elf,$(ASM_TARGETS) $(BARE_TARGETS) $(NEWLIB_TARGETS)))
+ALL_ELF_TARGETS = $(addprefix build/,$(addsuffix .elf,$(ASM_TARGETS) $(BARE_TARGETS) $(NEWLIB_NANO_TARGETS) $(NEWLIB_TARGETS)))
 ALL_BIN_TARGETS = $(addprefix build/,$(addsuffix .bin,$(ASM_TARGETS) $(BARE_TARGETS)))
 
 # Object file suffixes (all compiled into build/)
@@ -34,9 +36,13 @@ $(addprefix build/,$(ASM_TARGETS:%=%.elf)): build/%.elf: build/%.o
 $(addprefix build/,$(BARE_TARGETS:%=%.elf)): build/%.elf: $(STARTUP_BARE) build/%.o
 	$(CC) $(CFLAGS_COMMON) $(LDFLAGS_COMMON) $(LINKER_SCRIPT_BARE) -nostdlib -o $@ $^
 
-# --- Newlib targets (newlib support) ---
+# --- Newlib nano targets ---
+$(addprefix build/,$(NEWLIB_NANO_TARGETS:%=%.elf)): build/%.elf: $(STARTUP_NEWLIB) $(SYSCALLS_NEWLIB) build/%.o
+	$(CC) $(CFLAGS_COMMON) $(LDFLAGS_COMMON) $(LINKER_SCRIPT_NEWLIB) $(NEWLIB_NANO_SPECS) -o $@ $^
+
+# --- Newlib (full) + libm targets ---
 $(addprefix build/,$(NEWLIB_TARGETS:%=%.elf)): build/%.elf: $(STARTUP_NEWLIB) $(SYSCALLS_NEWLIB) build/%.o
-	$(CC) $(CFLAGS_COMMON) $(LDFLAGS_COMMON) $(LINKER_SCRIPT_NEWLIB) $(NEWLIB_SPECS) -o $@ $^
+	$(CC) $(CFLAGS_COMMON) $(LDFLAGS_COMMON) $(LINKER_SCRIPT_NEWLIB) $(NEWLIB_SPECS) -o $@ $^ -lm
 
 # --- Generate .bin from .elf (only for asm and bare) ---
 $(addprefix build/,$(ASM_TARGETS:%=%.bin)): build/%.bin: build/%.elf
