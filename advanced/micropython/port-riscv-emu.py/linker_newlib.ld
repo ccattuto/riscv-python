@@ -48,7 +48,7 @@ SECTIONS
 
   .gc_heap (NOLOAD) : ALIGN(4) {
     __gc_heap_start = .;
-    . = . + 0x100000;  /* 1 Mb for MicroPython GC */
+    . = . + 0x200000;  /* 2 Mb for MicroPython GC */
      __gc_heap_end = .;
   } > RAM
 

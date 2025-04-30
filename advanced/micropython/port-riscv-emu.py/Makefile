@@ -39,11 +39,11 @@ endif
 CSUPEROPT = -Os # save some code space
 
 # Tune for Debugging or Optimization
-CFLAGS += -g  # always include debug info in the ELF
+#CFLAGS += -g
 ifeq ($(DEBUG), 1)
 CFLAGS += -O0
 else
-CFLAGS += -Os -DNDEBUG
+CFLAGS += -O2 -DNDEBUG
 CFLAGS += -fdata-sections -ffunction-sections
 endif
 
