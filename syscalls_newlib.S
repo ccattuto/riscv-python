@@ -109,7 +109,7 @@ _mkdirat:
     ecall
     ret
 
-_mkdir:    
+_mkdir:
     mv a2, a1           # a2 = mode
     mv a1, a0           # a1 = pathname
     li a0, -100         # a0 = AT_FDCWD
