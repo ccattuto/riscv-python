@@ -24,7 +24,7 @@ DFU = $(TOP)/tools/dfu.py
 PYDFU = $(TOP)/tools/pydfu.py
 CFLAGS_RISCV  = -march=rv32i -mabi=ilp32 -D_REENT_SMALL
 CFLAGS += $(INC) -Wall -Werror -std=c99 $(CFLAGS_RISCV) $(COPT) #-O2
-LDFLAGS += -nostartfiles -static -Tlinker_newlib.ld --specs=nano.specs
+LDFLAGS += -nostartfiles -static -Tlinker_newlib.ld --specs=nosys.specs
 else
 UNAME_S := $(shell uname -s)
 LD = $(CC)
@@ -50,7 +50,7 @@ endif
 # Flags for optional C++ source code
 CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
 
-LIBS =
+LIBS = -lm
 
 SRC_C = \
 	main.c \
@@ -59,6 +59,7 @@ SRC_C = \
 	shared/libc/printf.c \
 	shared/readline/readline.c \
 	shared/runtime/pyexec.c \
+	shared/runtime/gchelper_native.c \
 	shared/runtime/stdout_helpers.c
 
 ifeq ($(CROSS), 1)
@@ -69,7 +70,8 @@ SRC_QSTR += shared/readline/readline.c shared/runtime/pyexec.c
 
 SRC_S = \
 	start_newlib.S \
-    syscalls_newlib.S
+    syscalls_newlib.S \
+	gchelper_rv32i.S
 
 OBJ += $(PY_CORE_O)
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))

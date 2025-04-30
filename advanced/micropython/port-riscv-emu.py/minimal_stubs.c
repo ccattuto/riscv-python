@@ -12,11 +12,6 @@ void nlr_jump_fail(void *val) {
     while (1);
 }
 
-// Stub: No GC collection for now
-void gc_collect(void) {
-    // no-op
-}
-
 // Stub: We have no filesystem
 mp_import_stat_t mp_import_stat(const char *path) {
     return MP_IMPORT_STAT_NO_EXIST;

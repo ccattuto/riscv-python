@@ -13,6 +13,11 @@
     .globl _kill
     .globl _getpid
     .globl umask
+    .globl _mkdirat
+    .globl _mkdir
+    .globl _unlinkat
+    .globl _unlink
+    .globl _rmdir
 
     .align 2
 
@@ -91,5 +96,39 @@ _getpid:
 
 umask:
     li a7, 60           # syscall number for umask
+    ecall
+    ret
+
+_unlinkat:
+    li a7, 35           # syscall ID for unlinkat
+    ecall
+    ret
+
+_mkdirat:
+    li a7, 34           # syscall ID for mkdirat
+    ecall
+    ret
+
+_mkdir:
+    mv a2, a1           # a2 = mode
+    mv a1, a0           # a1 = pathname
+    li a0, -100         # a0 = AT_FDCWD
+    li a7, 34           # syscall ID for mkdirat
+    ecall
+    ret
+
+_unlink:
+    li a2, 0            # flags=0 for unlink
+    mv a1, a0           # pathname
+    li a0, -100         # AT_FDCWD
+    li a7, 35           # _unlinkat
+    ecall
+    ret
+
+_rmdir:
+    li a2, 0x200        # flags=AT_REMOVEDIR for rmdir
+    mv a1, a0           # pathname
+    li a0, -100         # AT_FDCWD
+    li a7, 35           # unlinkat
     ecall
     ret

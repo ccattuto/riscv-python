@@ -2,12 +2,8 @@
 
 // options to control how MicroPython is built
 
-// Use the minimal starting configuration (disables all optional features).
-#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_MINIMUM)
+#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EXTRA_FEATURES)
 
-// You can disable the built-in MicroPython compiler by setting the following
-// config option to 0.  If you do this then you won't get a REPL prompt, but you
-// will still be able to execute pre-compiled scripts, compiled with mpy-cross.
 #define MICROPY_ENABLE_COMPILER     (1)
 #define MICROPY_ENAVLE_REPL	        (1)
 #define MICROPY_PY_BUILTINS_INPUT   (1)
@@ -26,17 +22,18 @@
 #define MICROPY_PY_BUILTINS_HELP_MODULES  (1)
 #define MICROPY_PY_GC                     (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE   (1)
-#define MICROPY_PY_BUILTINS_FLOAT         (0)  // keep at 0 for RV32I without soft float
-#define MICROPY_PY_BUILTINS_COMPLEX       (0)
-#define MICROPY_PY_IO                     (0)  // no file system or streams in minimal yet
-#define MICROPY_PY_ARRAY                  (0)
-#define MICROPY_PY_COLLECTIONS            (0)
-#define MICROPY_PY_MATH                   (0)
-#define MICROPY_PY_URANDOM                (0)
-#define MICROPY_PY_STRUCT                 (0)
-#define MICROPY_PY_ERRNO                  (0)
-#define MICROPY_PY_BINASCII               (0)
-#define MICROPY_PY_RE                     (0)
+#define MICROPY_PY_BUILTINS_FLOAT         (1)
+#define MICROPY_FLOAT_IMPL                (2) 
+#define MICROPY_PY_BUILTINS_COMPLEX       (1)
+#define MICROPY_PY_IO                     (0)  // no file system or streams
+#define MICROPY_PY_ARRAY                  (1)
+#define MICROPY_PY_COLLECTIONS            (1)
+#define MICROPY_PY_MATH                   (1)
+#define MICROPY_PY_URANDOM                (1)
+#define MICROPY_PY_STRUCT                 (1)
+#define MICROPY_PY_ERRNO                  (1)
+#define MICROPY_PY_BINASCII               (1)
+#define MICROPY_PY_RE                     (1)
 #define MICROPY_PY_UCTYPES                (0)
 
 #define MICROPY_PY_SYS                    (1)
@@ -47,8 +44,8 @@
 #define MICROPY_PY_SYS_IMPL               (1)
 #define MICROPY_PY_SYS_ARGV               (1)
 
-#define MICROPY_PY_BUILTINS_SLICE         (0)
-#define MICROPY_PY_ALL_FEATURES           (0)
+#define MICROPY_PY_BUILTINS_SLICE         (1)
+#define MICROPY_PY_ALL_FEATURES           (1)
 
 #define MICROPY_ALLOC_PATH_MAX            (256)
 
@@ -64,7 +61,7 @@ typedef long mp_off_t;
 // We need to provide a declaration/definition of alloca()
 #include <alloca.h>
 
-#define MICROPY_HW_BOARD_NAME "minimal"
+#define MICROPY_HW_BOARD_NAME "emulated"
 #define MICROPY_HW_MCU_NAME "risc-emu.py"
 
 #define MP_STATE_PORT MP_STATE_VM
