@@ -23,8 +23,8 @@
 #define MICROPY_PY_GC                     (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE   (1)
 #define MICROPY_PY_BUILTINS_FLOAT         (1)
-#define MICROPY_FLOAT_IMPL                (2) 
-#define MICROPY_PY_BUILTINS_COMPLEX       (1)
+#define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
+#define MICROPY_PY_BUILTINS_COMPLEX       (0)
 #define MICROPY_PY_IO                     (0)  // no file system or streams
 #define MICROPY_PY_ARRAY                  (1)
 #define MICROPY_PY_COLLECTIONS            (1)
