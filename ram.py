@@ -36,10 +36,11 @@ def initialize_ram(ram, fill='0x00'):
         for i in range(ram.size):
             ram.memory[i] = value
 
-# "Fast" RAM class: no address checks
+# Base RAM class: "fast", no address checks
 class RAM:
     def __init__(self, size=1024*1024, init=None, logger=None):
         self.memory = bytearray(size)
+        self.memory_word = memoryview(self.memory ).cast("I")  # word view
         self.size = size
         self.logger = logger
         if init is not None and init != 'zero':
@@ -54,7 +55,10 @@ class RAM:
         return val if not signed or val < 0x8000 else val - 0x10000
 
     def load_word(self, addr):  # always unsigned (performance)
-        return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
+        if addr & 0x3 == 0:
+            return self.memory_word[addr >> 2]  # word aligned
+        else:
+            return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
 
     def store_byte(self, addr, value):
         self.memory[addr] = value & 0xFF
@@ -66,10 +70,13 @@ class RAM:
 
     def store_word(self, addr, value):
         value &= 0xFFFFFFFF  # make it unsigned
-        self.memory[addr] = value & 0xFF
-        self.memory[addr+1] = (value >> 8) & 0xFF
-        self.memory[addr+2] = (value >> 16) & 0xFF
-        self.memory[addr+3] = (value >> 24) & 0xFF
+        if addr & 0x3 == 0:
+            self.memory_word[addr >> 2] = value
+        else:
+            self.memory[addr] = value & 0xFF
+            self.memory[addr+1] = (value >> 8) & 0xFF
+            self.memory[addr+2] = (value >> 16) & 0xFF
+            self.memory[addr+3] = (value >> 24) & 0xFF
 
     def load_binary(self, addr, n):
         return self.memory[addr:addr+n]
@@ -85,18 +92,10 @@ class RAM:
             raise MemoryAccessError(f"Exceeded maximum length while reading C string at 0x{addr:08X}")
         return memory_slice[:nul_index].decode('utf-8', errors='replace')
 
-
-# For performance reasons, we provide multiple implementations of the emulated RAM
-# rather than a unified one with several options.
-
-# Safe RAM class: checks all addresses
-class SafeRAM:
+# Safe RAM class: all accesses are checked
+class SafeRAM(RAM):
     def __init__(self, size=1024*1024, init=None, logger=None):
-        self.memory = bytearray(size)
-        self.size = size
-        self.logger = logger
-        if init is not None and init != 'zero':
-            initialize_ram(self, init)
+        super().__init__(size, init, logger)
 
     def check(self, addr, n):
         if addr < 0 or addr + n > self.size:
@@ -114,7 +113,10 @@ class SafeRAM:
 
     def load_word(self, addr):  # always unsigned (performance)
         self.check(addr, 4)
-        return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
+        if addr & 0x3 == 0:
+            return self.memory_word[addr >> 2]  # word aligned
+        else:
+            return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
 
     def store_byte(self, addr, value):
         self.check(addr, 1)
@@ -128,10 +130,13 @@ class SafeRAM:
     def store_word(self, addr, value):
         self.check(addr, 4)
         value &= 0xFFFFFFFF  # make it unsigned
-        self.memory[addr] = value & 0xFF
-        self.memory[addr+1] = (value >> 8) & 0xFF
-        self.memory[addr+2] = (value >> 16) & 0xFF
-        self.memory[addr+3] = (value >> 24) & 0xFF
+        if addr & 0x3 == 0:
+            self.memory_word[addr >> 2] = value
+        else:
+            self.memory[addr] = value & 0xFF
+            self.memory[addr+1] = (value >> 8) & 0xFF
+            self.memory[addr+2] = (value >> 16) & 0xFF
+            self.memory[addr+3] = (value >> 24) & 0xFF
 
     def load_binary(self, addr, n):
         self.check(addr, n)
@@ -152,15 +157,11 @@ class SafeRAM:
         return memory_slice[:nul_index].decode('utf-8', errors='replace')
 
 # Safe RAM class + optional base address
-class SafeRAMOffset:
+class SafeRAMOffset(RAM):
     def __init__(self, size=1024*1024, base_addr=0, init=None, logger=None):
-        self.memory = bytearray(size)
-        self.size = size
+        super().__init__(size, init, logger)
         self.base_addr = base_addr
-        self.logger = logger
-        if init is not None and init != 'zero':
-            initialize_ram(self, init)
-
+      
     def check(self, addr, n):
         if addr < 0 or addr + n > self.size:
             raise MemoryAccessError(f"Access out of bounds: 0x{self.base_addr+addr:08X} (+{n})")
@@ -180,7 +181,10 @@ class SafeRAMOffset:
     def load_word(self, addr):  # always unsigned (performance)
         addr -= self.base_addr
         self.check(addr, 4)
-        return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
+        if addr & 0x3 == 0:
+            return self.memory_word[addr >> 2]  # word aligned
+        else:
+            return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
 
     def store_byte(self, addr, value):
         addr -= self.base_addr
@@ -197,10 +201,13 @@ class SafeRAMOffset:
         addr -= self.base_addr
         self.check(addr, 4)
         value &= 0xFFFFFFFF  # make it unsigned
-        self.memory[addr] = value & 0xFF
-        self.memory[addr+1] = (value >> 8) & 0xFF
-        self.memory[addr+2] = (value >> 16) & 0xFF
-        self.memory[addr+3] = (value >> 24) & 0xFF
+        if addr & 0x3 == 0:
+            self.memory_word[addr >> 2] = value
+        else:
+            self.memory[addr] = value & 0xFF
+            self.memory[addr+1] = (value >> 8) & 0xFF
+            self.memory[addr+2] = (value >> 16) & 0xFF
+            self.memory[addr+3] = (value >> 24) & 0xFF
 
     def load_binary(self, addr, n):
         addr -= self.base_addr
