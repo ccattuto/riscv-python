@@ -419,18 +419,25 @@ class CPU:
             self.CSR_NAME_ADDR[name] = addr
             self.CSR_ADDR_NAME[addr] = name
 
+        # instruction decode cache
+        self.decode_cache = {}
+
     # Set handler for system calls
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
 
     # Instruction execution
     def execute(self, inst):
-        opcode = inst & 0x7F
-        rd = (inst >> 7) & 0x1F
-        funct3 = (inst >> 12) & 0x7
-        rs1 = (inst >> 15) & 0x1F
-        rs2 = (inst >> 20) & 0x1F
-        funct7 = (inst >> 25) & 0x7F
+        try:
+            opcode, rd, funct3, rs1, rs2, funct7 = self.decode_cache[inst >> 2]
+        except KeyError:
+            opcode = inst & 0x7F
+            rd = (inst >> 7) & 0x1F
+            funct3 = (inst >> 12) & 0x7
+            rs1 = (inst >> 15) & 0x1F
+            rs2 = (inst >> 20) & 0x1F
+            funct7 = (inst >> 25) & 0x7F
+            self.decode_cache[inst >> 2] = (opcode, rd, funct3, rs1, rs2, funct7)
 
         self.next_pc = (self.pc + 4) & 0xFFFFFFFF
 
