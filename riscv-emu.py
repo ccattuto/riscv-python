@@ -62,7 +62,7 @@ def parse_args():
     parser.add_argument('--timer', action="store_true", help='Enable machine timer')
     parser.add_argument('--uart', action="store_true", help='Enable UART')
     parser.add_argument('--blkdev', metavar="PATH", default=None, help='Enable MMIO block device')
-    parser.add_argument('--blkdev-size', metavar="NUM", type=int, default=1024, help='Emulated RAM size (512-byte blocks, default 1024)')
+    parser.add_argument('--blkdev-size', metavar="NUM", type=int, default=1024, help='Block device size (512-byte blocks, default 1024)')
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
     parser.add_argument("--no-color", action="store_false", help="Remove ANSI colors in terminal output")
     parser.add_argument("--log", help="Path to log file")

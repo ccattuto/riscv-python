@@ -12,9 +12,10 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 - **Supports dynamic memory allocation** via Newlib (`_sbrk`)
 - **Supports file I/O system calls** (`_open`, `_close`, `_fstat`, `_lseek`, `_unlink`, `_mkdir`, `_rmdir`, ...)
 - **Supports argc/argv program arguments**
+- **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, and a **memory-mapped block device** backed by an image file
 - **Passes all `rv32ui` and `rv32mi` unit tests** from [riscv-samples](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, violations of invariants
-- Runs [MicroPython](https://micropython.org/) and [FreeRTOS](https://www.freertos.org/) (with preemptive multitasking)
+- Runs [MicroPython](https://micropython.org/) and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
 - Self-contained, modular, extensible codebase
 
 ## 🔧 Requirements
@@ -154,6 +155,9 @@ Run a sample FreeRTOS application:
 | `--init-ram PATTERN`  | Initialize RAM with pattern (zero, random, addr, 0xAA)                      |
 | `--ram-size KBS`      | Emulated RAM size (kB, default 1024)                                        |
 | `--timer`             | Enable machine timer                                                        |
+| `--uart`              | Enable PTY UART                                                             |
+| `--blkdev PATH`       | Enable MMIO block device                                                    |
+| `--blkdev-size NUM`   | Block device size (512-byte blocks, default 1024)                           |
 | `--raw-tty`           | Enable raw terminal mode                                                    |
 | `--no-color`          | Remove ANSI colors in debugging output                                      |
 | `--log LOG_FILE`      | Log debug information to file `LOG_FILE`                                    |
@@ -234,7 +238,7 @@ Test rv32mi-p-sbreak               : PASS
 - Simplicity over speed (but highly optimized for speed, it performs at the limit of what is possible in pure Python)
 - Emphasis on correctness and compliance with RISC-V specifications
 - Minimal dependencies
-- Separation of concerns: core ISA, syscalls, binary loading, and emulation control
+- Separation of concerns: core ISA, syscalls, binary loading, peripherals, and emulation control
 - Useful for teaching, debugging, testing compiler output
 
 ## Notes
@@ -248,16 +252,16 @@ Test rv32mi-p-sbreak               : PASS
 - The 64-bit registers `mtime` and `mtimecmp` are accessible via CSR instructions (rather than being memory-mapped) at addresses `0x7C0` (low 32 bits of `mtime`), `0x7C1` (high 32 bits of `mtime`), `0x7C2` (low 32 bits of `mtimecmp`), and `0x7C3` (high 32 bits of `mtimecmp`). Writes to `mtime` and `mtimecmp` are atomic for the whole 64-bit register and occur when the second word of the register is written.
 
 ###  Performance notes
-The emulator achieves **~1.5 MIPS** (million instructions per second) using Python 3.12 (Anaconda) on a Macbook Pro (M1, 2020) running OSX Sequoia. Execution times for some binaries in `prebuilt/`:
+The emulator achieves **over 2 MIPS** (million instructions per second) using Python 3.12 (Anaconda) on a Macbook Pro (M1, 2020) running OSX Sequoia. Execution times for some binaries in `prebuilt/`:
 ```
 time ./riscv-emu.py build/test_newlib2.elf
-./riscv-emu.py build/test_newlib2.elf  16.86s user 0.04s system 98% cpu 17.103 total
+./riscv-emu.py build/test_newlib2.elf  11.43s user 0.05s system 99% cpu 11.506 total
 ```
 ```
 time ./riscv-emu.py build/test_newlib4.elf
-./riscv-emu.py build/test_newlib4.elf  7.29s user 0.04s system 99% cpu 7.362 total
+./riscv-emu.py build/test_newlib4.elf  4.90s user 0.03s system 99% cpu 4.973 total
 ```
 ```
 time ./riscv-emu.py build/test_newlib6.elf
-./riscv-emu.py build/test_newlib6.elf  115.87s user 0.49s system 99% cpu 1:56.55 total
+./riscv-emu.py build/test_newlib6.elf  75.85s user 0.24s system 99% cpu 1:16.37 total
 ```
