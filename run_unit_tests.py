@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Runs the RV32I and RV32MI RISC-V unit tests
+# Runs the RV32UI and RV32MI RISC-V unit tests
 #
 
 import sys, os, glob, argparse

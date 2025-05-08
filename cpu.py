@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-
+#
 # Copyright (2025) Ciro Cattuto <ciro.cattuto@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify it
@@ -14,6 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
 
 from machine import MachineError, ExecutionTerminated, SetupError
 import random

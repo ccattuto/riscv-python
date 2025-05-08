@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-
+#
 # Copyright (2025) Ciro Cattuto <ciro.cattuto@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify it
@@ -14,6 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
+#
 
 from machine import MachineError
 import random
@@ -40,7 +40,7 @@ def initialize_ram(ram, fill='0x00'):
 class RAM:
     def __init__(self, size=1024*1024, init=None, logger=None):
         self.memory = bytearray(size)
-        self.memory_word = memoryview(self.memory ).cast("I")  # word view
+        self.memory32 = memoryview(self.memory ).cast("I")  # word view
         self.size = size
         self.logger = logger
         if init is not None and init != 'zero':
@@ -56,7 +56,7 @@ class RAM:
 
     def load_word(self, addr):  # always unsigned (performance)
         if addr & 0x3 == 0:
-            return self.memory_word[addr >> 2]  # word aligned
+            return self.memory32[addr >> 2]  # word aligned
         else:
             return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
 
@@ -71,7 +71,7 @@ class RAM:
     def store_word(self, addr, value):
         value &= 0xFFFFFFFF  # make it unsigned
         if addr & 0x3 == 0:
-            self.memory_word[addr >> 2] = value
+            self.memory32[addr >> 2] = value
         else:
             self.memory[addr] = value & 0xFF
             self.memory[addr+1] = (value >> 8) & 0xFF
@@ -114,7 +114,7 @@ class SafeRAM(RAM):
     def load_word(self, addr):  # always unsigned (performance)
         self.check(addr, 4)
         if addr & 0x3 == 0:
-            return self.memory_word[addr >> 2]  # word aligned
+            return self.memory32[addr >> 2]  # word aligned
         else:
             return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
 
@@ -123,6 +123,7 @@ class SafeRAM(RAM):
         self.memory[addr] = value & 0xFF
 
     def store_half(self, addr, value):
+        self.check(addr, 2)
         value &= 0xFFFF  # make it unsigned
         self.memory[addr] = value & 0xFF
         self.memory[addr+1] = (value >> 8) & 0xFF
@@ -131,7 +132,7 @@ class SafeRAM(RAM):
         self.check(addr, 4)
         value &= 0xFFFFFFFF  # make it unsigned
         if addr & 0x3 == 0:
-            self.memory_word[addr >> 2] = value
+            self.memory32[addr >> 2] = value
         else:
             self.memory[addr] = value & 0xFF
             self.memory[addr+1] = (value >> 8) & 0xFF
@@ -182,7 +183,7 @@ class SafeRAMOffset(RAM):
         addr -= self.base_addr
         self.check(addr, 4)
         if addr & 0x3 == 0:
-            return self.memory_word[addr >> 2]  # word aligned
+            return self.memory32[addr >> 2]  # word aligned
         else:
             return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
 
@@ -193,6 +194,7 @@ class SafeRAMOffset(RAM):
 
     def store_half(self, addr, value):
         addr -= self.base_addr
+        self.check(addr, 2)
         value &= 0xFFFF  # make it unsigned
         self.memory[addr] = value & 0xFF
         self.memory[addr+1] = (value >> 8) & 0xFF
@@ -202,7 +204,7 @@ class SafeRAMOffset(RAM):
         self.check(addr, 4)
         value &= 0xFFFFFFFF  # make it unsigned
         if addr & 0x3 == 0:
-            self.memory_word[addr >> 2] = value
+            self.memory32[addr >> 2] = value
         else:
             self.memory[addr] = value & 0xFF
             self.memory[addr+1] = (value >> 8) & 0xFF
