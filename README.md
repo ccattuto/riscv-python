@@ -19,12 +19,12 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 ## 🔧 Requirements
 
 - Python 3.8+
-- `pyelftools` for ELF parsing:
-  ```bash
-  pip install pyelftools
-  ```
-- [RISC-V GNU Compiler Toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain)
+- `pyelftools` for ELF parsing
+- [RISC-V GNU Compiler Toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain) (for building examples or compiling your own code)
 
+```bash
+pip install -r requirements.txt
+```
 
 ## File Strucure
 
@@ -59,12 +59,15 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 ## 🚀 Usage
 
 ### Compiling Examples
-
 ```
 make all
 ```
+If you just want to **test the emulator without installing a RISC-V compiler**, you will find pre-built binaries in `prebuilt/`.
 
-(if you just want to test the emulator without installing a RISC-V compiler, you will find pre-built binaries in `prebuilt/`)
+To build the examples under `advanced/` (MicroPython, FreeRTOS, ...) you will need to initialize the submodules:
+```
+git submodule update --init --recursive
+```
 
 ### ▶️ Running Programs
 
@@ -134,6 +137,21 @@ Type "help()" for more information.
 Run a sample FreeRTOS application:
 ```
 ./riscv-emu.py --timer prebuilt/freertos_app1.elf
+```
+
+Run an example using memory-mapped UART,
+```
+./riscv-emu.py --uart prebuilt/test_peripheral_uart.elf 
+000.001s [INFO] [UART] PTY created: /dev/ttys015
+```
+and connect to the serial device using your favorite terminal program:
+```
+screen /dev/ttys015 115200
+```
+
+Run an example using a file-backed block device:
+```
+./riscv-emu.py --blkdev=image.img prebuilt/test_peripheral_blkdev.elf 
 ```
 
 ### ▶️ Command-Line Options
