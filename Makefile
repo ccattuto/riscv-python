@@ -15,7 +15,7 @@ ASM_TARGETS = test_asm1
 BARE_TARGETS = test_bare1
 NEWLIB_NANO_TARGETS = test_newlib1 test_newlib2 test_newlib3 test_newlib4 test_newlib5 \
                  test_newlib6 test_newlib7 test_newlib8 test_newlib9 test_newlib10 test_newlib11 \
-				 test_peripheral_uart
+				 test_peripheral_uart test_peripheral_blkdev
 NEWLIB_TARGETS = test_newlib12
 
 ALL_ELF_TARGETS = $(addprefix build/,$(addsuffix .elf,$(ASM_TARGETS) $(BARE_TARGETS) $(NEWLIB_NANO_TARGETS) $(NEWLIB_TARGETS)))

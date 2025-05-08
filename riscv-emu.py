@@ -23,7 +23,7 @@ from machine import Machine, MachineError, SetupError, ExecutionTerminated
 from cpu import CPU
 from ram import RAM, SafeRAM, RAM_MMIO, SafeRAM_MMIO
 from syscalls import SyscallHandler
-from peripherals import PtyUART
+from peripherals import PtyUART, MMIOBlockDevice
 
 LOG_COLORS = {
     logging.DEBUG: "\033[36m",      # Cyan
@@ -61,6 +61,8 @@ def parse_args():
     parser.add_argument('--ram-size', metavar="KBS", type=int, default=1024, help='Emulated RAM size (kB, default 1024)')
     parser.add_argument('--timer', action="store_true", help='Enable machine timer')
     parser.add_argument('--uart', action="store_true", help='Enable UART')
+    parser.add_argument('--blkdev', metavar="PATH", default=None, help='Enable MMIO block device')
+    parser.add_argument('--blkdev-size', metavar="NUM", type=int, default=1024, help='Emulated RAM size (512-byte blocks, default 1024)')
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
     parser.add_argument("--no-color", action="store_false", help="Remove ANSI colors in terminal output")
     parser.add_argument("--log", help="Path to log file")
@@ -125,6 +127,9 @@ if __name__ == '__main__':
     if args.uart:
         args.check_ram = True
         use_mmio = True
+    if args.blkdev is not None:
+        args.check_ram = True
+        use_mmio = True
 
     MEMORY_SIZE = 1024 * args.ram_size  # (default 1 Mb)
 
@@ -169,6 +174,11 @@ if __name__ == '__main__':
         uart = PtyUART(logger=log)
         ram.register_peripheral(uart)
         machine.register_peripheral(uart)
+
+    if args.blkdev:  # create and register block device peripheral
+        blkdev = MMIOBlockDevice(args.blkdev, ram, size=args.blkdev_size, logger=log)
+        ram.register_peripheral(blkdev)
+        machine.register_peripheral(blkdev)
 
     # Create and register syscall handler
     syscall_handler = SyscallHandler(cpu, ram, machine, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)

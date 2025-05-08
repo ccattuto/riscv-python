@@ -85,3 +85,86 @@ class PtyUART(MMIOPeripheral):
                 os.write(self.master_fd, bytes([value & 0xFF]))
             except BlockingIOError:
                 pass
+
+# Block device
+class MMIOBlockDevice(MMIOPeripheral):
+    REG_BASE    = 0x1001_0000
+    REG_CMD     = REG_BASE + 0x00  # 0 = read, 1 = write
+    REG_BLK     = REG_BASE + 0x04  # block number
+    REG_PTR     = REG_BASE + 0x08  # guest pointer to buffer
+    REG_CTRL    = REG_BASE + 0x0C  # write 1 to trigger
+    REG_STATUS  = REG_BASE + 0x10  # 1 = ready
+    REG_END     = REG_BASE + 0x14
+
+    def __init__(self, image_path, ram, size=1024, logger=None):
+        self.logger = logger
+        self.block_size = 512
+        self.num_blocks = size
+        self.image_path = image_path
+        self.ram = ram
+        self.cmd = 0
+        self.blk = 0
+        self.ptr = 0
+        self.status = 1
+        self.fd = None
+
+        self._open_or_create_image()
+
+    def _open_or_create_image(self):
+        total_bytes = self.num_blocks * self.block_size
+        if not os.path.exists(self.image_path):
+            if self.logger is not None:
+                self.logger.info(f"[BLOCK] Creating new block device image: {self.image_path}")
+            with open(self.image_path, "wb") as f:
+                f.write(b"\xFF" * total_bytes)  # emulating the initial state of a blank flash
+
+        if self.logger is not None:
+            self.logger.info(f"[BLOCK] Opening block device image: {self.image_path}")
+        self.fd = open(self.image_path, "r+b")  # read/write, binary
+
+    def read32(self, addr):
+        if addr == self.REG_CMD:
+            return self.cmd
+        elif addr == self.REG_BLK:
+            return self.blk
+        elif addr == self.REG_PTR:
+            return self.ptr
+        elif addr == self.REG_CTRL:
+            return 0
+        elif addr == self.REG_STATUS:
+            return self.status
+        return 0
+
+    def write32(self, addr, value):
+        if addr == self.REG_CMD:
+            self.cmd = value
+        elif addr == self.REG_BLK:
+            self.blk = value
+        elif addr == self.REG_PTR:
+            self.ptr = value
+        elif addr == self.REG_CTRL and value == 1:
+            self._execute_cmd()
+
+    def _execute_cmd(self):
+        offset = self.blk * self.block_size
+        if offset >= self.num_blocks * self.block_size:
+            self.status = 1
+            if self.logger is not None:
+                self.logger.warning(f"[BLOCK] Invalid block {self.blk}")
+            return
+
+        if self.cmd == 0:  # READ
+            self.fd.seek(offset)
+            data = self.fd.read(self.block_size)
+            self.ram.store_binary(self.ptr, data)
+            #if self.logger is not None:
+            #    self.logger.debug(f"[BLOCK] READ blk={self.blk} -> 0x{self.ptr:08x}")
+        elif self.cmd == 1:  # WRITE
+            data = self.ram.load_binary(self.ptr, self.block_size)
+            self.fd.seek(offset)
+            self.fd.write(data)
+            self.fd.flush()
+            #if self.logger is not None:
+            #    self.logger.debug(f"[BLOCK] WRITE blk={self.blk} <- 0x{self.ptr:08x}")
+
+        self.status = 1
