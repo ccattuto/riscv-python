@@ -29,29 +29,31 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 ## File Strucure
 
 ```
-├── riscv-emu.py           # Emulator
-├── cpu.py                 # CPU emulation logic
-├── ram.py                 # RAM emulation logic
-├── machine.py             # Host logic (executable loading, invariants check)
-├── syscalls.py            # System calls and terminal I/O
-├── Makefile               # Builds ELF/binary targets
-├── start_bare.S           # Minimal startup code
-├── start_newlib.S         # Startup code for Newlib-nano
-├── syscalls_newlib.S      # Syscall stubs for Newlib-nano
-├── linker_bare.ld         # Simple linker script, no heap support
-├── linker_newlib.ld       # Linker script supporting Newlib-nano
-├── riscv-py.h             # Emulator macros for user programs
-├── tests/README.md        # Documentation for example programs
-├── tests/test_asm*.S      # Example assembly programs
-├── tests/test_bare*.C     # Example C programs without Newlib support
-├── tests/test_newlib*.C   # Example C programs with Newlib-nano support
-├── build/                 # Executable and binaries
-├── prebuilt/              # Pre-built examples
-├── run_unit_tests.py      # Runs RISC-V unit tests (RV32UI and RV32MI)
-├── riscv-tests/           # Git submodule with RISC-V unit tests
-├── advanced/micropython/  # MicroPython port
-├── advanced/freertos/     # FreeRTOS port
-└── README.md              # You're here!
+├── riscv-emu.py               # Emulator
+├── cpu.py                     # CPU emulation logic
+├── ram.py                     # RAM emulation logic
+├── machine.py                 # Host logic (executable loading, invariants check)
+├── peripherals.py             # Peripherals (UART, block device)
+├── syscalls.py                # System calls and terminal I/O
+├── Makefile                   # Builds ELF/binary targets
+├── start_bare.S               # Minimal startup code
+├── start_newlib.S             # Startup code for Newlib-nano
+├── syscalls_newlib.S          # Syscall stubs for Newlib-nano
+├── linker_bare.ld             # Simple linker script, no heap support
+├── linker_newlib.ld           # Linker script supporting Newlib-nano
+├── riscv-py.h                 # Emulator macros for user programs
+├── tests/README.md            # Documentation for example programs
+├── tests/test_asm*.S          # Example assembly programs
+├── tests/test_bare*.c         # Example C programs without Newlib support
+├── tests/test_newlib*.c       # Example C programs with Newlib-nano support
+├── tests/test_peripheral*.c   # Example C programs using emulated peripherals
+├── build/                     # Executable and binaries
+├── prebuilt/                  # Pre-built examples
+├── run_unit_tests.py          # Runs RISC-V unit tests (RV32UI and RV32MI)
+├── riscv-tests/               # Git submodule with RISC-V unit tests
+├── advanced/micropython/      # MicroPython port
+├── advanced/freertos/         # FreeRTOS port
+└── README.md                  # You're here!
 ```
 
 ## 🚀 Usage
