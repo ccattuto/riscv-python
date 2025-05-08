@@ -27,18 +27,22 @@ class ExecutionTerminated(MachineError):
     pass
 
 class Machine:
-    def __init__(self, cpu, ram, timer=False, logger=None, trace=False, regs=None, check_inv=False, start_checks=None):
+    def __init__(self, cpu, ram, timer=False, mmio=False, logger=None, trace=False, regs=None, check_inv=False, start_checks=None):
         self.cpu = cpu
         self.ram = ram
 
         # machine options
         self.timer = timer
+        self.mmio = mmio
         self.logger = logger
         self.trace = trace
         self.regs = regs
         self.check_inv = check_inv
         self.start_checks = start_checks
         self.check_enable = False
+
+        self.peripheral_list = []
+        self.peripheral_runners = []
 
         if (self.trace or self.regs) and (self.logger is None):
             raise SetupError("Tracing or register logging require a valid logger")
@@ -56,6 +60,16 @@ class Machine:
         # symbol dictionary for syscall tracing
         self.symbol_dict = {}
         self.main_addr = None
+
+    def register_peripheral(self, peripheral):
+        self.peripheral_list.append(peripheral)
+        # check if we have a run() method to be called periodically (e.g., for polling I/O)
+        if callable(getattr(peripheral, "run", None)):
+            self.peripheral_runners.append(peripheral.run)
+
+    def peripherals_run(self):
+        for peripheral_runner in self.peripheral_runners:
+            peripheral_runner()
 
     # setup argv[] strings in the heap
     def setup_argv(self, argv_list):
@@ -232,10 +246,14 @@ class Machine:
 
         return lambda x: ', '.join( f"{name}=0x{getter(x):08X}" for name, getter in getters)  # register formatter
 
-    # EXECUTION LOOP: debug version (slow)
+    # EXECUTION LOOP: debug version (slow) with optional timer and MMIO
     def run_with_checks(self):
         cpu = self.cpu
         ram = self.ram
+        timer = self.timer
+        mmio = self.mmio
+        div = 0
+        DIV_MASK = 0xFF  # call peripheral run() methods every 256 cycles
 
         if self.regs:
             regformatter = self.make_regformatter_lambda(self.regs)
@@ -250,11 +268,18 @@ class Machine:
 
             inst = ram.load_word(cpu.pc)
             cpu.execute(inst)
-            if self.timer:
+            if timer:
                 cpu.timer_update()
             cpu.pc = cpu.next_pc
 
-    # EXECUTION LOOP: minimal version (fast)
+            # slow path for peripheral operation
+            if mmio:
+                div += 1
+                if div & DIV_MASK == 0:
+                    self.peripherals_run()
+                    div = 0
+
+    # EXECUTION LOOP: minimal version (fastest)
     def run_fast(self):
         cpu = self.cpu
         ram = self.ram
@@ -265,7 +290,7 @@ class Machine:
             cpu.pc = cpu.next_pc
 
     # EXECUTION LOOP: minimal version + timer (mtime/mtimecmp)
-    def run_fast_timer(self):
+    def run_timer(self):
         cpu = self.cpu
         ram = self.ram
         
@@ -275,6 +300,27 @@ class Machine:
             cpu.timer_update()
             cpu.pc = cpu.next_pc
 
+    # EXECUTION LOOP: minimal version + MMIO + optional timer
+    def run_mmio(self):
+        cpu = self.cpu
+        ram = self.ram
+        timer = self.timer
+        div = 0
+        DIV_MASK = 0xFF  # call peripheral run() methods every 256 cycles
+        
+        while True:
+            inst = ram.load_word(cpu.pc)
+            cpu.execute(inst)
+            if timer:
+                cpu.timer_update()
+            cpu.pc = cpu.next_pc
+
+            # slow path for peripheral operation
+            div += 1
+            if div & DIV_MASK == 0:
+                self.peripherals_run()
+                div = 0
+
     # Run the emulator loop
     def run(self):
         if not(self.regs or self.check_inv or self.trace):
@@ -282,5 +328,7 @@ class Machine:
                 self.run_fast()
             else:
                 self.run_fast_timer()
+        elif self.mmio:
+            self.run_mmio()
         else:
             self.run_with_checks()

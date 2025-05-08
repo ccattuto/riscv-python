@@ -21,8 +21,9 @@ import logging, time
 
 from machine import Machine, MachineError, SetupError, ExecutionTerminated
 from cpu import CPU
-from ram import RAM, SafeRAM
+from ram import RAM, SafeRAM, RAM_MMIO, SafeRAM_MMIO
 from syscalls import SyscallHandler
+from peripherals import PtyUART
 
 LOG_COLORS = {
     logging.DEBUG: "\033[36m",      # Cyan
@@ -59,6 +60,7 @@ def parse_args():
     parser.add_argument('--init-ram', metavar='PATTERN', default='zero', help='Initialize RAM with pattern (zero, random, addr, 0xAA)')
     parser.add_argument('--ram-size', metavar="KBS", type=int, default=1024, help='Emulated RAM size (kB, default 1024)')
     parser.add_argument('--timer', action="store_true", help='Enable machine timer')
+    parser.add_argument('--uart', action="store_true", help='Enable UART')
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
     parser.add_argument("--no-color", action="store_false", help="Remove ANSI colors in terminal output")
     parser.add_argument("--log", help="Path to log file")
@@ -114,10 +116,15 @@ def restore_terminal(fd, settings):
 if __name__ == '__main__':
 
     args = parse_args()
+
+    use_mmio = False
     if args.check_all:
         args.check_inv = True
         args.check_ram = True
         args.check_text = True
+    if args.uart:
+        args.check_ram = True
+        use_mmio = True
 
     MEMORY_SIZE = 1024 * args.ram_size  # (default 1 Mb)
 
@@ -138,15 +145,32 @@ if __name__ == '__main__':
         console_handler.setFormatter(ColorFormatter('%(asctime)s [%(levelname)s] %(message)s', t0=time.time(), use_color=is_tty and args.no_color))
         log.addHandler(console_handler)
     
-    # Instantiate CPU + RAM + machine + syscall handler
-    ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log) if not args.check_ram else \
-          SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
-    
+    # Instantiate CPU + RAM  + machine + peripherals + syscall handler
+
+    # Select RAM implementation
+    if not use_mmio and not args.check_ram:
+        ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log)
+    elif use_mmio and not args.check_ram:
+        ram = RAM_MMIO(MEMORY_SIZE, init=args.init_ram, logger=log)
+    elif not use_mmio and args.check_ram:
+        ram = SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
+    else:
+        ram = SafeRAM_MMIO(MEMORY_SIZE, init=args.init_ram, logger=log)
+
+    # CPU
     cpu = CPU(ram, init_regs=args.init_regs, logger=log, trace_traps=args.traps)
 
-    machine = Machine(cpu, ram, timer=args.timer, logger=log,
+    # System architecture
+    machine = Machine(cpu, ram, timer=args.timer, mmio=use_mmio, logger=log,
                       trace=args.trace, regs=args.regs, check_inv=args.check_inv, start_checks=args.start_checks)
     
+    # MMIO peripherals
+    if args.uart:  # create and register UART peripheral
+        uart = PtyUART(logger=log)
+        ram.register_peripheral(uart)
+        machine.register_peripheral(uart)
+
+    # Create and register syscall handler
     syscall_handler = SyscallHandler(cpu, ram, machine, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
     cpu.set_ecall_handler(syscall_handler.handle)  # Set syscall handler
 
@@ -156,13 +180,13 @@ if __name__ == '__main__':
             machine.load_flatbinary(args.executable)
         elif args.executable.endswith('.elf'):
             machine.load_elf(args.executable, load_symbols=args.trace, check_text=args.check_text)
-            if machine.heap_end is not None and args.program_args:
+            if machine.heap_end is not None and args.program_args:  # pass command-line arguments
                 machine.setup_argv(args.program_args)
         else:
             log.error("Unsupported file format. Please provide a .bin or .elf file")
             sys.exit(1)
     except MachineError as e:
-        log.error(f"EMULATOR ERROR [{type(e).__name__}]: {e}")
+        log.error(f"EMULATOR ERROR ({type(e).__name__}): {e}")
         sys.exit(1)
 
     # If requested, set raw terminal mode
@@ -189,7 +213,7 @@ if __name__ == '__main__':
             log.info(f"Execution terminated: {e}")
             sys.exit(0)
         else:
-            log.error(f"EMULATOR ERROR [{type(e).__name__}] at PC=0x{cpu.pc:08X}: {e}")
+            log.error(f"EMULATOR ERROR ({type(e).__name__}) at PC=0x{cpu.pc:08X}: {e}")
             if type(e) != SetupError:
                 cpu.print_registers()
             sys.exit(1)
