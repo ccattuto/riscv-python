@@ -321,14 +321,18 @@ class Machine:
                 self.peripherals_run()
                 div = 0
 
-    # Run the emulator loop
+    # Run the emulator loop.
+    # For performance reasons, we use different implementations of the emulator loop,
+    # selected according to the requested features, rather than having a single implementation
+    # with several conditions along the hot execution path.
     def run(self):
-        if not(self.regs or self.check_inv or self.trace):
-            if not self.timer:
-                self.run_fast()
-            else:
-                self.run_fast_timer()
-        elif self.mmio:
-            self.run_mmio()
+        if self.regs or self.check_inv or self.trace:
+            self.run_with_checks()  # checks everything at every cycle, up to 3x slower
         else:
-            self.run_with_checks()
+            if self.mmio:
+                self.run_mmio()  # MMIO support, optional timer 
+            else:
+                if self.timer:
+                    self.run_timer()  # timer support, no checks, no MMIO 
+                else:
+                    self.run_fast()  # fastest option, no timer, no checks, no MMIO
