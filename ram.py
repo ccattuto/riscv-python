@@ -22,11 +22,12 @@ import random
 # This is verbose but outweights the performance cost of having conditions along the hot memory access path
 # (load_word and store_store functions, in particular). Available classes are:
 #
-# - RAM: Base RAM class: fast, no address checks, no MMIO support
-# - Safe RAM class: all accesses are checked, no MMIO
-# - Safe RAM class + optional base address (necessary for unit tests), no MMIO
-# - RAM class with MMIO
-# - Safe RAM class with MMIO, all accesses are checked
+# - RAM:            Base RAM class: fast, no address checks, no MMIO
+# - SafeRAM:        Safe RAM class: all accesses are checked, no MMIO
+# - SafeRAMOffset:  Safe RAM class + optional base address (necessary for unit tests), no MMIO
+# - RAM_MMIO:       RAM class with MMIO
+# - SafeRAM_MMIO:   Safe RAM class with MMIO, all accesses are checked
+#
 
 class MemoryAccessError(MachineError):
     pass
@@ -46,7 +47,7 @@ def initialize_ram(ram, fill='0x00'):
         for i in range(ram.size):
             ram.memory[i] = value
 
-# Base RAM class: fast, no address checks, no MMIO support
+# Base RAM class: fast, no address checks, no MMIO
 class RAM:
     def __init__(self, size=1024*1024, init=None, logger=None):
         self.memory = bytearray(size)
