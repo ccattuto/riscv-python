@@ -18,6 +18,16 @@
 from machine import MachineError
 import random
 
+# We provide multiple implementations of the RAM class, each with a different set of features.
+# This is verbose but outweights the performance cost of having conditions along the hot memory access path
+# (load_word and store_store functions, in particular). Available classes are:
+#
+# - RAM: Base RAM class: fast, no address checks, no MMIO support
+# - Safe RAM class: all accesses are checked, no MMIO
+# - Safe RAM class + optional base address (necessary for unit tests), no MMIO
+# - RAM class with MMIO
+# - Safe RAM class with MMIO, all accesses are checked
+
 class MemoryAccessError(MachineError):
     pass
 
