@@ -5,13 +5,13 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 ## ✅ Features
 
 - **Implements the full RV32I base integer ISA**
-- **Implements all RV32MI machine-mode instructions and trap mechanisms**, including synchronous traps (`ecall`, `ebreak`, illegal instruction trap), asynchronous traps (machine timer interrupt), `mret`, CSR instructions and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`, ...)
-- **Supports ELF and flat binary formats**
+- **Implements all RV32MI machine-mode instructions and trap mechanisms**, including synchronous traps (`ecall`, `ebreak`, illegal instruction trap), asynchronous traps (machine timer interrupt), `mret`, and the **Zicsr (Control Status Registers) extension** and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`, ...)
+- **Supports loading ELF and flat binary formats**
 - **Supports terminal I/O**, both "cooked" and raw
 - **Provides most of the system calls needed by [Newlib](https://en.wikipedia.org/wiki/Newlib)**: `_write`, `_read`, `_exit`, **dynamic memory allocation** (`_sbrk`), **file I/O** (`_open`, `_close`, `_fstat`, `_lseek`, ...)
 - **Supports argc/argv program arguments**
 - **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, and a **memory-mapped block device** backed by an image file
-- **Passes all `rv32ui` and `rv32mi` unit tests** from [riscv-samples](https://github.com/riscv-software-src/riscv-tests)
+- **Passes all `rv32ui` and `rv32mi` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, violations of invariants
 - Runs [MicroPython](https://micropython.org/) and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
 - Self-contained, modular, extensible codebase
