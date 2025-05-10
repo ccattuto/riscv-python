@@ -93,15 +93,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 // (disable_traps also sets mtvec=0 so that syscalls are handled by the emulator)
 
 #define disable_traps(mstatus_mask) do {                    \
-    clear_csr(mie, 1 << 7);                                 \
-    clear_csr(mstatus, mstatus_mask);                       \
-    write_csr(mtvec, 0);                                    \
+    CLEAR_CSR(mie, 1 << 7);                                 \
+    CLEAR_CSR(mstatus, mstatus_mask);                       \
+    WRITE_CSR(mtvec, 0);                                    \
 } while (0)
 
 #define enable_traps(trap_handler_addr, mstatus_mask) do {  \
-    write_csr(mtvec, (uintptr_t)(trap_handler_addr));       \
-    set_csr(mie, 1 << 7);                                   \
-    set_csr(mstatus, mstatus_mask);                         \
+    WRITE_CSR(mtvec, (uintptr_t)(trap_handler_addr));       \
+    SET_CSR(mie, 1 << 7);                                   \
+    SET_CSR(mstatus, mstatus_mask);                         \
 } while (0)
 
 
