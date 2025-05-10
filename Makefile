@@ -3,7 +3,7 @@ CC = riscv64-unknown-elf-gcc
 OBJCOPY = riscv64-unknown-elf-objcopy
 
 # Flags
-CFLAGS_COMMON = -march=rv32i -mabi=ilp32 -O2 -D_REENT_SMALL -I .
+CFLAGS_COMMON = -march=rv32i_zicsr -mabi=ilp32 -O2 -D_REENT_SMALL -I .
 LDFLAGS_COMMON = -nostartfiles -static
 LINKER_SCRIPT_NEWLIB = -Tlinker_newlib.ld
 LINKER_SCRIPT_BARE = -Tlinker_bare.ld

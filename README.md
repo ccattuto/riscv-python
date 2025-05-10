@@ -127,11 +127,11 @@ Argument 3: arg3
 
 Run MicroPython:
 ```
-./riscv-emu.py --raw-tty --ram-size=4096 prebuilt/micropython.elf
+./riscv-emu.py --raw-tty --ram-size=4096 prebuilt/micropython.elf 
 Welcome to MicroPython on RISC-V!
-MicroPython v1.25.0-preview.545.g959063d82.dirty on 2025-04-17; minimal with risc-emu.py
+MicroPython v1.25.0 on 2025-05-01; emulated with risc-emu.py
 Type "help()" for more information.
->>>
+>>> 
 ```
 
 Run a sample FreeRTOS application:
