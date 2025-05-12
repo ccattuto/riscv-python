@@ -8,14 +8,6 @@
 
 extern uint8_t _gc_heap_start, _gc_heap_end;
 
-#if MICROPY_ENABLE_GC
-void gc_collect(void) {
-    gc_collect_start();
-    gc_helper_collect_regs_and_stack();
-    gc_collect_end();
-}
-#endif /* MICROPY_ENABLE_GC */
-
 int main(int argc, char *argv[]) {
     mp_stack_ctrl_init();
     mp_stack_set_limit(4096);

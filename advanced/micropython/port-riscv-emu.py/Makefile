@@ -54,7 +54,8 @@ LIBS = -lm
 
 SRC_C = \
 	main.c \
-    minimal_stubs.c \
+	minimal_stubs.c \
+	gccollect.c \
 	mphalport.c \
 	shared/libc/printf.c \
 	shared/readline/readline.c \
