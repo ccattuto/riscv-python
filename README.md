@@ -172,7 +172,7 @@ Run an example using a file-backed block device:
 | `--init-regs VALUE`     | Initial register state (zero, random, 0xDEADBEEF)                           |
 | `--init-ram PATTERN`    | Initialize RAM with pattern (zero, random, addr, 0xAA)                      |
 | `--ram-size KBS`        | Emulated RAM size (kB, default 1024)                                        |
-| `--timer [{csr,mmio}]`  | Enable machine timer (default CSR)                                       |
+| `--timer {csr,mmio}`    | Enable machine timer                                                        |
 | `--uart`                | Enable PTY UART                                                             |
 | `--blkdev PATH`         | Enable MMIO block device                                                    |
 | `--blkdev-size NUM`     | Block device size (512-byte blocks, default 1024)                           |

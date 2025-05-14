@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument("--init-regs", metavar="VALUE", default="zero", help='Initial register state (zero, random, 0xDEADBEEF)')
     parser.add_argument('--init-ram', metavar='PATTERN', default='zero', help='Initialize RAM with pattern (zero, random, addr, 0xAA)')
     parser.add_argument('--ram-size', metavar="KBS", type=int, default=1024, help='Emulated RAM size (kB, default 1024)')
-    parser.add_argument('--timer', nargs='?', const='csr', choices=['csr', 'mmio'], help="Enable machine timer")
+    parser.add_argument('--timer', choices=['csr', 'mmio'], help="Enable machine timer")
     parser.add_argument('--uart', action="store_true", help='Enable UART')
     parser.add_argument('--blkdev', metavar="PATH", default=None, help='Enable MMIO block device')
     parser.add_argument('--blkdev-size', metavar="NUM", type=int, default=1024, help='Block device size (512-byte blocks, default 1024)')
