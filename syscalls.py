@@ -158,7 +158,7 @@ class SyscallHandler:
                 self.cpu.registers[10] = len(data)
             else:  # raw terminal mode
                 ch = sys.stdin.read(1)  # blocks for a single char
-                if ch == '\x03':        # handle CTRL+C
+                if (not self.raw_tty) and (ch == '\x03'):  # handle CTRL+C in "cooked" mode
                     raise KeyboardInterrupt
                 self.ram.store_byte(addr, ord(ch))
                 self.cpu.registers[10] = 1
