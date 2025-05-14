@@ -24,7 +24,7 @@ from machine import Machine, MachineError, SetupError, ExecutionTerminated
 from cpu import CPU
 from ram import RAM, SafeRAM, RAM_MMIO, SafeRAM_MMIO
 from syscalls import SyscallHandler
-from peripherals import PtyUART, MMIOBlockDevice
+from peripherals import PtyUART, MMIOTimer, MMIOBlockDevice
 
 LOG_COLORS = {
     logging.DEBUG: "\033[36m",      # Cyan
@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument("--init-regs", metavar="VALUE", default="zero", help='Initial register state (zero, random, 0xDEADBEEF)')
     parser.add_argument('--init-ram', metavar='PATTERN', default='zero', help='Initialize RAM with pattern (zero, random, addr, 0xAA)')
     parser.add_argument('--ram-size', metavar="KBS", type=int, default=1024, help='Emulated RAM size (kB, default 1024)')
-    parser.add_argument('--timer', action="store_true", help='Enable machine timer')
+    parser.add_argument('--timer', nargs='?', const='csr', choices=['csr', 'mmio'], help="Enable machine timer")
     parser.add_argument('--uart', action="store_true", help='Enable UART')
     parser.add_argument('--blkdev', metavar="PATH", default=None, help='Enable MMIO block device')
     parser.add_argument('--blkdev-size', metavar="NUM", type=int, default=1024, help='Block device size (512-byte blocks, default 1024)')
@@ -125,10 +125,7 @@ if __name__ == '__main__':
         args.check_inv = True
         args.check_ram = True
         args.check_text = True
-    if args.uart:
-        args.check_ram = True
-        use_mmio = True
-    if args.blkdev is not None:
+    if args.uart or args.blkdev or (args.timer == "mmio"):
         args.check_ram = True
         use_mmio = True
 
@@ -181,6 +178,11 @@ if __name__ == '__main__':
         ram.register_peripheral(blkdev)
         machine.register_peripheral(blkdev)
 
+    if args.timer == "mmio":  # create and register memory-mapped timer
+        timer = MMIOTimer(cpu)
+        ram.register_peripheral(timer)
+        machine.register_peripheral(timer)
+      
     # Create and register syscall handler
     syscall_handler = SyscallHandler(cpu, ram, machine, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
     cpu.set_ecall_handler(syscall_handler.handle)  # Set syscall handler

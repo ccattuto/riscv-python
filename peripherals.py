@@ -16,6 +16,7 @@
 #
 
 import os, fcntl, selectors, tty
+from ram import MemoryAccessError
 
 # Base class for peripherals with memory-mapped IO
 class MMIOPeripheral:
@@ -32,6 +33,69 @@ class MMIOPeripheral:
     #def run(self):
     #    pass
 
+# mtime
+class MMIOTimer(MMIOPeripheral):
+    REG_BASE  = 0x0200_4000
+    REG_MTIMECMP_LO = REG_BASE + 0x00
+    REG_MTIMECMP_HI = REG_MTIMECMP_LO + 0x04
+    REG_MTIME_LO = 0x0200_BFF8
+    REG_MTIME_HI = REG_MTIME_LO + 0x04
+    REG_END = REG_MTIME_HI + 0x04
+
+    def __init__(self, cpu):
+        super().__init__()
+        self.cpu = cpu
+
+        self.mtime_lo = 0
+        self.mtime_hi = 0
+        self.mtime_lo_updated = False
+        self.mtime_hi_updated = False
+
+        self.mtimecmp_lo = 0
+        self.mtimecmp_hi = 0
+        self.mtimecmp_lo_updated = False
+        self.mtimecmp_hi_updated = False
+
+    def read32(self, addr):
+        if addr == self.REG_MTIME_LO:
+            return self.cpu.mtime & 0xFFFFFFFF
+        elif addr == self.REG_MTIME_HI:
+            return self.cpu.mtime >> 32
+        if addr == self.REG_MTIMECMP_LO:
+            return self.cpu.mtimecmp & 0xFFFFFFFF
+        elif addr == self.REG_MTIMECMP_HI:
+            return self.cpu.mtimecmp >> 32
+        else:
+            raise MemoryAccessError(f"Invalid MMIO register read at 0x{addr:08X}")
+
+    def write32(self, addr, value):
+        if addr == self.REG_MTIMECMP_LO:
+            self.mtimecmp_lo = value
+            self.mtimecmp_lo_updated = True
+        elif addr == self.REG_MTIMECMP_HI:
+            self.mtimecmp_hi = value
+            self.mtimecmp_hi_updated = True
+        elif addr == self.REG_MTIME_LO:
+            self.mtime_lo = value
+            self.mtime_lo_updated = True
+        elif addr == self.REG_MTIME_HI:
+            self.mtime_hi = value
+            self.mtime_hi_updated = True
+        else:
+            raise MemoryAccessError(f"Invalid MMIO register write at 0x{addr:08X}")
+        
+        # atomic update after writing both high and low words
+        if self.mtimecmp_lo_updated and self.mtimecmp_hi_updated:
+            self.cpu.mtimecmp = (self.mtimecmp_hi << 32) | self.mtimecmp_lo
+            self.mtimecmp_lo_updated = False
+            self.mtimecmp_hi_updated = False
+
+       # atomic update after writing both high and low words
+        if self.mtime_lo_updated and self.mtime_hi_updated:
+            self.cpu.mtime = (self.mtime_hi << 32) | self.mtime_lo
+            self.mtime_lo_updated = False
+            self.mtime_hi_updated = False
+
 # UART exposed as a host pseudo-terminal
 class PtyUART(MMIOPeripheral):
     REG_BASE  = 0x1000_0000
@@ -40,6 +104,7 @@ class PtyUART(MMIOPeripheral):
     REG_END = REG_BASE + 0x08
 
     def __init__(self, logger=None):
+        super().__init__()
         self.logger = logger
 
         # create master/slave pty pair
@@ -77,7 +142,10 @@ class PtyUART(MMIOPeripheral):
                 return self.rx_buf.pop(0)  # return first char in RX buffer
             else:
                 return 1 << 31  # RX empty bit
-        return 0
+        elif addr == self.REG_TX:
+            return 0  # always ready to write
+        else:
+            raise MemoryAccessError(f"Invalid MMIO register read at 0x{addr:08X}")
 
     def write32(self, addr, value):
         if addr == self.REG_TX:
@@ -85,6 +153,8 @@ class PtyUART(MMIOPeripheral):
                 os.write(self.master_fd, bytes([value & 0xFF]))
             except BlockingIOError:
                 pass
+        else:
+            raise MemoryAccessError(f"Invalid MMIO register write at 0x{addr:08X}")
 
 # Block device
 class MMIOBlockDevice(MMIOPeripheral):
@@ -97,6 +167,7 @@ class MMIOBlockDevice(MMIOPeripheral):
     REG_END     = REG_BASE + 0x14
 
     def __init__(self, image_path, ram, size=1024, logger=None):
+        super().__init__()
         self.logger = logger
         self.block_size = 512
         self.num_blocks = size
@@ -133,7 +204,8 @@ class MMIOBlockDevice(MMIOPeripheral):
             return 0
         elif addr == self.REG_STATUS:
             return self.status
-        return 0
+        else:
+            raise MemoryAccessError(f"Invalid MMIO register read at 0x{addr:08X}")
 
     def write32(self, addr, value):
         if addr == self.REG_CMD:
@@ -142,8 +214,11 @@ class MMIOBlockDevice(MMIOPeripheral):
             self.blk = value
         elif addr == self.REG_PTR:
             self.ptr = value
-        elif addr == self.REG_CTRL and value == 1:
-            self._execute_cmd()
+        elif addr == self.REG_CTRL:
+            if value == 1:
+                self._execute_cmd()
+        else:
+            raise MemoryAccessError(f"Invalid MMIO register write at 0x{addr:08X}")
 
     def _execute_cmd(self):
         offset = self.blk * self.block_size

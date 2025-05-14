@@ -158,28 +158,28 @@ Run an example using a file-backed block device:
 
 `riscv-emu.py` accepts the following options:
 
-| Option                | Description                                                                 |
-|-----------------------|-----------------------------------------------------------------------------|
-| `--regs REGS`         | Print selected registers at each instruction                                |
-| `--trace`             | Log the names of functions traversed during execution                       |
-| `--syscalls`          | Log Newlib syscalls                                                         |
-| `--traps`             | Enable trap tracing                                                         |
-| `--check-inv`         | Enable runtime invariant checks on stack/heap alignment and boundaries      |
-| `--check-ram`         | Check validity of memory accesses                                           |
-| `--check-text`        | Ensure the `.text` segment remains unmodified during execution              |
-| `--check-all`         | Enable all checks                                                           |
-| `--start-checks WHEN` | Condition to enable checks (auto, early, main, first-call, 0xADDR)          |
-| `--init-regs VALUE`   | Initial register state (zero, random, 0xDEADBEEF)                           |
-| `--init-ram PATTERN`  | Initialize RAM with pattern (zero, random, addr, 0xAA)                      |
-| `--ram-size KBS`      | Emulated RAM size (kB, default 1024)                                        |
-| `--timer`             | Enable machine timer                                                        |
-| `--uart`              | Enable PTY UART                                                             |
-| `--blkdev PATH`       | Enable MMIO block device                                                    |
-| `--blkdev-size NUM`   | Block device size (512-byte blocks, default 1024)                           |
-| `--raw-tty`           | Enable raw terminal mode                                                    |
-| `--no-color`          | Remove ANSI colors in debugging output                                      |
-| `--log LOG_FILE`      | Log debug information to file `LOG_FILE`                                    |
-| `--help`              | Show usage help and available options                                       |
+| Option                  | Description                                                                 |
+|-------------------------|-----------------------------------------------------------------------------|
+| `--regs REGS`           | Print selected registers at each instruction                                |
+| `--trace`               | Log the names of functions traversed during execution                       |
+| `--syscalls`            | Log Newlib syscalls                                                         |
+| `--traps`               | Enable trap tracing                                                         |
+| `--check-inv`           | Enable runtime invariant checks on stack/heap alignment and boundaries      |
+| `--check-ram`           | Check validity of memory accesses                                           |
+| `--check-text`          | Ensure the `.text` segment remains unmodified during execution              |
+| `--check-all`           | Enable all checks                                                           |
+| `--start-checks WHEN`   | Condition to enable checks (auto, early, main, first-call, 0xADDR)          |
+| `--init-regs VALUE`     | Initial register state (zero, random, 0xDEADBEEF)                           |
+| `--init-ram PATTERN`    | Initialize RAM with pattern (zero, random, addr, 0xAA)                      |
+| `--ram-size KBS`        | Emulated RAM size (kB, default 1024)                                        |
+| `--timer [{csr,mmio}]`  | Enable machine timer (default CSR)                                       |
+| `--uart`                | Enable PTY UART                                                             |
+| `--blkdev PATH`         | Enable MMIO block device                                                    |
+| `--blkdev-size NUM`     | Block device size (512-byte blocks, default 1024)                           |
+| `--raw-tty`             | Enable raw terminal mode                                                    |
+| `--no-color`            | Remove ANSI colors in debugging output                                      |
+| `--log LOG_FILE`        | Log debug information to file `LOG_FILE`                                    |
+| `--help`                | Show usage help and available options                                       |
 
 ## 🧪 Running Unit Tests
 ```
@@ -267,7 +267,7 @@ Test rv32mi-p-sbreak               : PASS
 - When a trap condition is triggered, if `mtvec` is set to zero, the emulator's trap handler is invoked and supports Newlib's system calls. If you install your own trap handler (non-zero `mtvec`), you are responsible for all trap behavior including system calls.
 - `EBREAK` traps with `a7 >= 0xFFFF0000` are used as a debug bridge, regardless of `mtvec`. See `riscv-py.h` for simple logging macros using this feature. These logging macros do not depend on Newlib.
 - The emulated architecture supports unaligned memory accesses and will not trap when they occur.
-- The 64-bit registers `mtime` and `mtimecmp` are accessible via CSR instructions (rather than being memory-mapped) at addresses `0x7C0` (low 32 bits of `mtime`), `0x7C1` (high 32 bits of `mtime`), `0x7C2` (low 32 bits of `mtimecmp`), and `0x7C3` (high 32 bits of `mtimecmp`). Writes to `mtime` and `mtimecmp` are atomic for the whole 64-bit register and occur when the second word of the register is written.
+- The 64-bit registers `mtime` and `mtimecmp` are either memory mapped (`--timer=mmio`) at the standard addresses (`0x0200BFF8` and `0x02004000`, respectively) or accessible via CSR instructions (`--timer=csr`) at addresses `0x7C0` (low 32 bits of `mtime`), `0x7C1` (high 32 bits of `mtime`), `0x7C2` (low 32 bits of `mtimecmp`), and `0x7C3` (high 32 bits of `mtimecmp`). In both cases, writes to `mtime` and `mtimecmp` are atomic for the whole 64-bit register and occur when the second word of the register is written to. For applications needing the machine timer but not needind MMIO peripherals, the CSR implementaion is preferrable for performance reasons.
 
 ###  Performance notes
 The emulator achieves **over 2 MIPS** (million instructions per second) using Python 3.12 (Anaconda) on a Macbook Pro (M1, 2020) running OSX Sequoia. Execution times for some binaries in `prebuilt/`:
