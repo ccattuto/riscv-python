@@ -126,7 +126,6 @@ if __name__ == '__main__':
         args.check_ram = True
         args.check_text = True
     if args.uart or args.blkdev or (args.timer == "mmio"):
-        args.check_ram = True
         use_mmio = True
 
     MEMORY_SIZE = 1024 * args.ram_size  # (default 1 Mb)
