@@ -136,7 +136,7 @@ Type "help()" for more information.
 
 Run a sample FreeRTOS application:
 ```
-./riscv-emu.py --timer prebuilt/freertos_app1.elf
+./riscv-emu.py --timer=csr prebuilt/freertos_app1.elf
 ```
 
 Run an example using memory-mapped UART,
