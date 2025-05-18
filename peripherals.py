@@ -98,13 +98,14 @@ class MMIOTimer(MMIOPeripheral):
 
 # UART exposed as a host pseudo-terminal
 class PtyUART(MMIOPeripheral):
-    REG_BASE  = 0x1000_0000
-    REG_TX = REG_BASE + 0x00
-    REG_RX = REG_BASE + 0x04
-    REG_END = REG_BASE + 0x08
-
-    def __init__(self, logger=None):
+    def __init__(self, reg_base=0x1000_0000, logger=None):
         super().__init__()
+
+        self.REG_BASE   = reg_base
+        self.REG_TX     = reg_base + 0x00
+        self.REG_RX     = reg_base + 0x04
+        self.REG_END    = reg_base + 0x08
+
         self.logger = logger
 
         # create master/slave pty pair
@@ -158,18 +159,19 @@ class PtyUART(MMIOPeripheral):
 
 # Block device
 class MMIOBlockDevice(MMIOPeripheral):
-    REG_BASE    = 0x1001_0000
-    REG_CMD     = REG_BASE + 0x00  # 0 = read, 1 = write
-    REG_BLK     = REG_BASE + 0x04  # block number
-    REG_PTR     = REG_BASE + 0x08  # guest pointer to buffer
-    REG_CTRL    = REG_BASE + 0x0C  # write 1 to trigger
-    REG_STATUS  = REG_BASE + 0x10  # 1 = ready
-    REG_END     = REG_BASE + 0x14
-
-    def __init__(self, image_path, ram, size=1024, logger=None):
+    def __init__(self, reg_base=0x1001_0000, image_path=None, ram=None, block_size=512, size=1024, logger=None):
         super().__init__()
+
+        self.REG_BASE    = reg_base
+        self.REG_CMD     = reg_base + 0x00  # 0 = read, 1 = write
+        self.REG_BLK     = reg_base + 0x04  # block number
+        self.REG_PTR     = reg_base + 0x08  # guest pointer to buffer
+        self.REG_CTRL    = reg_base + 0x0C  # write 1 to trigger
+        self.REG_STATUS  = reg_base + 0x10  # 1 = ready
+        self.REG_END     = reg_base + 0x14
+
         self.logger = logger
-        self.block_size = 512
+        self.block_size = block_size
         self.num_blocks = size
         self.image_path = image_path
         self.ram = ram
