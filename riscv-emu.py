@@ -173,7 +173,7 @@ if __name__ == '__main__':
         machine.register_peripheral(uart)
 
     if args.blkdev:  # create and register block device peripheral
-        blkdev = MMIOBlockDevice(args.blkdev, ram, size=args.blkdev_size, logger=log)
+        blkdev = MMIOBlockDevice(image_path=args.blkdev, ram=ram, block_size=512, size=args.blkdev_size, logger=log)
         ram.register_peripheral(blkdev)
         machine.register_peripheral(blkdev)
 
