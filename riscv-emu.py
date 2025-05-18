@@ -198,7 +198,7 @@ if __name__ == '__main__':
             log.error("Unsupported file format. Please provide a .bin or .elf file")
             sys.exit(1)
     except MachineError as e:
-        log.error(f"EMULATOR ERROR ({type(e).__name__}): {e}")
+        log.error(f"EMULATOR ERROR ({type(e).__name__}) during setup: {e}")
         sys.exit(1)
 
     # If requested, set raw terminal mode

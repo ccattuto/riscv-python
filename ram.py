@@ -58,42 +58,63 @@ class RAM:
             initialize_ram(self, init)
 
     def load_byte(self, addr, signed=True):
-        val = self.memory[addr]
-        return val if not signed or val < 0x80 else val - 0x100
-    
+        try:
+            val = self.memory[addr]
+            return val if not signed or val < 0x80 else val - 0x100
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{1})")
+
     def load_half(self, addr, signed=True):
-        val = self.memory[addr] | (self.memory[addr+1] << 8)
-        return val if not signed or val < 0x8000 else val - 0x10000
+        try:
+            val = self.memory[addr] | (self.memory[addr+1] << 8)
+            return val if not signed or val < 0x8000 else val - 0x10000
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{2})")
 
     def load_word(self, addr):  # always unsigned (performance)
-        if addr & 0x3 == 0:
-            return self.memory32[addr >> 2]  # word aligned
-        else:
-            return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
+        try:
+            if addr & 0x3 == 0:
+                return self.memory32[addr >> 2]  # word aligned
+            else:
+                return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{4})")
 
     def store_byte(self, addr, value):
-        self.memory[addr] = value & 0xFF
+        try:
+            self.memory[addr] = value & 0xFF
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{1})")
 
     def store_half(self, addr, value):
-        value &= 0xFFFF  # make it unsigned
-        self.memory[addr] = value & 0xFF
-        self.memory[addr+1] = (value >> 8) & 0xFF
-
-    def store_word(self, addr, value):
-        value &= 0xFFFFFFFF  # make it unsigned
-        if addr & 0x3 == 0:
-            self.memory32[addr >> 2] = value
-        else:
+        try:
+            value &= 0xFFFF  # make it unsigned
             self.memory[addr] = value & 0xFF
             self.memory[addr+1] = (value >> 8) & 0xFF
-            self.memory[addr+2] = (value >> 16) & 0xFF
-            self.memory[addr+3] = (value >> 24) & 0xFF
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{2})")
+
+    def store_word(self, addr, value):
+        try:
+            value &= 0xFFFFFFFF  # make it unsigned
+            if addr & 0x3 == 0:
+                self.memory32[addr >> 2] = value
+            else:
+                self.memory[addr] = value & 0xFF
+                self.memory[addr+1] = (value >> 8) & 0xFF
+                self.memory[addr+2] = (value >> 16) & 0xFF
+                self.memory[addr+3] = (value >> 24) & 0xFF
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{4})")
 
     def load_binary(self, addr, n):
         return self.memory[addr:addr+n]
 
     def store_binary(self, addr, binary):
-        self.memory[addr:addr+len(binary)] = binary
+        try:
+            self.memory[addr:addr+len(binary)] = binary
+        except (IndexError, BufferError):
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X}-0x{addr+len(binary)}")
 
     def load_cstring(self, addr, max_len=1024):
         end = min(addr + max_len, self.size)
@@ -252,35 +273,46 @@ class RAM_MMIO(RAM):
     def register_peripheral(self, peripheral):
         self.mmio_ranges.append( (peripheral.REG_BASE, peripheral.REG_END, peripheral.read32, peripheral.write32) )
 
-    def check(self, addr, n):
-        if addr < 0 or addr + n > self.size:
-            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{n})")
-
     def load_byte(self, addr, signed=True):
-        val = self.memory[addr]
-        return val if not signed or val < 0x80 else val - 0x100
+        try:
+            val = self.memory[addr]
+            return val if not signed or val < 0x80 else val - 0x100
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{1})")
  
     def load_half(self, addr, signed=True):
-        val = self.memory[addr] | (self.memory[addr+1] << 8)
-        return val if not signed or val < 0x8000 else val - 0x10000
+        try:
+            val = self.memory[addr] | (self.memory[addr+1] << 8)
+            return val if not signed or val < 0x8000 else val - 0x10000
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{2})")
 
     def load_word(self, addr):  # always unsigned (performance)
         for (mmio_addr_base, mmio_addr_end, mmio_read32, mmio_write32) in self.mmio_ranges:
             if mmio_addr_base <= addr < mmio_addr_end:
                 return mmio_read32(addr)
 
-        if addr & 0x3 == 0:
-            return self.memory32[addr >> 2]  # word aligned
-        else:
-            return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
+        try:
+            if addr & 0x3 == 0:
+                return self.memory32[addr >> 2]  # word aligned
+            else:
+                return self.memory[addr] | (self.memory[addr+1] << 8) | self.memory[addr+2] << 16 | self.memory[addr+3] << 24
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{1})")
 
     def store_byte(self, addr, value):
-        self.memory[addr] = value & 0xFF
+        try:
+            self.memory[addr] = value & 0xFF
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{1})")
 
     def store_half(self, addr, value):
-        value &= 0xFFFF  # make it unsigned
-        self.memory[addr] = value & 0xFF
-        self.memory[addr+1] = (value >> 8) & 0xFF
+        try:
+            value &= 0xFFFF  # make it unsigned
+            self.memory[addr] = value & 0xFF
+            self.memory[addr+1] = (value >> 8) & 0xFF
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{2})")
 
     def store_word(self, addr, value):
         value &= 0xFFFFFFFF  # make it unsigned
@@ -290,19 +322,25 @@ class RAM_MMIO(RAM):
                 mmio_write32(addr, value)
                 return
 
-        if addr & 0x3 == 0:
-            self.memory32[addr >> 2] = value
-        else:
-            self.memory[addr] = value & 0xFF
-            self.memory[addr+1] = (value >> 8) & 0xFF
-            self.memory[addr+2] = (value >> 16) & 0xFF
-            self.memory[addr+3] = (value >> 24) & 0xFF
+        try:
+            if addr & 0x3 == 0:
+                self.memory32[addr >> 2] = value
+            else:
+                self.memory[addr] = value & 0xFF
+                self.memory[addr+1] = (value >> 8) & 0xFF
+                self.memory[addr+2] = (value >> 16) & 0xFF
+                self.memory[addr+3] = (value >> 24) & 0xFF
+        except IndexError:
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X} (+{4})")
 
     def load_binary(self, addr, n):
         return self.memory[addr:addr+n]
 
     def store_binary(self, addr, binary):
-        self.memory[addr:addr+len(binary)] = binary
+        try:
+            self.memory[addr:addr+len(binary)] = binary
+        except (IndexError, BufferError):
+            raise MemoryAccessError(f"Access out of bounds: 0x{addr:08X}-0x{addr+len(binary)}")
 
     def load_cstring(self, addr, max_len=1024):
         end = min(addr + max_len, self.size)
