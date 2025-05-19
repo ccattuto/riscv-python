@@ -1,5 +1,5 @@
 // This example implements timer-based round-robin preemptive scheduling for two tasks.
-// Use "--timer" to run it.
+// Use "--timer=csr" to run it.
 
 #include <stdint.h>
 #include <stdio.h>

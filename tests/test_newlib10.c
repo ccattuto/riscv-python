@@ -1,5 +1,5 @@
 // This example tests machine timer interrupt handling (mtime / mtimecmp).
-// Use "--timer" to run it.
+// Use "--timer=csr" to run it.
 
 #include <stdint.h>
 #include <stdio.h>
