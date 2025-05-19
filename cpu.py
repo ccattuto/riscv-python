@@ -413,7 +413,7 @@ class CPU:
         csr_names = {
             'mstatus': 0x300, 'misa': 0x301, 'mie': 0x304, 'mtvec': 0x305,
             'mscratch': 0x340, 'mepc': 0x341, 'mcause': 0x342, 'mtval': 0x343, 'mip': 0x344,
-            'mtime_lo': 0x7C0, 'mtime_hi': 0x7C1, 'mtimecmp_lo': 0x7C2, 'mtimecmp_hi': 0x7C3
+            #'mtime_lo': 0x7C0, 'mtime_hi': 0x7C1, 'mtimecmp_lo': 0x7C2, 'mtimecmp_hi': 0x7C3
         }
         for name, addr in csr_names.items():
             self.CSR_NAME_ADDR[name] = addr
@@ -533,3 +533,8 @@ class CPU:
         for name, addr in self.CSR_NAME_ADDR.items():
             value = self.csrs[addr]
             self.logger.info(f"{name:<12} ({addr:03X}): {value:08X} ({value})")
+
+        self.logger.info(f"{"mtime_lo":<18}: {self.mtime & 0xFFFFFFFF:08X} ({self.mtime & 0xFFFFFFFF})")
+        self.logger.info(f"{"mtime_hi":<18}: {self.mtime >> 32:08X} ({self.mtime >> 32})")
+        self.logger.info(f"{"mtimecmp_lo":<18}: {self.mtimecmp & 0xFFFFFFFF:08X} ({self.mtimecmp & 0xFFFFFFFF})")
+        self.logger.info(f"{"mtimecmp_hi":<18}: {self.mtimecmp >> 32:08X} ({self.mtimecmp >> 32})")

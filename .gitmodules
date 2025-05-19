@@ -7,3 +7,6 @@
 [submodule "advanced/micropython/micropython"]
 	path = advanced/micropython/micropython
 	url = https://github.com/micropython/micropython
+[submodule "advanced/circuitpython/circuitpython"]
+	path = advanced/circuitpython/circuitpython
+	url = https://github.com/adafruit/circuitpython.git
