@@ -39,6 +39,7 @@ void board_init(void) {
 	kbd_interrupt_background_cb.fun = &kbd_interrupt_background_task;
 	kbd_interrupt_background_cb.data = NULL;
 	background_callback_add_core(&kbd_interrupt_background_cb);
+
 	setup_timer_interrupt();
 }
 

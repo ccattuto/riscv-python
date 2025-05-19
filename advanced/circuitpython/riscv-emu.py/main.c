@@ -23,9 +23,10 @@ extern uint32_t _gc_heap_start, _gc_heap_end;
 extern uint32_t _pystack_start, _pystack_end;
 extern uint32_t _stack_top;
 
+vstr_t *boot_output = NULL;
+
 extern void board_init(void);
 extern void reset_board(void);
-void boot_output(const char *text);
 supervisor_execution_status_t supervisor_execution_status(void);
 
 int main(void) {
@@ -55,10 +56,6 @@ int main(void) {
 
 NORETURN void nlr_jump_fail(void *) {
     for (;;) {}  // or reboot / safe mode
-}
-
-void boot_output(const char *text) {
-	EMU_LOG_STR("boot_output()");
 }
 
 supervisor_execution_status_t supervisor_execution_status(void) {
