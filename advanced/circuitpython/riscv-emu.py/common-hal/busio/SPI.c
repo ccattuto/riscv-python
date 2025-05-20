@@ -4,8 +4,8 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include <stdint.h>
 #include "shared-bindings/busio/SPI.h"
-
 #include "py/runtime.h"
 
 void common_hal_busio_spi_construct(busio_spi_obj_t *self,

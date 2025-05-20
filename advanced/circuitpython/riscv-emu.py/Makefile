@@ -9,14 +9,14 @@ include circuitpy_mkenv.mk
 CROSS_COMPILE = /opt/riscv/bin/riscv32-unknown-elf-
 
 INC += \
-        -I. \
-        -I../.. \
-        -I../lib/mp-readline \
-        -I../shared/runtime \
-		-I$(TOP) \
-        -Iboards/$(BOARD) \
-        -Iboards/ \
-        -I$(BUILD)
+	-I. \
+	-I../.. \
+	-I../lib/mp-readline \
+	-I../shared/runtime \
+	-I$(TOP) \
+	-Iboards/$(BOARD) \
+	-Iboards/ \
+	-I$(BUILD)
 
 CFLAGS += -Os
 

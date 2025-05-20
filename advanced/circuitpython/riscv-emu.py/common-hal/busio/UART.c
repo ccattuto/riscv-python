@@ -4,6 +4,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include <stdint.h>
 #include "shared-bindings/busio/UART.h"
 #include "shared/runtime/interrupt_char.h"
 #include "py/runtime.h"
@@ -37,8 +38,8 @@ void common_hal_busio_uart_deinit(busio_uart_obj_t *self) {
 // Write characters.
 size_t common_hal_busio_uart_write(busio_uart_obj_t *self, const uint8_t *data, size_t len, int *errcode) {
     for (size_t i = 0; i < len; i++) {
-		while (TXDATA & 0x80000000);
-		TXDATA = data[i];
+        while (TXDATA & 0x80000000);
+        TXDATA = data[i];
     }
     return len;
 }
@@ -46,19 +47,19 @@ size_t common_hal_busio_uart_write(busio_uart_obj_t *self, const uint8_t *data, 
 // Read characters.
 size_t common_hal_busio_uart_read(busio_uart_obj_t *self, uint8_t *data, size_t len, int *errcode) {
     size_t read = 0;
-	uint32_t val;
-	uint8_t c;
+    uint32_t val;
+    uint8_t c;
 
     while ((self->pending_char != NO_CHAR) && (read < len)) {
-		c = self->pending_char;
+        c = self->pending_char;
 
         if (c == mp_interrupt_char) {
-			self->pending_char = NO_CHAR;
-        	mp_sched_keyboard_interrupt(); 
-			continue;
-		}
+            self->pending_char = NO_CHAR;
+            mp_sched_keyboard_interrupt();
+            continue;
+        }
 
-		data[read++] = c;
+        data[read++] = c;
         val = RXDATA;
         self->pending_char = (val & 0x80000000) ? NO_CHAR : val & 0xFF;
     }
@@ -82,23 +83,23 @@ void common_hal_busio_uart_set_timeout(busio_uart_obj_t *self, mp_float_t timeou
 }
 
 uint32_t common_hal_busio_uart_rx_characters_available(busio_uart_obj_t *self) {
-	uint32_t val;
-	uint8_t c;
+    uint32_t val;
+    uint8_t c;
 
     if (self->pending_char != NO_CHAR) {
         return 1;
-	}
+    }
 
-	val = RXDATA;
+    val = RXDATA;
     if ((val & 0x80000000) == 0) {
         c = val & 0xFF;
         if (c == mp_interrupt_char) {
-			self->pending_char = NO_CHAR;
+            self->pending_char = NO_CHAR;
             mp_sched_keyboard_interrupt();
-			return 0;
+            return 0;
         } else {
             self->pending_char = c;
-        	return 1;
+            return 1;
         }
     }
 

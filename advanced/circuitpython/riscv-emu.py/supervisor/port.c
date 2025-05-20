@@ -36,21 +36,21 @@ __attribute__((weak)) void disable_timer_interrupt(void);
 #define MTIMECMP_ADDR_HI	(*(volatile uint32_t *)(MTIMECMP_ADDR + 4))
 
 static inline void write_mtime(uint64_t value) {
-	MTIME_ADDR_LO = value & 0xFFFFFFFF;
-	MTIME_ADDR_HI = value >> 32;
+    MTIME_ADDR_LO = value & 0xFFFFFFFF;
+    MTIME_ADDR_HI = value >> 32;
 }
 
 static inline void write_mtimecmp(uint64_t value) {
-	MTIMECMP_ADDR_LO = value & 0xFFFFFFFF;
-	MTIMECMP_ADDR_HI = value >> 32;
+    MTIMECMP_ADDR_LO = value & 0xFFFFFFFF;
+    MTIMECMP_ADDR_HI = value >> 32;
 }
 
 static inline uint64_t read_mtime(void) {
     uint32_t hi1, lo, hi2;
-	do {
-		hi1 = MTIME_ADDR_HI;
-		lo = MTIME_ADDR_LO;
-		hi2 = MTIME_ADDR_HI;
+    do {
+        hi1 = MTIME_ADDR_HI;
+        lo = MTIME_ADDR_LO;
+        hi2 = MTIME_ADDR_HI;
     } while (hi1 != hi2);
 
     return ((uint64_t) hi2 << 32) | lo;
@@ -110,47 +110,47 @@ static inline uint32_t read_mtime_lo(void) {
 #if CIRCUITPY_USE_MTIME_TICKS
 // assumes the emulator runs at ~2 MIPS (i.e., mtime runs at 2 MHz)
 uint64_t port_get_raw_ticks(uint8_t *subticks) {
-	if (subticks) {
-    	*subticks = 0;
-	}
-	return read_mtime() / 2000;
+    if (subticks) {
+        *subticks = 0;
+    }
+    return read_mtime() / 2000;
 }
 
 #else /* CIRCUITPY_USE_MTIME_TICKS */
 volatile uint64_t ticks_ms = 0;
 
 void port_tick(void) {
-	ticks_ms++;
-	supervisor_tick();
+    ticks_ms++;
+    supervisor_tick();
 }
 
 uint64_t port_get_raw_ticks(uint8_t *subticks) {
-	if (subticks) {
-    	*subticks = 0;
-	}
-	return ticks_ms;
+    if (subticks) {
+        *subticks = 0;
+    }
+    return ticks_ms;
 }
 
 void setup_timer_interrupt(void) {
-	// Install trap handler and enable timer interrupt
+    // Install trap handler and enable timer interrupt
     WRITE_CSR(mtvec, (uint32_t) trap_handler_riscvpy);
     SET_CSR(mie, 1 << 7);
     SET_CSR(mstatus, 1 << 3);
-	write_mtime(0);
-	write_mtimecmp(20000);  // assuming mtime runs at ~2 MHz, fire interrutp 10 ms in the future
+    write_mtime(0);
+    write_mtimecmp(20000);  // assuming mtime runs at ~2 MHz, fire interrutp 10 ms in the future
 }
 
 void disable_timer_interrupt(void) {
-	// Install trap handler and enable timer interrupt
+    // Install trap handler and enable timer interrupt
     CLEAR_CSR(mstatus, 1 << 3);
     CLEAR_CSR(mie, 1 << 7);
     WRITE_CSR(mtvec, 0);
 }
 
 inline void rearm_timer(void) {
-	uint64_t mtimecmp;
-	mtimecmp = read_mtimecmp();
-	write_mtimecmp(mtimecmp + 2000);  // assuming mtime runs at ~2 MHz, fire interrutp 1 ms in the future
+    uint64_t mtimecmp;
+    mtimecmp = read_mtimecmp();
+    write_mtimecmp(mtimecmp + 2000);  // assuming mtime runs at ~2 MHz, fire interrutp 1 ms in the future
 }
 
 #endif /* CIRCUITPY_USE_MTIME_TICKS */
@@ -169,18 +169,18 @@ void reset_port(void) {
 }
 
 void reset_board(void) {
-	reset_cpu();
+    reset_cpu();
 }
 
 void reset_to_bootloader(void) {
-	reset_cpu();
+    reset_cpu();
 }
 
 void reset_cpu(void) {
 #if !CIRCUITPY_USE_MTIME_TICKS
-	disable_timer_interrupt();
+    disable_timer_interrupt();
 #endif
-	_start();
+    _start();
 }
 
 extern uint32_t _stack_top,_stack_bottom;
@@ -241,21 +241,3 @@ void port_yield() {
 
 void port_boot_info(void) {
 }
-
-/*
-void port_background_task(void) {
-    // Existing background logic
-    background_callback_run_all();
-
-    // Poll UART to catch CTRL+C during tight loops
-    if (common_hal_busio_uart_rx_characters_available()) {
-        int c = mp_hal_stdin_rx_chr();
-        if (c == mp_interrupt_char) {
-            mp_sched_keyboard_interrupt();
-        }
-    }
-
-    mp_handle_pending(true);
-}
-*/
-

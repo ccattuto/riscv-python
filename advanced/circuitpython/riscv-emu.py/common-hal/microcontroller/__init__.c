@@ -39,7 +39,7 @@ void common_hal_mcu_delay_us(uint32_t delay) {
 
 volatile uint32_t nesting_count = 0;
 void common_hal_mcu_disable_interrupts(void) {
-	CLEAR_CSR(mie, 1 << 7);
+    CLEAR_CSR(mie, 1 << 7);
     nesting_count++;
 }
 
@@ -51,7 +51,7 @@ void common_hal_mcu_enable_interrupts(void) {
     if (nesting_count > 0) {
         return;
     }
-	SET_CSR(mie, 1 << 7);
+    SET_CSR(mie, 1 << 7);
 }
 
 static bool next_reset_to_bootloader = false;

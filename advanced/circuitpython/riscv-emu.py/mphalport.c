@@ -4,6 +4,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include <stdint.h>
 #include "py/mphal.h"
 #include "shared-bindings/microcontroller/__init__.h"
 
@@ -15,9 +16,9 @@
 extern uint32_t common_hal_mcu_processor_get_frequency(void);
 
 void mp_hal_delay_us(mp_uint_t delay) {
- 	while (delay--) {
-		__asm__ volatile ("addi x0, x0, 0");
-	}
+    while (delay--) {
+	    __asm__ volatile ("addi x0, x0, 0");
+    }
 }
 
 void mp_hal_disable_all_interrupts(void) {
