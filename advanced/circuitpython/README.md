@@ -30,7 +30,7 @@ screen /dev/ttys007 115200
 
 This CircuitPython port supports an emulated serial backed by a pseudoterminal, an emulated block device backed by a filesystem image, interrupt-driven timer and tick support, CTRL+C support for tight Python loops, autoreload, and more:
 ```
-Adafruit CircuitPython 9.2.7-dirty on 2025-05-19; riscv-emu.py with riscv-emu.py
+Adafruit CircuitPython 9.2.7 on 2025-05-20; riscv-emu.py with riscv-emu.py
 >>> import sys
 >>> sys.platform
 'riscv-emu.py'
