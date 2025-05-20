@@ -13,7 +13,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 - **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, and a **memory-mapped block device** backed by an image file
 - **Passes all `rv32ui` and `rv32mi` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, violations of invariants
-- Runs [MicroPython](https://micropython.org/) and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
+- Runs [MicroPython](https://micropython.org/), [CircuitPython](https://circuitpython.org/) with emulated peripherals, and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
 - Self-contained, modular, extensible codebase
 
 ## 🔧 Requirements
@@ -51,8 +51,9 @@ pip install -r requirements.txt
 ├── prebuilt/                  # Pre-built examples
 ├── run_unit_tests.py          # Runs RISC-V unit tests (RV32UI and RV32MI)
 ├── riscv-tests/               # Git submodule with RISC-V unit tests
-├── advanced/micropython/      # MicroPython port
 ├── advanced/freertos/         # FreeRTOS port
+├── advanced/micropython/      # MicroPython port
+├── advanced/circuitpython/    # CircuitPython port
 └── README.md                  # You're here!
 ```
 
