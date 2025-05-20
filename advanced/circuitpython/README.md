@@ -1,7 +1,15 @@
 ## Compiling CircuitPython
 
+Check out the following submodule, only:
 ```
-cd port-riscv-emu.py
+cd circuitpython
+git submodule update --init lib/tlsf
+cd ..
+```
+
+Compile CircuitPython:
+```
+cd riscv-emu.py
 make
 ```
 
@@ -9,6 +17,7 @@ make
 
 Run the emulator:
 ```
+cd ../../..
 ./riscv-emu.py --timer=mmio --ram-size=4096 --uart --blkdev=advanced/circuitpython/riscv-emu.py/build-riscv-emu.py/circuitpy.img advanced/circuitpython/riscv-emu.py/build-riscv-emu.py/firmware.elf
 000.001s [INFO] [UART] PTY created: /dev/ttys007
 000.002s [INFO] [BLOCK] Opening block device image: advanced/circuitpython/riscv-emu.py/build-riscv-emu.py/circuitpy.img
