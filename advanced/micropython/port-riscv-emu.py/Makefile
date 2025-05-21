@@ -22,7 +22,7 @@ INC += -I$(BUILD)
 ifeq ($(CROSS), 1)
 DFU = $(TOP)/tools/dfu.py
 PYDFU = $(TOP)/tools/pydfu.py
-CFLAGS_RISCV  = -march=rv32i -mabi=ilp32 -D_REENT_SMALL
+CFLAGS_RISCV  = -march=rv32i_zicsr -mabi=ilp32 -D_REENT_SMALL
 CFLAGS += $(INC) -Wall -Werror -std=c99 $(CFLAGS_RISCV) $(COPT) #-O2
 LDFLAGS += -nostartfiles -static -Tlinker_newlib.ld --specs=nosys.specs
 else
