@@ -51,11 +51,6 @@ class MMIOTimer(MMIOPeripheral):
         self.mtime_lo_updated = False
         self.mtime_hi_updated = False
 
-        self.mtimecmp_lo = 0
-        self.mtimecmp_hi = 0
-        self.mtimecmp_lo_updated = False
-        self.mtimecmp_hi_updated = False
-
     def read32(self, addr):
         if addr == self.REG_MTIME_LO:
             return self.cpu.mtime & 0xFFFFFFFF
@@ -70,11 +65,9 @@ class MMIOTimer(MMIOPeripheral):
 
     def write32(self, addr, value):
         if addr == self.REG_MTIMECMP_LO:
-            self.mtimecmp_lo = value
-            self.mtimecmp_lo_updated = True
+            self.cpu.mtimecmp = (self.cpu.mtimecmp & 0xFFFFFFFF_00000000) | (value & 0xFFFFFFFF)
         elif addr == self.REG_MTIMECMP_HI:
-            self.mtimecmp_hi = value
-            self.mtimecmp_hi_updated = True
+            self.cpu.mtimecmp = (self.cpu.mtimecmp & 0x00000000_FFFFFFFF) | ((value & 0xFFFFFFFF) << 32)
         elif addr == self.REG_MTIME_LO:
             self.mtime_lo = value
             self.mtime_lo_updated = True
@@ -83,14 +76,8 @@ class MMIOTimer(MMIOPeripheral):
             self.mtime_hi_updated = True
         else:
             raise MemoryAccessError(f"Invalid MMIO register write at 0x{addr:08X}")
-        
-        # atomic update after writing both high and low words
-        if self.mtimecmp_lo_updated and self.mtimecmp_hi_updated:
-            self.cpu.mtimecmp = (self.mtimecmp_hi << 32) | self.mtimecmp_lo
-            self.mtimecmp_lo_updated = False
-            self.mtimecmp_hi_updated = False
 
-       # atomic update after writing both high and low words
+       # atomic update of mtime after writing both high and low words
         if self.mtime_lo_updated and self.mtime_hi_updated:
             self.cpu.mtime = (self.mtime_hi << 32) | self.mtime_lo
             self.mtime_lo_updated = False
