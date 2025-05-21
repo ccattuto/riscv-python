@@ -23,6 +23,11 @@ cd ../../..
 000.002s [INFO] [BLOCK] Opening block device image: advanced/circuitpython/riscv-emu.py/build-riscv-emu.py/circuitpy.img
 ```
 
+If you want to use the pre-built binaries, run the emulator like this:
+```
+./riscv-emu.py --timer=mmio --ram-size=4096 --uart --blkdev=prebuilt/circuitpy_fatfs.img prebuilt/circuitpython.elf 
+```
+
 Connect to CircuitPython using your favorite terminal program:
 ```
 screen /dev/ttys007 115200

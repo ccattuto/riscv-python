@@ -286,7 +286,7 @@ time ./riscv-emu.py prebuilt/test_newlib6.elf
 ./riscv-emu.py prebuilt/test_newlib6.elf  75.85s user 0.24s system 99% cpu 1:16.37 total
 ```
 
-Running the emulator with [PyPy](https://github.com/pypy/pypy) yields a speedup of almost 4x over CPython, achieving **over 9 MIPS**.
+Running the emulator with [PyPy](https://pypy.org/) yields a speedup of almost 4x over CPython, achieving **over 9 MIPS**.
 ```
 time pypy3 ./riscv-emu.py prebuilt/test_newlib2.elf
 pypy3 ./riscv-emu.py prebuilt/test_newlib2.elf  2.76s user 0.06s system 97% cpu 2.891 total
