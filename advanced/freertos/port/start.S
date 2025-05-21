@@ -34,7 +34,11 @@ z_sbss:
 #    call __sinit
 
     # install trap handler for FreeRTOS
+#if defined(MTIMER_MMIO) && MTIMER_MMIO == 1
+    la a0, freertos_risc_v_trap_handler
+#else
     la a0, freertos_risc_v_trap_handler_riscvpy
+#endif
     csrw mtvec, a0
 
     # restore a0 and a1

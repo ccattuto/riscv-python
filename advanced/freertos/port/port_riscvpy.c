@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdint.h>
+#include "FreeRTOS.h"
 #include "riscv-py.h"
+
+#if defined(MTIMER_MMIO) && MTIMER_MMIO == 0
 
 // CSR-based timer access
 
@@ -44,6 +47,7 @@ void vPortSetupTimerInterrupt(void)
     SET_CSR(mie, 1 << 7);       // MTIE = 1
     SET_CSR(mstatus, 1 << 3);   // MIE = 1
 }
+#endif /* defined(MTIMER_MMIO) && MTIMER_MMIO == 0 */
 
 void vConfigureTimerForRunTimeStats(void)
 {
@@ -52,7 +56,11 @@ void vConfigureTimerForRunTimeStats(void)
 
 uint32_t ulGetRunTimeCounterValue(void)
 {
+#if defined(MTIMER_MMIO) && MTIMER_MMIO == 1
+	return *((uint32_t *) configMTIME_BASE_ADDRESS);
+#else
     return read_mtime_lo();
+#endif
 }
 
 void vApplicationTickHook(void)

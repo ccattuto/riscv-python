@@ -10,9 +10,14 @@
 #define configMAX_TASK_NAME_LEN         ( 12 )
 #define configUSE_16_BIT_TICKS          0
 
-// No memory-mapped timer — handled via emulator's CSR logic
+// Memory-mapped timer
+#if defined(MTIMER_MMIO) && MTIMER_MMIO == 1
+#define configMTIME_BASE_ADDRESS        ( 0x0200BFF8 )
+#define configMTIMECMP_BASE_ADDRESS     ( 0x02004000 )
+#else
 #define configMTIME_BASE_ADDRESS        ( 0 )
 #define configMTIMECMP_BASE_ADDRESS     ( 0 )
+#endif
 
 // Preemption and hooks
 #define configUSE_PREEMPTION            1

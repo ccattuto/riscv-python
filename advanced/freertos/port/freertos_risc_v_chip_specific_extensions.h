@@ -55,7 +55,7 @@
 #define __FREERTOS_RISC_V_EXTENSIONS_H__
 
 #define portasmHAS_SIFIVE_CLINT           0
-#define portasmHAS_MTIME                  0
+#define portasmHAS_MTIME                  (MTIMER_MMIO)
 #define portasmADDITIONAL_CONTEXT_SIZE    0
 
 .macro portasmSAVE_ADDITIONAL_REGISTERS

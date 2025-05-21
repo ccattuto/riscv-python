@@ -1,6 +1,6 @@
 /*
 This is almost identical to the trap handler in FreeRTOS-Kernel/portable/GCC/RISC-V/portASM.S ,
-the only different is that this updates mtimecmp via CSR registers (0x7C2/0x7C3) instead of using memory-mapped access.
+the only difference is that here we update mtimecmp via CSR registers (0x7C2/0x7C3) instead of using memory-mapped access.
 */
 
 #include "portContext.h"
