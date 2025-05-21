@@ -12,7 +12,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 - **Supports argc/argv program arguments**
 - **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, and a **memory-mapped block device** backed by an image file
 - **Passes all `rv32ui` and `rv32mi` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
-- **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, violations of invariants
+- **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, and violations of invariants
 - Runs [MicroPython](https://micropython.org/), [CircuitPython](https://circuitpython.org/) with emulated peripherals, and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
 - Self-contained, modular, extensible codebase
 
@@ -26,7 +26,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 pip install -r requirements.txt
 ```
 
-## File Strucure
+## File Structure
 
 ```
 ├── riscv-emu.py               # Emulator
@@ -116,7 +116,7 @@ Newlib C examples:
 
 ```
 
-Use the `--` separator to pass command-line arguments to the emulated program (the basename of the executable is automatically passed as argument 0):
+Use the `--` separator to pass command-line arguments to the emulated program (the basename of the executable is automatically passed as `argv[0]`):
 ```
 ./riscv-emu.py build/test_newlib7.elf -- arg1 arg2 arg3    
 Number of arguments: 4
@@ -140,7 +140,7 @@ Run a sample FreeRTOS application:
 ./riscv-emu.py --timer=csr prebuilt/freertos_app1.elf
 ```
 
-Run an example using memory-mapped UART,
+Run an example using the memory-mapped UART,
 ```
 ./riscv-emu.py --uart prebuilt/test_peripheral_uart.elf 
 000.001s [INFO] [UART] PTY created: /dev/ttys015
@@ -176,7 +176,7 @@ Run an example using a file-backed block device:
 | `--timer {csr,mmio}`    | Enable machine timer                                                        |
 | `--uart`                | Enable PTY UART                                                             |
 | `--blkdev PATH`         | Enable MMIO block device                                                    |
-| `--blkdev-size NUM`     | Block device size (512-byte blocks, default 1024)                           |
+| `--blkdev-size NUM`     | Block device size in 512-byte blocks (default 1024)                         |
 | `--raw-tty`             | Enable raw terminal mode                                                    |
 | `--no-color`            | Remove ANSI colors in debugging output                                      |
 | `--log LOG_FILE`        | Log debug information to file `LOG_FILE`                                    |
@@ -254,24 +254,25 @@ Test rv32mi-p-sbreak               : PASS
 ```
 
 ## Design Goals
-- Simplicity over speed (but highly optimized for speed, it performs at the limit of what is possible in pure Python)
+- Simplicity over speed (though it is highly optimized for speed and performs near the limit of what is possible in pure Python)
 - Emphasis on correctness and compliance with RISC-V specifications
 - Minimal dependencies
 - Separation of concerns: core ISA, syscalls, binary loading, peripherals, and emulation control
-- Useful for teaching, debugging, testing compiler output
+- Useful for teaching, debugging, and testing compiler output
 
 ## Notes
-- The provided examples were tested on OSX Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12.
+- The provided examples were tested on macOS Sequoia using [Homebrew's RISC-V GNU Compiler Toolchain](https://github.com/riscv-software-src/homebrew-riscv) and Python 3.12.
 - The provided Makefile builds all Newlib examples using Newlib-nano (`--specs=nano.specs` linker option).
-- The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change RAM size, make sure you update the linker scripts and specify RAM size using the `--ram-size` option.
-- The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries.
-- When a trap condition is triggered, if `mtvec` is set to zero, the emulator's trap handler is invoked and supports Newlib's system calls. If you install your own trap handler (non-zero `mtvec`), you are responsible for all trap behavior including system calls.
+- The linker scripts and emulator assume 1Mb of RAM (addresses `0x00000000` - `0x000FFFFF`). If you change the RAM size, ensure you also update the linker scripts and specify the new size using the `--ram-size` option.
+- The emulator relies on ELF symbols for heap management and call tracing: do not strip ELF binaries if you need dynamic memory allocation via Newlib or call tracing.
+- When a trap condition is triggered, if `mtvec` is zero, the emulator's internal trap handler is invoked, which supports Newlib's system calls. If you install a custom trap handler (by setting a non-zero `mtvec`), your handler becomes responsible for all trap behavior including managing system calls.
 - `EBREAK` traps with `a7 >= 0xFFFF0000` are used as a debug bridge, regardless of `mtvec`. See `riscv-py.h` for simple logging macros using this feature. These logging macros do not depend on Newlib.
 - The emulated architecture supports unaligned memory accesses and will not trap when they occur.
-- The 64-bit registers `mtime` and `mtimecmp` are either memory mapped (`--timer=mmio`) at the standard addresses (`0x0200BFF8` and `0x02004000`, respectively) or accessible via CSR instructions (`--timer=csr`) at addresses `0x7C0` (low 32 bits of `mtime`), `0x7C1` (high 32 bits of `mtime`), `0x7C2` (low 32 bits of `mtimecmp`), and `0x7C3` (high 32 bits of `mtimecmp`). In both cases, writes to `mtime` and `mtimecmp` are atomic for the whole 64-bit register and occur when the second word of the register is written to. For applications needing the machine timer but not needind MMIO peripherals, the CSR implementaion is preferrable for performance reasons.
+- The 64-bit registers `mtime` and `mtimecmp` are either memory mapped (`--timer=mmio`) at the standard addresses (`0x0200BFF8` and `0x02004000`, respectively) or accessible via CSR instructions (`--timer=csr`) at addresses `0x7C0` (low 32 bits of `mtime`), `0x7C1` (high 32 bits of `mtime`), `0x7C2` (low 32 bits of `mtimecmp`), and `0x7C3` (high 32 bits of `mtimecmp`). Writes to `mtime` are atomic for the whole 64-bit register and occur when the second word of the register is written to (in any order). For applications needing the machine timer, but not needing MMIO peripherals, the CSR implementation is preferrable for performance reasons.
+- Certain features of the emulator rely on POSIX-specific functionalities and may not work as expected on native Windows environments. The emulated UART uses a pseudo-terminal (PTY), which depends on POSIX-specific Python modules (`os.openpty`, `tty`, `fcntl`) and is unlikely to work correctly on Windows. Raw Terminal Mode (`--raw-tty`) also utilizes POSIX-specific modules (`tty`, `termios`) and will not function as intended on Windows. Some emulated system calls (e.g., `_openat`, `_mkdirat` using `AT_FDCWD`) are modeled closely on POSIX standards: discrepancies in behavior or support for specific flags might occur on Windows.
 
 ###  Performance notes
-The emulator achieves **over 2 MIPS** (million instructions per second) using Python 3.12 (Anaconda) on a Macbook Pro (M1, 2020) running OSX Sequoia. Execution times for some binaries in `prebuilt/`:
+The emulator achieves **over 2 MIPS** (million instructions per second) using Python 3.12 (Anaconda distribution) on a Macbook Pro (M1, 2020) running macOS Sequoia. Execution times for some binaries in `prebuilt/`:
 ```
 time ./riscv-emu.py build/test_newlib2.elf
 ./riscv-emu.py build/test_newlib2.elf  11.43s user 0.05s system 99% cpu 11.506 total
