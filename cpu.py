@@ -525,7 +525,7 @@ class CPU:
 
         self.logger.info("REGISTER STATE:")
 
-        self.logger.info(f"{"pc":<12}        {self.pc:08X} ({self.pc})")
+        self.logger.info(f"{'pc':<12}        {self.pc:08X} ({self.pc})")
         for i, name in enumerate(self.REG_NAMES):
             value = self.registers[i]
             self.logger.info(f"{name:<12} (x{i:02}): {value:08X} ({value})")
@@ -534,7 +534,7 @@ class CPU:
             value = self.csrs[addr]
             self.logger.info(f"{name:<12} ({addr:03X}): {value:08X} ({value})")
 
-        self.logger.info(f"{"mtime_lo":<18}: {self.mtime & 0xFFFFFFFF:08X} ({self.mtime & 0xFFFFFFFF})")
-        self.logger.info(f"{"mtime_hi":<18}: {self.mtime >> 32:08X} ({self.mtime >> 32})")
-        self.logger.info(f"{"mtimecmp_lo":<18}: {self.mtimecmp & 0xFFFFFFFF:08X} ({self.mtimecmp & 0xFFFFFFFF})")
-        self.logger.info(f"{"mtimecmp_hi":<18}: {self.mtimecmp >> 32:08X} ({self.mtimecmp >> 32})")
+        self.logger.info(f"{'mtime_lo':<18}: {self.mtime & 0xFFFFFFFF:08X} ({self.mtime & 0xFFFFFFFF})")
+        self.logger.info(f"{'mtime_hi':<18}: {self.mtime >> 32:08X} ({self.mtime >> 32})")
+        self.logger.info(f"{'mtimecmp_lo':<18}: {self.mtimecmp & 0xFFFFFFFF:08X} ({self.mtimecmp & 0xFFFFFFFF})")
+        self.logger.info(f"{'mtimecmp_hi':<18}: {self.mtimecmp >> 32:08X} ({self.mtimecmp >> 32})")
