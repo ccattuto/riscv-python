@@ -274,15 +274,28 @@ Test rv32mi-p-sbreak               : PASS
 ###  Performance notes
 The emulator achieves **over 2 MIPS** (million instructions per second) using Python 3.12 (Anaconda distribution) on a Macbook Pro (M1, 2020) running macOS Sequoia. Execution times for some binaries in `prebuilt/`:
 ```
-time ./riscv-emu.py build/test_newlib2.elf
-./riscv-emu.py build/test_newlib2.elf  11.43s user 0.05s system 99% cpu 11.506 total
+time ./riscv-emu.py prebuilt/test_newlib2.elf
+./riscv-emu.py prebuilt/test_newlib2.elf  11.43s user 0.05s system 99% cpu 11.506 total
 ```
 ```
-time ./riscv-emu.py build/test_newlib4.elf
-./riscv-emu.py build/test_newlib4.elf  4.90s user 0.03s system 99% cpu 4.973 total
+time ./riscv-emu.py prebuilt/test_newlib4.elf
+./riscv-emu.py prebuilt/test_newlib4.elf  4.90s user 0.03s system 99% cpu 4.973 total
 ```
 ```
-time ./riscv-emu.py build/test_newlib6.elf
-./riscv-emu.py build/test_newlib6.elf  75.85s user 0.24s system 99% cpu 1:16.37 total
+time ./riscv-emu.py prebuilt/test_newlib6.elf
+./riscv-emu.py prebuilt/test_newlib6.elf  75.85s user 0.24s system 99% cpu 1:16.37 total
 ```
+
 Running the emulator with [PyPy](https://github.com/pypy/pypy) yields a speedup of almost 4x over CPython, achieving **over 9 MIPS**.
+```
+time pypy3 ./riscv-emu.py prebuilt/test_newlib2.elf
+pypy3 ./riscv-emu.py prebuilt/test_newlib2.elf  2.76s user 0.06s system 97% cpu 2.891 total
+```
+```
+time pypy3 ./riscv-emu.py prebuilt/test_newlib4.elf
+pypy3 ./riscv-emu.py prebuilt/test_newlib4.elf  1.24s user 0.03s system 99% cpu 1.276 total
+```
+```
+time pypy3 ./riscv-emu.py prebuilt/test_newlib6.elf
+pypy3 ./riscv-emu.py prebuilt/test_newlib6.elf  19.82s user 0.15s system 99% cpu 20.046 total
+```
