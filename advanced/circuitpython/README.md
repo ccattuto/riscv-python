@@ -33,7 +33,7 @@ Connect to CircuitPython using your favorite terminal program:
 screen /dev/ttys007 115200
 ```
 
-This CircuitPython port supports an emulated serial backed by a pseudoterminal, an emulated block device backed by a filesystem image, interrupt-driven timer and tick support, CTRL+C support for tight Python loops, autoreload, and more:
+This CircuitPython port supports an emulated serial backed by a pseudoterminal, an emulated block device backed by a filesystem image, interrupt-driven timer and tick support, CTRL+C support for tight Python loops, and more:
 ```
 Adafruit CircuitPython 9.2.7 on 2025-05-20; riscv-emu.py with riscv-emu.py
 >>> import sys
