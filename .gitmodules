@@ -10,3 +10,6 @@
 [submodule "advanced/circuitpython/circuitpython"]
 	path = advanced/circuitpython/circuitpython
 	url = https://github.com/adafruit/circuitpython.git
+[submodule "advanced/coremark/coremark"]
+	path = advanced/coremark/coremark
+	url = https://github.com/eembc/coremark.git

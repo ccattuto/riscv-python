@@ -1,0 +1,27 @@
+#!/bin/bash
+
+RISCV_EMU_PY=../../../riscv-emu.py
+RISCV_EMU_OPTS=--timer=csr
+
+# Check if at least one argument (the command itself) is provided
+if [ "$#" -lt 1 ]; then
+  echo "Usage: $0 <command> [arg1 arg2 ...]"
+  echo "Example: $0 ls -l /tmp"
+  exit 1
+fi
+
+# The first parameter is the command to run
+COMMAND="$1"
+
+# Remove the first parameter (the command) from the list of arguments.
+# The remaining arguments ($@) will be passed to the command.
+shift
+
+# If there are remaining arguments (P2, P3, ...),
+# execute the command with "--" followed by these arguments.
+# Otherwise, just execute the command.
+if [ "$#" -gt 0 ]; then
+  exec "$RISCV_EMU_PY" "$RISCV_EMU_OPTS" "$COMMAND" -- "$@"
+else
+  exec "$RISCV_EMU_PY" "$RISCV_EMU_OPTS" "$COMMAND"
+fi
