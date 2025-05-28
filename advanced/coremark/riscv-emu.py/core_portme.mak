@@ -21,7 +21,7 @@
 OUTFLAG= -o
 # Flag : CC
 #	Use this flag to define compiler to use
-CC 		= /opt/riscv/bin/riscv32-unknown-elf-gcc
+CC 		= riscv64-unknown-elf-gcc
 # Flag : LD
 #	Use this flag to define compiler to use
 LD		= $(CC)
@@ -40,7 +40,7 @@ SEPARATE_COMPILE=1
 # Flag : SEPARATE_COMPILE
 # You must also define below how to create an object file, and how to link.
 OBJOUT 	= -o
-LFLAGS 	= -nostartfiles -static -T$(PORT_DIR)/linker_newlib.ld --specs=nano.specs
+LFLAGS 	= -march=rv32i_zicsr -mabi=ilp32 -nostartfiles -static -T$(PORT_DIR)/linker_newlib.ld --specs=nano.specs
 ASFLAGS = $(CFLAGS)
 OFLAG 	= -o
 COUT 	= -c
