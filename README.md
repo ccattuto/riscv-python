@@ -74,16 +74,16 @@ git submodule update --init --recursive
 
 Assembly examples (starts at PC=0):
 ```
-./risc-emu.py build/test_asm1.bin
+./riscv-emu.py build/test_asm1.bin
 ```
 
 Bare C examples (starts at PC=0, `_start` in `start_bare.S`):
 ```
-./risc-emu.py build/test_bare1.bin
+./riscv-emu.py build/test_bare1.bin
 ```
 or
 ```
-./risc-emu.py build/test_bare1.elf
+./riscv-emu.py build/test_bare1.elf
 ```
 
 Newlib C examples:
@@ -130,7 +130,7 @@ Run MicroPython:
 ```
 ./riscv-emu.py --raw-tty --ram-size=4096 prebuilt/micropython.elf 
 Welcome to MicroPython on RISC-V!
-MicroPython v1.25.0 on 2025-05-01; emulated with risc-emu.py
+MicroPython v1.25.0 on 2025-05-01; emulated with riscv-emu.py
 Type "help()" for more information.
 >>> 
 ```
