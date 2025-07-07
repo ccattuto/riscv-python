@@ -7,7 +7,7 @@ git submodule update --init lib/tlsf
 cd ..
 ```
 
-Compile CircuitPython:
+Compile CircuitPython (requires GCC 14):
 ```
 cd riscv-emu.py
 make
