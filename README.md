@@ -54,6 +54,7 @@ pip install -r requirements.txt
 ├── advanced/freertos/         # FreeRTOS port
 ├── advanced/micropython/      # MicroPython port
 ├── advanced/circuitpython/    # CircuitPython port
+├── advanced/coremark/         # CoreMark port 
 └── README.md                  # You're here!
 ```
 
