@@ -26,3 +26,6 @@
   
 - `test_newlib11.c`: Simple implementation of timer-based preemptive scheduling for two tasks. The first task increments a counter and prints it to console (using the debug macros in `risc-py.h`) every `0x10000` loops. The second task decrements a counter and prints it to console every `0x10000` loops. Run this example with the `--timer=csr` option. Use `--traps`` to see timer-based traps triggering task switching.
 
+- `test_newlib12.c`: Soft floating point test.
+  
+- `test_newlib13.c`: Test using `setjump`/`longjump` C exception handling.
