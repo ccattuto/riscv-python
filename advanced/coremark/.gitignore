@@ -1,0 +1,3 @@
+./coremark/*.o
+./coremark/*.elf
+./coremark/*.log
