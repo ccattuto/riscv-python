@@ -213,13 +213,13 @@ class _MMIOMixin:
 # (Offset, Safe, MMIO)
 
 _feature_sets = [
-    (True,  False, False),
-    (False, True,  False),
-    (True,  True,  False),
-    (False, False, True),
-    (True,  False, True),
-    (False,  True, True),
-    (True,  True,  True)
+    (True,  False, False),  # Offset_RAM
+    (False, True,  False),  # Safe_RAM
+    (True,  True,  False),  # Offset_Safe_RAM
+    (False, False, True),   # MMIO_RAM
+    (True,  False, True),   # Offset_MMIO_RAM
+    (False,  True, True),   # Safe_MMIO_RAM
+    (True,  True,  True)    # Offset_Safe_MMIO_RAM
 ]
 
 # Create all classes specified by the feature sets
