@@ -8,7 +8,7 @@ from elftools.elf.elffile import ELFFile
 
 from machine import Machine
 from cpu import CPU
-from ram import SafeRAMOffset
+from ram import Offset_Safe_RAM
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RISC-V Test Runner")
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     for test_fname in test_fname_list:
 
         # Instantiate CPU + RAM + machine + syscall handler
-        ram = SafeRAMOffset(1024*1024, base_addr=0x8000_0000)  # RAM base and entry point at 0x8000_0000
+        ram = Offset_Safe_RAM(1024*1024, base_addr=0x8000_0000)  # RAM base and entry point at 0x8000_0000
         cpu = CPU(ram)
         machine = Machine(cpu, ram)
 

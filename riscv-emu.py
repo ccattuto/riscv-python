@@ -22,7 +22,7 @@ import logging, time
 
 from machine import Machine, MachineError, SetupError, ExecutionTerminated
 from cpu import CPU
-from ram import RAM, SafeRAM, RAM_MMIO, SafeRAM_MMIO
+from ram import RAM, Safe_RAM, MMIO_RAM, Safe_MMIO_RAM
 from syscalls import SyscallHandler
 from peripherals import PtyUART, MMIOTimer, MMIOBlockDevice
 
@@ -153,11 +153,11 @@ if __name__ == '__main__':
     if not use_mmio and not args.check_ram:
         ram = RAM(MEMORY_SIZE, init=args.init_ram, logger=log)
     elif use_mmio and not args.check_ram:
-        ram = RAM_MMIO(MEMORY_SIZE, init=args.init_ram, logger=log)
+        ram = MMIO_RAM(MEMORY_SIZE, init=args.init_ram, logger=log)
     elif not use_mmio and args.check_ram:
-        ram = SafeRAM(MEMORY_SIZE, init=args.init_ram, logger=log)
+        ram = Safe_RAM(MEMORY_SIZE, init=args.init_ram, logger=log)
     else:
-        ram = SafeRAM_MMIO(MEMORY_SIZE, init=args.init_ram, logger=log)
+        ram = Safe_MMIO_RAM(MEMORY_SIZE, init=args.init_ram, logger=log)
 
     # CPU
     cpu = CPU(ram, init_regs=args.init_regs, logger=log, trace_traps=args.traps)
