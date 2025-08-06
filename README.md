@@ -14,7 +14,7 @@ This is a simple and readable **RISC-V RV32I emulator** written in pure Python. 
 - **Passes all `rv32ui` and `rv32mi` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, and violations of invariants
 - Runs [MicroPython](https://micropython.org/), [CircuitPython](https://circuitpython.org/) with emulated peripherals, and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
-- Self-contained, modular, extensible codebase
+- Self-contained, modular, extensible codebase. Provides a **Python API** enabling users to control execution, inspect state, and script complex tests directly in Python.
 
 ## 🔧 Requirements
 
@@ -47,6 +47,7 @@ pip install -r requirements.txt
 ├── tests/test_bare*.c         # Example C programs without Newlib support
 ├── tests/test_newlib*.c       # Example C programs with Newlib-nano support
 ├── tests/test_peripheral*.c   # Example C programs using emulated peripherals
+├── tests/test_api*.py         # Examples of programmatic control of the emulator in Python
 ├── build/                     # Executable and binaries
 ├── prebuilt/                  # Pre-built examples
 ├── run_unit_tests.py          # Runs RISC-V unit tests (RV32UI and RV32MI)
@@ -257,6 +258,43 @@ Test rv32mi-p-pmpaddr              : PASS
 Test rv32mi-p-instret_overflow     : PASS
 Test rv32mi-p-ma_fetch             : PASS
 Test rv32mi-p-sbreak               : PASS
+```
+
+### Using the Python API
+
+The emulator provides a Python API that allows users to control execution, set and inspect state, and run complex tests directly from Python programs. Here is an example of how you can load and run a simple program:
+```python
+from cpu import CPU
+from ram import RAM
+
+ram = RAM(1024)
+cpu = CPU(ram)
+
+# Store into RAM a simple program that sums integers from 1 to 100 and returns the result in t0
+ram.store_word(0x00000000, 0x00000293)  #        li t0, 0
+ram.store_word(0x00000004, 0x00100313)  #        li t1, 1
+ram.store_word(0x00000008, 0x06400393)  #        li t2, 100
+ram.store_word(0x0000000c, 0x006282b3)  # <loop> add t0, t0, t1
+ram.store_word(0x00000010, 0x00130313)  #        addi t1, t1, 1
+ram.store_word(0x00000014, 0xfe63dce3)  #        bge t2, t1, c <loop>
+ram.store_word(0x00000018, 0x00100073)  #        ebreak
+
+# Run the program
+cpu.pc = 0x00000000               # set initial PC
+while True:
+    inst = ram.load_word(cpu.pc)  # fetch
+    cpu.execute(inst)             # decode & execute
+    cpu.pc = cpu.next_pc          # update PC
+
+    if cpu.pc == 0x00000018:  # when we reach this address, the program has finished
+        break
+
+print (cpu.registers[5])  # Print result stored in t0/x5
+```
+
+Example Python programs using programmatic access to the emulator are provided in the `tests` directory. Run them from the top-level directory of the emulator, e.g.:
+```
+PYTHONPATH=. python tests/test_python1.py 
 ```
 
 ## Design Goals
