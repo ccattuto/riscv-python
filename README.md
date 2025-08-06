@@ -189,6 +189,43 @@ Run CircuitPython:
 ```
 and connect to the console using your favorite terminal program, e.g., `screen /dev/ttys015 115200`.
 
+### Using the Python API
+
+The emulator provides a Python API that allows users to control execution, set and inspect state, and run complex tests directly from Python programs. Here is an example of how you can load and run a simple program:
+```python
+from cpu import CPU
+from ram import RAM
+
+ram = RAM(1024)
+cpu = CPU(ram)
+
+# Store into RAM a simple program that sums integers from 1 to 100 and returns the result in t0
+ram.store_word(0x00000000, 0x00000293)  #        li t0, 0
+ram.store_word(0x00000004, 0x00100313)  #        li t1, 1
+ram.store_word(0x00000008, 0x06400393)  #        li t2, 100
+ram.store_word(0x0000000c, 0x006282b3)  # <loop> add t0, t0, t1
+ram.store_word(0x00000010, 0x00130313)  #        addi t1, t1, 1
+ram.store_word(0x00000014, 0xfe63dce3)  #        bge t2, t1, c <loop>
+ram.store_word(0x00000018, 0x00100073)  #        ebreak
+
+# Run the program
+cpu.pc = 0x00000000               # set initial PC
+while True:
+    inst = ram.load_word(cpu.pc)  # fetch
+    cpu.execute(inst)             # decode & execute
+    cpu.pc = cpu.next_pc          # update PC
+
+    if cpu.pc == 0x00000018:  # when we reach this address, the program has finished
+        break
+
+print (cpu.registers[5])  # Print result stored in t0/x5
+```
+
+Example Python programs using programmatic access to the emulator are provided in the `tests` directory. Run them from the top-level directory of the emulator, e.g.:
+```
+PYTHONPATH=. python tests/test_python1.py 
+```
+
 ## 🧪 Running Unit Tests
 ```
 cd riscv-tests
@@ -258,43 +295,6 @@ Test rv32mi-p-pmpaddr              : PASS
 Test rv32mi-p-instret_overflow     : PASS
 Test rv32mi-p-ma_fetch             : PASS
 Test rv32mi-p-sbreak               : PASS
-```
-
-### Using the Python API
-
-The emulator provides a Python API that allows users to control execution, set and inspect state, and run complex tests directly from Python programs. Here is an example of how you can load and run a simple program:
-```python
-from cpu import CPU
-from ram import RAM
-
-ram = RAM(1024)
-cpu = CPU(ram)
-
-# Store into RAM a simple program that sums integers from 1 to 100 and returns the result in t0
-ram.store_word(0x00000000, 0x00000293)  #        li t0, 0
-ram.store_word(0x00000004, 0x00100313)  #        li t1, 1
-ram.store_word(0x00000008, 0x06400393)  #        li t2, 100
-ram.store_word(0x0000000c, 0x006282b3)  # <loop> add t0, t0, t1
-ram.store_word(0x00000010, 0x00130313)  #        addi t1, t1, 1
-ram.store_word(0x00000014, 0xfe63dce3)  #        bge t2, t1, c <loop>
-ram.store_word(0x00000018, 0x00100073)  #        ebreak
-
-# Run the program
-cpu.pc = 0x00000000               # set initial PC
-while True:
-    inst = ram.load_word(cpu.pc)  # fetch
-    cpu.execute(inst)             # decode & execute
-    cpu.pc = cpu.next_pc          # update PC
-
-    if cpu.pc == 0x00000018:  # when we reach this address, the program has finished
-        break
-
-print (cpu.registers[5])  # Print result stored in t0/x5
-```
-
-Example Python programs using programmatic access to the emulator are provided in the `tests` directory. Run them from the top-level directory of the emulator, e.g.:
-```
-PYTHONPATH=. python tests/test_python1.py 
 ```
 
 ## Design Goals
