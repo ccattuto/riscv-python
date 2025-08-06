@@ -60,6 +60,33 @@ pip install -r requirements.txt
 
 ## 🚀 Usage
 
+### ▶️ Command-Line Options
+
+`riscv-emu.py` accepts the following options:
+
+| Option                  | Description                                                                 |
+|-------------------------|-----------------------------------------------------------------------------|
+| `--regs REGS`           | Print selected registers at each instruction                                |
+| `--trace`               | Log the names of functions traversed during execution                       |
+| `--syscalls`            | Log Newlib syscalls                                                         |
+| `--traps`               | Enable trap tracing                                                         |
+| `--check-inv`           | Enable runtime invariant checks on stack/heap alignment and boundaries      |
+| `--check-ram`           | Check validity of memory accesses                                           |
+| `--check-text`          | Ensure the `.text` segment remains unmodified during execution              |
+| `--check-all`           | Enable all checks                                                           |
+| `--start-checks WHEN`   | Condition to enable checks (auto, early, main, first-call, 0xADDR)          |
+| `--init-regs VALUE`     | Initial register state (zero, random, 0xDEADBEEF)                           |
+| `--init-ram PATTERN`    | Initialize RAM with pattern (zero, random, addr, 0xAA)                      |
+| `--ram-size KBS`        | Emulated RAM size (kB, default 1024)                                        |
+| `--timer {csr,mmio}`    | Enable machine timer                                                        |
+| `--uart`                | Enable PTY UART                                                             |
+| `--blkdev PATH`         | Enable MMIO block device                                                    |
+| `--blkdev-size NUM`     | Block device size in 512-byte blocks (default 1024)                         |
+| `--raw-tty`             | Enable raw terminal mode                                                    |
+| `--no-color`            | Remove ANSI colors in debugging output                                      |
+| `--log LOG_FILE`        | Log debug information to file `LOG_FILE`                                    |
+| `--help`                | Show usage help and available options                                       |
+
 ### Compiling Examples
 ```
 make all
@@ -146,42 +173,20 @@ Run an example using the memory-mapped UART,
 ./riscv-emu.py --uart prebuilt/test_peripheral_uart.elf 
 000.001s [INFO] [UART] PTY created: /dev/ttys015
 ```
-and connect to the serial device using your favorite terminal program:
-```
-screen /dev/ttys015 115200
-```
+and connect to the serial device using your favorite terminal program, e.g., `screen /dev/ttys015 115200`.
 
 Run an example using a file-backed block device:
 ```
 ./riscv-emu.py --blkdev=image.img prebuilt/test_peripheral_blkdev.elf 
 ```
 
-### ▶️ Command-Line Options
-
-`riscv-emu.py` accepts the following options:
-
-| Option                  | Description                                                                 |
-|-------------------------|-----------------------------------------------------------------------------|
-| `--regs REGS`           | Print selected registers at each instruction                                |
-| `--trace`               | Log the names of functions traversed during execution                       |
-| `--syscalls`            | Log Newlib syscalls                                                         |
-| `--traps`               | Enable trap tracing                                                         |
-| `--check-inv`           | Enable runtime invariant checks on stack/heap alignment and boundaries      |
-| `--check-ram`           | Check validity of memory accesses                                           |
-| `--check-text`          | Ensure the `.text` segment remains unmodified during execution              |
-| `--check-all`           | Enable all checks                                                           |
-| `--start-checks WHEN`   | Condition to enable checks (auto, early, main, first-call, 0xADDR)          |
-| `--init-regs VALUE`     | Initial register state (zero, random, 0xDEADBEEF)                           |
-| `--init-ram PATTERN`    | Initialize RAM with pattern (zero, random, addr, 0xAA)                      |
-| `--ram-size KBS`        | Emulated RAM size (kB, default 1024)                                        |
-| `--timer {csr,mmio}`    | Enable machine timer                                                        |
-| `--uart`                | Enable PTY UART                                                             |
-| `--blkdev PATH`         | Enable MMIO block device                                                    |
-| `--blkdev-size NUM`     | Block device size in 512-byte blocks (default 1024)                         |
-| `--raw-tty`             | Enable raw terminal mode                                                    |
-| `--no-color`            | Remove ANSI colors in debugging output                                      |
-| `--log LOG_FILE`        | Log debug information to file `LOG_FILE`                                    |
-| `--help`                | Show usage help and available options                                       |
+Run CircuitPython:
+```
+./riscv-emu.py --timer=mmio --ram-size=4096 --uart --blkdev=prebuilt/circuitpy_fatfs.img prebuilt/circuitpython.elf 
+000.001s [INFO] [UART] PTY created: /dev/ttys015
+000.002s [INFO] [BLOCK] Opening block device image: prebuilt/circuitpy.img
+```
+and connect to the console using your favorite terminal program, e.g., `screen /dev/ttys015 115200`.
 
 ## 🧪 Running Unit Tests
 ```

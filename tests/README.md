@@ -29,3 +29,7 @@
 - `test_newlib12.c`: Soft floating point test.
   
 - `test_newlib13.c`: Test using `setjump`/`longjump` C exception handling.
+
+- `test_peripheral_uart.c`: Test the memory-mapped UART implementation backed by a pseudo-terminal on the host. Run this example with the `--uart` option, and then connect to the indicated PTY using your preferred terminal program, e.g., `screen /dev/ttys015 115200`.
+
+- `test_peripheral_blkdev.c`: Test the memory-mapped block device implementation backed by a file on the host. Run this example with the `--blkdev=image` option, where `image` is the filename you want to use. If the file does not exist, it will be created by the emulator.
