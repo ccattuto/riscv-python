@@ -253,7 +253,9 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.trap(cause=2, mtval=inst)  # 2 = illegal instruction
 
         if funct3 in (0b001, 0b101):  # CSRRW / CSRRWI
-            if not (csr in cpu.CSR_NOWRITE):
+            if csr == 0x305:  # we don't support vectored interrupts, so mask away lower 2 bits of mtvect
+                cpu.csrs[csr] = rs1_val & ~0x3
+            elif not (csr in cpu.CSR_NOWRITE):
                 cpu.csrs[csr] = rs1_val
 
            # Atomic update of mtime
