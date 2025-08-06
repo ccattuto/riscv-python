@@ -198,13 +198,17 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             raise MachineError("No trap handler and no Python ecall handler installed: cannot process ECALL instruction")
 
     elif inst == 0x30200073:  # MRET
-        cpu.next_pc = cpu.csrs[0x341]                   # return address <- mepc
+        mepc = cpu.csrs[0x341]
+        if mepc & 0x3:
+            cpu.trap(cause=0, mtval=mepc)  # unaligned address
+        else:
+            cpu.next_pc = mepc                              # return address <- mepc
 
-        mstatus = cpu.csrs[0x300]                       # mstatus
-        mpie = (mstatus >> 7) & 1                       # extract MPIE
-        mstatus = (mstatus & ~(1 << 3)) | (mpie << 3)   # MIE <- MPIE
-        mstatus |= (1 << 7)                             # MPIE = 1 (re-arm)
-        cpu.csrs[0x300] = mstatus
+            mstatus = cpu.csrs[0x300]                       # mstatus
+            mpie = (mstatus >> 7) & 1                       # extract MPIE
+            mstatus = (mstatus & ~(1 << 3)) | (mpie << 3)   # MIE <- MPIE
+            mstatus |= (1 << 7)                             # MPIE = 1 (re-arm)
+            cpu.csrs[0x300] = mstatus
     
     elif inst == 0x00100073:  # EBREAK
         # syscalls >= 0xFFFF0000 bypass the rest of the EBREAK logic and are used for logging.
@@ -249,9 +253,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.trap(cause=2, mtval=inst)  # 2 = illegal instruction
 
         if funct3 in (0b001, 0b101):  # CSRRW / CSRRWI
-            if csr == 0x305:  # we don't support vectored interrupts, so mask away lower 2 bits of mtvect
-                cpu.csrs[csr] = rs1_val & ~0x3
-            elif not (csr in cpu.CSR_NOWRITE):
+            if not (csr in cpu.CSR_NOWRITE):
                 cpu.csrs[csr] = rs1_val
 
            # Atomic update of mtime
