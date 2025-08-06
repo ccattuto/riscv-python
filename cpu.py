@@ -377,7 +377,7 @@ class CPU:
         self.csrs[0xF12] = 0x00000001  # marchid (RO)
         self.csrs[0xF13] = 0x20250400  # mimpid (RO)
 
-        # read-only CSRs: writres cause a trap
+        # read-only CSRs: writes cause a trap
         self.CSR_RO = { 0xF11, 0xF12, 0xF13, 0xF14 }
         # mvendorid, marchid, mimpid, mhartid
         # (misa should be here, but tests expect it to be writable without trapping)
@@ -411,7 +411,7 @@ class CPU:
         self.REG_NAME_NUM['s0'] = 8
         self.REG_NAME_NUM['fp'] = 8
 
-        # name - addr CSR maps
+        # name - address CSR maps
         self.CSR_NAME_ADDR = {}
         self.CSR_ADDR_NAME = {}
         csr_names = {
