@@ -141,8 +141,8 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 ((inst >> 31) << 12)
         if imm_b >= 0x1000: imm_b -= 0x2000
         addr_target = (cpu.pc + imm_b) & 0xFFFFFFFF
-        if addr_target & 0x3:
-            cpu.trap(cause=0, mtval=addr_target)  # unaligned address
+        if addr_target & 0x1:
+            cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
         else:
             cpu.next_pc = addr_target
     elif funct3 == 0x2 or funct3 == 0x3:
@@ -165,8 +165,8 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             ((inst >> 31) << 20)
     if imm_j >= 0x100000: imm_j -= 0x200000
     addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF  # (compared to JALR, no need to clear bit 0 here)
-    if addr_target & 0x3:
-            cpu.trap(cause=0, mtval=addr_target)  # unaligned address
+    if addr_target & 0x1:
+            cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
     else:
         if rd != 0:
             cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
@@ -178,8 +178,8 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
     addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0
-    if addr_target & 0x3:
-        cpu.trap(cause=0, mtval=addr_target)  # unaligned address
+    if addr_target & 0x1:
+        cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
     else:
         if rd != 0:
             cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
@@ -199,8 +199,8 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 
     elif inst == 0x30200073:  # MRET
         mepc = cpu.csrs[0x341]
-        if mepc & 0x3:
-            cpu.trap(cause=0, mtval=mepc)  # unaligned address
+        if mepc & 0x1:
+            cpu.trap(cause=0, mtval=mepc)  # unaligned address (2-byte alignment required)
         else:
             cpu.next_pc = mepc                              # return address <- mepc
 
@@ -334,6 +334,212 @@ opcode_handler = {
 }
 
 
+# Compressed instruction expansion (RVC extension)
+def expand_compressed(c_inst):
+    """
+    Expand a 16-bit compressed instruction to its 32-bit equivalent.
+    Returns (expanded_32bit_inst, success_flag)
+    """
+    quadrant = c_inst & 0x3
+    funct3 = (c_inst >> 13) & 0x7
+
+    # Quadrant 0 (C0)
+    if quadrant == 0b00:
+        if funct3 == 0b000:  # C.ADDI4SPN
+            nzuimm = ((c_inst >> 7) & 0x30) | ((c_inst >> 1) & 0x3C0) | ((c_inst >> 4) & 0x4) | ((c_inst >> 2) & 0x8)
+            rd_prime = ((c_inst >> 2) & 0x7) + 8
+            if nzuimm == 0:
+                return (0, False)  # Illegal instruction
+            # ADDI rd', x2, nzuimm
+            return ((nzuimm << 20) | (2 << 15) | (0 << 12) | (rd_prime << 7) | 0x13, True)
+
+        elif funct3 == 0b010:  # C.LW
+            imm = ((c_inst >> 7) & 0x38) | ((c_inst >> 4) & 0x4) | ((c_inst << 6) & 0x40)
+            rs1_prime = ((c_inst >> 7) & 0x7) + 8
+            rd_prime = ((c_inst >> 2) & 0x7) + 8
+            # LW rd', imm(rs1')
+            return ((imm << 20) | (rs1_prime << 15) | (0x2 << 12) | (rd_prime << 7) | 0x03, True)
+
+        elif funct3 == 0b110:  # C.SW
+            imm = ((c_inst >> 7) & 0x38) | ((c_inst >> 4) & 0x4) | ((c_inst << 6) & 0x40)
+            rs1_prime = ((c_inst >> 7) & 0x7) + 8
+            rs2_prime = ((c_inst >> 2) & 0x7) + 8
+            imm_low = imm & 0x1F
+            imm_high = (imm >> 5) & 0x7F
+            # SW rs2', imm(rs1')
+            return ((imm_high << 25) | (rs2_prime << 20) | (rs1_prime << 15) | (0x2 << 12) | (imm_low << 7) | 0x23, True)
+
+    # Quadrant 1 (C1)
+    elif quadrant == 0b01:
+        if funct3 == 0b000:  # C.NOP / C.ADDI
+            nzimm = ((c_inst >> 7) & 0x20) | ((c_inst >> 2) & 0x1F)
+            if nzimm & 0x20: nzimm -= 0x40  # sign extend
+            rd_rs1 = (c_inst >> 7) & 0x1F
+            # ADDI rd, rd, nzimm (if rd=0, it's NOP)
+            imm = nzimm & 0xFFF
+            return ((imm << 20) | (rd_rs1 << 15) | (0 << 12) | (rd_rs1 << 7) | 0x13, True)
+
+        elif funct3 == 0b001:  # C.JAL (RV32 only)
+            imm = ((c_inst >> 1) & 0x800) | ((c_inst << 2) & 0x400) | ((c_inst >> 1) & 0x300) | \
+                  ((c_inst << 1) & 0x80) | ((c_inst >> 1) & 0x40) | ((c_inst << 3) & 0x20) | \
+                  ((c_inst >> 7) & 0x10) | ((c_inst >> 2) & 0xE)
+            if imm & 0x800: imm -= 0x1000  # sign extend to 12 bits
+            imm = imm & 0xFFFFF  # 20-bit immediate for JAL
+            # JAL x1, imm
+            imm_bits = ((imm & 0x100000) << 11) | ((imm & 0x7FE) << 20) | ((imm & 0x800) << 9) | (imm & 0xFF000)
+            return (imm_bits | (1 << 7) | 0x6F, True)
+
+        elif funct3 == 0b010:  # C.LI
+            imm = ((c_inst >> 7) & 0x20) | ((c_inst >> 2) & 0x1F)
+            if imm & 0x20: imm -= 0x40  # sign extend
+            rd = (c_inst >> 7) & 0x1F
+            # ADDI rd, x0, imm
+            imm = imm & 0xFFF
+            return ((imm << 20) | (0 << 15) | (0 << 12) | (rd << 7) | 0x13, True)
+
+        elif funct3 == 0b011:  # C.ADDI16SP / C.LUI
+            rd = (c_inst >> 7) & 0x1F
+            if rd == 2:  # C.ADDI16SP
+                nzimm = ((c_inst >> 3) & 0x200) | ((c_inst >> 2) & 0x10) | \
+                        ((c_inst << 1) & 0x40) | ((c_inst << 4) & 0x180) | ((c_inst << 3) & 0x20)
+                if nzimm & 0x200: nzimm -= 0x400  # sign extend
+                if nzimm == 0:
+                    return (0, False)  # Illegal
+                # ADDI x2, x2, nzimm
+                imm = nzimm & 0xFFF
+                return ((imm << 20) | (2 << 15) | (0 << 12) | (2 << 7) | 0x13, True)
+            else:  # C.LUI
+                nzimm = ((c_inst >> 7) & 0x20) | ((c_inst >> 2) & 0x1F)
+                if nzimm & 0x20: nzimm -= 0x40  # sign extend
+                if nzimm == 0 or rd == 0:
+                    return (0, False)  # Illegal
+                # LUI rd, nzimm
+                return ((nzimm << 12) | (rd << 7) | 0x37, True)
+
+        elif funct3 == 0b100:  # Arithmetic operations
+            funct2 = (c_inst >> 10) & 0x3
+            rd_rs1_prime = ((c_inst >> 7) & 0x7) + 8
+
+            if funct2 == 0b00:  # C.SRLI
+                shamt = ((c_inst >> 7) & 0x20) | ((c_inst >> 2) & 0x1F)
+                if shamt == 0:
+                    return (0, False)  # RV32 NSE
+                # SRLI rd', rd', shamt
+                return ((0x00 << 25) | (shamt << 20) | (rd_rs1_prime << 15) | (0x5 << 12) | (rd_rs1_prime << 7) | 0x13, True)
+
+            elif funct2 == 0b01:  # C.SRAI
+                shamt = ((c_inst >> 7) & 0x20) | ((c_inst >> 2) & 0x1F)
+                if shamt == 0:
+                    return (0, False)  # RV32 NSE
+                # SRAI rd', rd', shamt
+                return ((0x20 << 25) | (shamt << 20) | (rd_rs1_prime << 15) | (0x5 << 12) | (rd_rs1_prime << 7) | 0x13, True)
+
+            elif funct2 == 0b10:  # C.ANDI
+                imm = ((c_inst >> 7) & 0x20) | ((c_inst >> 2) & 0x1F)
+                if imm & 0x20: imm -= 0x40  # sign extend
+                # ANDI rd', rd', imm
+                imm = imm & 0xFFF
+                return ((imm << 20) | (rd_rs1_prime << 15) | (0x7 << 12) | (rd_rs1_prime << 7) | 0x13, True)
+
+            elif funct2 == 0b11:  # Register-register operations
+                funct2_low = (c_inst >> 5) & 0x3
+                rs2_prime = ((c_inst >> 2) & 0x7) + 8
+                bit12 = (c_inst >> 12) & 0x1
+
+                if bit12 == 0:
+                    if funct2_low == 0b00:  # C.SUB
+                        return ((0x20 << 25) | (rs2_prime << 20) | (rd_rs1_prime << 15) | (0x0 << 12) | (rd_rs1_prime << 7) | 0x33, True)
+                    elif funct2_low == 0b01:  # C.XOR
+                        return ((0x00 << 25) | (rs2_prime << 20) | (rd_rs1_prime << 15) | (0x4 << 12) | (rd_rs1_prime << 7) | 0x33, True)
+                    elif funct2_low == 0b10:  # C.OR
+                        return ((0x00 << 25) | (rs2_prime << 20) | (rd_rs1_prime << 15) | (0x6 << 12) | (rd_rs1_prime << 7) | 0x33, True)
+                    elif funct2_low == 0b11:  # C.AND
+                        return ((0x00 << 25) | (rs2_prime << 20) | (rd_rs1_prime << 15) | (0x7 << 12) | (rd_rs1_prime << 7) | 0x33, True)
+
+        elif funct3 == 0b101:  # C.J
+            imm = ((c_inst >> 1) & 0x800) | ((c_inst << 2) & 0x400) | ((c_inst >> 1) & 0x300) | \
+                  ((c_inst << 1) & 0x80) | ((c_inst >> 1) & 0x40) | ((c_inst << 3) & 0x20) | \
+                  ((c_inst >> 7) & 0x10) | ((c_inst >> 2) & 0xE)
+            if imm & 0x800: imm -= 0x1000  # sign extend
+            imm = imm & 0xFFFFF  # 20-bit
+            # JAL x0, imm
+            imm_bits = ((imm & 0x100000) << 11) | ((imm & 0x7FE) << 20) | ((imm & 0x800) << 9) | (imm & 0xFF000)
+            return (imm_bits | (0 << 7) | 0x6F, True)
+
+        elif funct3 == 0b110:  # C.BEQZ
+            imm = ((c_inst >> 4) & 0x100) | ((c_inst << 1) & 0xC0) | ((c_inst << 3) & 0x20) | \
+                  ((c_inst >> 7) & 0x18) | ((c_inst >> 2) & 0x6)
+            if imm & 0x100: imm -= 0x200  # sign extend
+            rs1_prime = ((c_inst >> 7) & 0x7) + 8
+            # BEQ rs1', x0, imm
+            imm_bits = ((imm & 0x1000) << 19) | ((imm & 0x7E0) << 20) | ((imm & 0x1E) << 7) | ((imm & 0x800) >> 4)
+            return (imm_bits | (0 << 20) | (rs1_prime << 15) | (0x0 << 12) | 0x63, True)
+
+        elif funct3 == 0b111:  # C.BNEZ
+            imm = ((c_inst >> 4) & 0x100) | ((c_inst << 1) & 0xC0) | ((c_inst << 3) & 0x20) | \
+                  ((c_inst >> 7) & 0x18) | ((c_inst >> 2) & 0x6)
+            if imm & 0x100: imm -= 0x200  # sign extend
+            rs1_prime = ((c_inst >> 7) & 0x7) + 8
+            # BNE rs1', x0, imm
+            imm_bits = ((imm & 0x1000) << 19) | ((imm & 0x7E0) << 20) | ((imm & 0x1E) << 7) | ((imm & 0x800) >> 4)
+            return (imm_bits | (0 << 20) | (rs1_prime << 15) | (0x1 << 12) | 0x63, True)
+
+    # Quadrant 2 (C2)
+    elif quadrant == 0b10:
+        if funct3 == 0b000:  # C.SLLI
+            shamt = ((c_inst >> 7) & 0x20) | ((c_inst >> 2) & 0x1F)
+            rd_rs1 = (c_inst >> 7) & 0x1F
+            if shamt == 0 or rd_rs1 == 0:
+                return (0, False)  # Illegal
+            # SLLI rd, rd, shamt
+            return ((0x00 << 25) | (shamt << 20) | (rd_rs1 << 15) | (0x1 << 12) | (rd_rs1 << 7) | 0x13, True)
+
+        elif funct3 == 0b010:  # C.LWSP
+            imm = ((c_inst >> 2) & 0xE0) | ((c_inst >> 7) & 0x1C) | ((c_inst << 4) & 0x3)
+            rd = (c_inst >> 7) & 0x1F
+            if rd == 0:
+                return (0, False)  # Illegal
+            # LW rd, imm(x2)
+            return ((imm << 20) | (2 << 15) | (0x2 << 12) | (rd << 7) | 0x03, True)
+
+        elif funct3 == 0b100:  # C.JR / C.MV / C.EBREAK / C.JALR / C.ADD
+            bit12 = (c_inst >> 12) & 0x1
+            rs1 = (c_inst >> 7) & 0x1F
+            rs2 = (c_inst >> 2) & 0x1F
+
+            if bit12 == 0:
+                if rs2 == 0:  # C.JR
+                    if rs1 == 0:
+                        return (0, False)  # Illegal
+                    # JALR x0, 0(rs1)
+                    return ((0 << 20) | (rs1 << 15) | (0 << 12) | (0 << 7) | 0x67, True)
+                else:  # C.MV
+                    if rs1 == 0:
+                        return (0, False)  # Illegal
+                    # ADD rd, x0, rs2
+                    return ((0x00 << 25) | (rs2 << 20) | (0 << 15) | (0x0 << 12) | (rs1 << 7) | 0x33, True)
+            else:  # bit12 == 1
+                if rs1 == 0 and rs2 == 0:  # C.EBREAK
+                    return (0x00100073, True)
+                elif rs2 == 0:  # C.JALR
+                    # JALR x1, 0(rs1)
+                    return ((0 << 20) | (rs1 << 15) | (0 << 12) | (1 << 7) | 0x67, True)
+                else:  # C.ADD
+                    # ADD rd, rd, rs2
+                    return ((0x00 << 25) | (rs2 << 20) | (rs1 << 15) | (0x0 << 12) | (rs1 << 7) | 0x33, True)
+
+        elif funct3 == 0b110:  # C.SWSP
+            imm = ((c_inst >> 7) & 0x3C) | ((c_inst >> 1) & 0xC0)
+            rs2 = (c_inst >> 2) & 0x1F
+            imm_low = imm & 0x1F
+            imm_high = (imm >> 5) & 0x7F
+            # SW rs2, imm(x2)
+            return ((imm_high << 25) | (rs2 << 20) | (2 << 15) | (0x2 << 12) | (imm_low << 7) | 0x23, True)
+
+    # Invalid compressed instruction
+    return (0, False)
+
+
 # CPU class
 class CPU:
     def __init__(self, ram, init_regs=None, logger=None, trace_traps=False):
@@ -370,7 +576,7 @@ class CPU:
         # 0xF13 mimpid (RO)
         # 0xF14 mhartid (RO)
 
-        self.csrs[0x301] = 0x40000100  # misa (RO, bits 30 and 8 set: RV32I)
+        self.csrs[0x301] = 0x40000104  # misa (RO, bits 30, 8, and 2 set: RV32IC)
         self.csrs[0x300] = 0x00001800  # mstatus (machine mode only: MPP field kept = 0b11)
         self.csrs[0x7C2] = 0xFFFFFFFF  # mtimecmp_low
         self.csrs[0x7C3] = 0xFFFFFFFF  # mtimecmp_hi
@@ -430,20 +636,42 @@ class CPU:
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
 
-    # Instruction execution
+    # Instruction execution (supports both 32-bit and compressed 16-bit instructions)
     def execute(self, inst):
+        # Detect instruction size and expand compressed instructions
+        is_compressed = (inst & 0x3) != 0x3
+
+        # Use a cache key that differentiates between compressed and standard instructions
+        cache_key = (inst & 0xFFFF) if is_compressed else (inst >> 2)
+
         try:
-            opcode, rd, funct3, rs1, rs2, funct7 = self.decode_cache[inst >> 2]
+            opcode, rd, funct3, rs1, rs2, funct7, inst_size = self.decode_cache[cache_key]
         except KeyError:
+            if is_compressed:
+                # Expand compressed instruction to 32-bit equivalent
+                expanded_inst, success = expand_compressed(inst & 0xFFFF)
+                if not success:
+                    if self.logger is not None:
+                        self.logger.warning(f"Invalid compressed instruction at PC={self.pc:08X}: 0x{inst & 0xFFFF:04X}")
+                    self.trap(cause=2, mtval=inst & 0xFFFF)  # illegal instruction
+                    return
+                inst = expanded_inst
+                inst_size = 2
+            else:
+                inst_size = 4
+
+            # Decode the 32-bit instruction (either original or expanded)
             opcode = inst & 0x7F
             rd = (inst >> 7) & 0x1F
             funct3 = (inst >> 12) & 0x7
             rs1 = (inst >> 15) & 0x1F
             rs2 = (inst >> 20) & 0x1F
             funct7 = (inst >> 25) & 0x7F
-            self.decode_cache[inst >> 2] = (opcode, rd, funct3, rs1, rs2, funct7)
 
-        self.next_pc = (self.pc + 4) & 0xFFFFFFFF
+            # Cache the decoded instruction with its size
+            self.decode_cache[cache_key] = (opcode, rd, funct3, rs1, rs2, funct7, inst_size)
+
+        self.next_pc = (self.pc + inst_size) & 0xFFFFFFFF
 
         if opcode in opcode_handler:
             (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)  # dispatch to opcode handler
