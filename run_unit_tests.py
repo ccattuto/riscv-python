@@ -89,5 +89,5 @@ if __name__ == '__main__':
 
         # Load and check test result
         test_result = ram.load_word(tohost_addr)
-        result_str = "PASS" if test_result == 1 else "FAIL"
+        result_str = "PASS" if test_result == 1 else f"FAIL (test #{test_result >> 1})"
         print(f"Test {os.path.basename(test_fname):<30}: {result_str}")
