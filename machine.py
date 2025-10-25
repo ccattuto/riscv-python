@@ -266,7 +266,16 @@ class Machine:
             if self.trace and (cpu.pc in self.symbol_dict):
                 self.logger.debug(f"FUNC {self.symbol_dict[cpu.pc]}, PC={cpu.pc:08X}")
 
-            inst = ram.load_word(cpu.pc)
+            # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
+            inst_low = ram.load_half(cpu.pc, signed=False)
+            if (inst_low & 0x3) == 0x3:
+                # 32-bit instruction: fetch upper 16 bits
+                inst_high = ram.load_half(cpu.pc + 2, signed=False)
+                inst = inst_low | (inst_high << 16)
+            else:
+                # 16-bit compressed instruction
+                inst = inst_low
+
             cpu.execute(inst)
             if timer:
                 cpu.timer_update()
@@ -283,9 +292,18 @@ class Machine:
     def run_fast(self):
         cpu = self.cpu
         ram = self.ram
-        
+
         while True:
-            inst = ram.load_word(cpu.pc)
+            # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
+            inst_low = ram.load_half(cpu.pc, signed=False)
+            if (inst_low & 0x3) == 0x3:
+                # 32-bit instruction: fetch upper 16 bits
+                inst_high = ram.load_half(cpu.pc + 2, signed=False)
+                inst = inst_low | (inst_high << 16)
+            else:
+                # 16-bit compressed instruction
+                inst = inst_low
+
             cpu.execute(inst)
             cpu.pc = cpu.next_pc
 
@@ -293,9 +311,18 @@ class Machine:
     def run_timer(self):
         cpu = self.cpu
         ram = self.ram
-        
+
         while True:
-            inst = ram.load_word(cpu.pc)
+            # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
+            inst_low = ram.load_half(cpu.pc, signed=False)
+            if (inst_low & 0x3) == 0x3:
+                # 32-bit instruction: fetch upper 16 bits
+                inst_high = ram.load_half(cpu.pc + 2, signed=False)
+                inst = inst_low | (inst_high << 16)
+            else:
+                # 16-bit compressed instruction
+                inst = inst_low
+
             cpu.execute(inst)
             cpu.timer_update()
             cpu.pc = cpu.next_pc
@@ -307,9 +334,18 @@ class Machine:
         timer = self.timer
         div = 0
         DIV_MASK = 0xFF  # call peripheral run() methods every 256 cycles
-        
+
         while True:
-            inst = ram.load_word(cpu.pc)
+            # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
+            inst_low = ram.load_half(cpu.pc, signed=False)
+            if (inst_low & 0x3) == 0x3:
+                # 32-bit instruction: fetch upper 16 bits
+                inst_high = ram.load_half(cpu.pc + 2, signed=False)
+                inst = inst_low | (inst_high << 16)
+            else:
+                # 16-bit compressed instruction
+                inst = inst_low
+
             cpu.execute(inst)
             if timer:
                 cpu.timer_update()

@@ -37,13 +37,31 @@ This implementation adds support for the RISC-V Compressed (RVC) instruction set
 - Changed from `0x40000100` to `0x40000104`
 - Now indicates: RV32IC (bit 30=RV32, bit 8=I extension, bit 2=C extension)
 
-#### 2. `machine.py` - No Changes Required!
+#### 2. `machine.py` - Spec-Compliant Fetch Logic
 
-The execution loops in `machine.py` require **zero modifications**:
-- Always fetch 32 bits with `ram.load_word(cpu.pc)`
-- CPU.execute() automatically detects compressed vs standard
-- PC updates handled transparently by CPU
-- Works with all execution modes: `run_fast()`, `run_timer()`, `run_mmio()`, `run_with_checks()`
+All execution loops updated to follow RISC-V spec (parcel-based fetching):
+
+```python
+# Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
+inst_low = ram.load_half(cpu.pc, signed=False)
+if (inst_low & 0x3) == 0x3:
+    # 32-bit instruction: fetch upper 16 bits
+    inst_high = ram.load_half(cpu.pc + 2, signed=False)
+    inst = inst_low | (inst_high << 16)
+else:
+    # 16-bit compressed instruction
+    inst = inst_low
+
+cpu.execute(inst)
+cpu.pc = cpu.next_pc
+```
+
+**Why this matters:**
+- **Prevents spurious memory access violations**: A compressed instruction at the end of valid memory won't trigger an illegal access
+- **RISC-V spec compliant**: Follows the parcel-based fetch model
+- **Correct trap behavior**: Memory traps occur only when actually accessing invalid addresses
+
+Updated in all execution modes: `run_fast()`, `run_timer()`, `run_mmio()`, `run_with_checks()`
 
 ### Supported Compressed Instructions
 
@@ -119,11 +137,21 @@ cpu = CPU(ram)
 ram.store_half(0x00, 0x4515)  # C.LI a0, 5
 cpu.pc = 0x00
 
-# Execute normally
-inst = ram.load_word(cpu.pc)
+# Fetch using spec-compliant parcel-based approach
+inst_low = ram.load_half(cpu.pc, signed=False)
+if (inst_low & 0x3) == 0x3:
+    # 32-bit instruction
+    inst_high = ram.load_half(cpu.pc + 2, signed=False)
+    inst = inst_low | (inst_high << 16)
+else:
+    # 16-bit compressed instruction
+    inst = inst_low
+
 cpu.execute(inst)
 cpu.pc = cpu.next_pc  # Automatically +2 for compressed, +4 for standard
 ```
+
+Or simply use the `Machine` class which handles fetch logic automatically in all execution loops.
 
 ### Implementation Notes
 
@@ -131,8 +159,9 @@ cpu.pc = cpu.next_pc  # Automatically +2 for compressed, +4 for standard
 
 1. **Decode Cache Reuse**: Existing cache infrastructure handles both instruction types
 2. **Lazy Expansion**: Only expand on cache miss
-3. **Transparent Fetch**: Always fetch 32 bits, CPU decides what to use
+3. **Spec-Compliant Fetch**: Parcel-based fetching (16 bits first, then conditionally 16 more)
 4. **Zero-Copy**: No instruction buffer management needed
+5. **Safe Memory Access**: Only fetches what's needed, preventing spurious traps
 
 #### Edge Cases Handled
 
@@ -140,6 +169,8 @@ cpu.pc = cpu.next_pc  # Automatically +2 for compressed, +4 for standard
 - **Illegal Instructions**: Returns failure flag, triggers trap
 - **Mixed Code**: Seamlessly transitions between 16-bit and 32-bit
 - **Cache Conflicts**: Different cache keys for compressed vs standard
+- **Memory Boundaries**: Compressed instruction at end of valid memory works correctly (no spurious access to next 16 bits)
+- **Spec Compliance**: Follows RISC-V parcel-based fetch model exactly
 
 #### Future Enhancements
 
