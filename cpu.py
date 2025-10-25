@@ -228,29 +228,24 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif inst == 0x30200073:  # MRET
         mepc = cpu.csrs[0x341]
 
-        # Check alignment based on whether RVC is enabled
-        # With RVC: 2-byte alignment required (bit 0 must be 0)
-        # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
-        # Note: Per RISC-V spec, if C is disabled and mepc[1]=1, clear mepc[1]
-        if not cpu.is_rvc_enabled() and (mepc & 0x2):
-            mepc = mepc & ~0x2  # Clear bit 1 to make 4-byte aligned
-
-        misaligned = False
+        # Check alignment and handle per RISC-V spec
         if cpu.is_rvc_enabled():
-            misaligned = (mepc & 0x1) != 0  # Check bit 0 for 2-byte alignment
+            # With RVC: 2-byte alignment required (bit 0 must be 0)
+            if mepc & 0x1:
+                cpu.trap(cause=0, mtval=mepc)  # instruction address misaligned
+                return
         else:
-            misaligned = (mepc & 0x3) != 0  # Check bits [1:0] for 4-byte alignment
+            # Without RVC: Clear bit 1 per spec (don't trap)
+            # RISC-V spec: "If C is not enabled, mepc[1] is masked to 0"
+            mepc = mepc & ~0x2
 
-        if misaligned:
-            cpu.trap(cause=0, mtval=mepc)  # instruction address misaligned
-        else:
-            cpu.next_pc = mepc                              # return address <- mepc
+        cpu.next_pc = mepc                              # return address <- mepc
 
-            mstatus = cpu.csrs[0x300]                       # mstatus
-            mpie = (mstatus >> 7) & 1                       # extract MPIE
-            mstatus = (mstatus & ~(1 << 3)) | (mpie << 3)   # MIE <- MPIE
-            mstatus |= (1 << 7)                             # MPIE = 1 (re-arm)
-            cpu.csrs[0x300] = mstatus
+        mstatus = cpu.csrs[0x300]                       # mstatus
+        mpie = (mstatus >> 7) & 1                       # extract MPIE
+        mstatus = (mstatus & ~(1 << 3)) | (mpie << 3)   # MIE <- MPIE
+        mstatus |= (1 << 7)                             # MPIE = 1 (re-arm)
+        cpu.csrs[0x300] = mstatus
     
     elif inst == 0x00100073:  # EBREAK
         # syscalls >= 0xFFFF0000 bypass the rest of the EBREAK logic and are used for logging.
