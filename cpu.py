@@ -146,7 +146,7 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         # With RVC: 2-byte alignment required (bit 0 must be 0)
         # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
         misaligned = False
-        if cpu.is_rvc_enabled():
+        if cpu.rvc_enabled:  # Direct access to cached boolean (faster than function call)
             misaligned = (addr_target & 0x1) != 0  # Check bit 0 for 2-byte alignment
         else:
             misaligned = (addr_target & 0x3) != 0  # Check bits [1:0] for 4-byte alignment
@@ -180,7 +180,7 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     # With RVC: 2-byte alignment required (bit 0 must be 0)
     # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
     misaligned = False
-    if cpu.is_rvc_enabled():
+    if cpu.rvc_enabled:  # Direct access to cached boolean (faster than function call)
         misaligned = (addr_target & 0x1) != 0  # Check bit 0 for 2-byte alignment
     else:
         misaligned = (addr_target & 0x3) != 0  # Check bits [1:0] for 4-byte alignment
@@ -203,7 +203,7 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     # With RVC: 2-byte alignment required (bit 0 must be 0, which is guaranteed by the mask above)
     # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
     misaligned = False
-    if not cpu.is_rvc_enabled():
+    if not cpu.rvc_enabled:  # Direct access to cached boolean (faster than function call)
         misaligned = (addr_target & 0x2) != 0  # Check bit 1 for 4-byte alignment
 
     if misaligned:
@@ -229,7 +229,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         mepc = cpu.csrs[0x341]
 
         # Check alignment and handle per RISC-V spec
-        if cpu.is_rvc_enabled():
+        if cpu.rvc_enabled:  # Direct access to cached boolean (faster than function call)
             # With RVC: 2-byte alignment required (bit 0 must be 0)
             if mepc & 0x1:
                 cpu.trap(cause=0, mtval=mepc)  # instruction address misaligned
