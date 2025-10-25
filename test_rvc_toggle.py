@@ -37,6 +37,7 @@ def test_rvc_toggle():
     print("\nTest 2: Disabling C extension")
     # CSRCI misa, 0x4 (clear bit 2)
     cpu.csrs[0x301] &= ~0x4
+    cpu.rvc_enabled = (cpu.csrs[0x301] & 0x4) != 0  # Update cache
     print(f"  misa after clear: 0x{cpu.csrs[0x301]:08X}")
     print(f"  C bit (bit 2): {(cpu.csrs[0x301] >> 2) & 1}")
     print(f"  is_rvc_enabled(): {cpu.is_rvc_enabled()}")
@@ -70,6 +71,7 @@ def test_rvc_toggle():
     # Test 4: Re-enable C extension
     print("\nTest 4: Re-enabling C extension")
     cpu.csrs[0x301] |= 0x4
+    cpu.rvc_enabled = (cpu.csrs[0x301] & 0x4) != 0  # Update cache
     print(f"  misa after set: 0x{cpu.csrs[0x301]:08X}")
     print(f"  C bit (bit 2): {(cpu.csrs[0x301] >> 2) & 1}")
     print(f"  is_rvc_enabled(): {cpu.is_rvc_enabled()}")

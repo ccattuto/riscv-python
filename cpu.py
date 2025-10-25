@@ -327,6 +327,9 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         if csr == 0x300:  # MPP field of mstatus is forced to 0b11 as we only support machine mode
             cpu.csrs[0x300] |= 0x00001800  # set bits 12 and 11
 
+        if csr == 0x301:  # Update cached RVC enabled state when misa is modified
+            cpu.rvc_enabled = (cpu.csrs[0x301] & 0x4) != 0
+
         if rd != 0:
             if csr == 0x7C0:
                 old = cpu.mtime & 0xFFFFFFFF
@@ -617,12 +620,15 @@ class CPU:
         # 0xF13 mimpid (RO)
         # 0xF14 mhartid (RO)
 
-        self.csrs[0x301] = 0x40000104  # misa (RO, bits 30, 8, and 2 set: RV32IC)
+        self.csrs[0x301] = 0x40000104  # misa (bits 30, 8, and 2 set: RV32IC)
         self.csrs[0x300] = 0x00001800  # mstatus (machine mode only: MPP field kept = 0b11)
         self.csrs[0x7C2] = 0xFFFFFFFF  # mtimecmp_low
         self.csrs[0x7C3] = 0xFFFFFFFF  # mtimecmp_hi
         self.csrs[0xF12] = 0x00000001  # marchid (RO)
         self.csrs[0xF13] = 0x20250400  # mimpid (RO)
+
+        # Cache RVC enabled state for performance (avoid CSR read on hot path)
+        self.rvc_enabled = (self.csrs[0x301] & 0x4) != 0
 
         # read-only CSRs: writes cause a trap
         self.CSR_RO = { 0xF11, 0xF12, 0xF13, 0xF14 }
@@ -678,9 +684,9 @@ class CPU:
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
 
-    # Check if RVC (compressed) extension is enabled
+    # Check if RVC (compressed) extension is enabled (cached for performance)
     def is_rvc_enabled(self):
-        return (self.csrs[0x301] & 0x4) != 0  # Check bit 2 (C extension)
+        return self.rvc_enabled
 
     # Instruction execution (supports both 32-bit and compressed 16-bit instructions)
     def execute(self, inst):
