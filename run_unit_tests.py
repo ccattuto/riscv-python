@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Runs the RV32UI and RV32MI RISC-V unit tests
+# Runs the RV32UI, RV32MI, and RV32UC RISC-V unit tests
 #
 
 import sys, os, glob, argparse
@@ -38,7 +38,8 @@ if __name__ == '__main__':
     if args.executable is None:
         test_rv32ui_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32ui-p-*') if not '.dump' in fname]
         test_rv32mi_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32mi-p-*') if not '.dump' in fname]
-        test_fname_list = test_rv32ui_fnames + test_rv32mi_fnames
+        test_rv32uc_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32uc-p-*') if not '.dump' in fname]
+        test_fname_list = test_rv32ui_fnames + test_rv32mi_fnames + test_rv32uc_fnames
     else:
         test_fname_list = [ args.executable ]
 
@@ -60,11 +61,21 @@ if __name__ == '__main__':
         # RUN
         while True:
             #print ('PC=%08X' % cpu.pc)
-            inst = ram.load_word(cpu.pc)
+
+            # Fetch using spec-compliant parcel-based approach
+            inst_low = ram.load_half(cpu.pc, signed=False)
+            if (inst_low & 0x3) == 0x3:
+                # 32-bit instruction: fetch upper 16 bits
+                inst_high = ram.load_half(cpu.pc + 2, signed=False)
+                inst = inst_low | (inst_high << 16)
+            else:
+                # 16-bit compressed instruction
+                inst = inst_low
+
             cpu.execute(inst)
             cpu.pc = cpu.next_pc
-            
-            # if sentinel value has been overwritted, the test is over
+
+            # if sentinel value has been overwritten, the test is over
             if ram.load_word(tohost_addr) != 0xFFFFFFFF:
                 break
 

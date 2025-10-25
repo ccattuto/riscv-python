@@ -1,17 +1,18 @@
-# 🐍 RISC-V Emulator in Python (RV32I, machine mode, Newlib support)
+# 🐍 RISC-V Emulator in Python (RV32IC, machine mode, Newlib support)
 
-This is a simple and readable **RISC-V RV32I emulator** written in pure Python. It supports machine mode, and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
+This is a simple and readable **RISC-V RV32IC emulator** written in pure Python. It supports machine mode, compressed instructions (RVC extension), and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
 
 ## ✅ Features
 
 - **Implements the full RV32I base integer ISA**
+- **Implements the RVC (Compressed) extension** with full support for 16-bit compressed instructions, achieving 25-30% code density improvement
 - **Implements all RV32MI machine-mode instructions and trap mechanisms**, including synchronous traps (`ecall`, `ebreak`, illegal instruction trap), asynchronous traps (machine timer interrupt), `mret`, and the **Zicsr (Control Status Registers) extension** and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`, ...)
 - **Supports loading ELF and flat binary formats**
 - **Supports terminal I/O**, both "cooked" and raw
 - **Provides most of the system calls needed by [Newlib](https://en.wikipedia.org/wiki/Newlib)**: `_write`, `_read`, `_exit`, **dynamic memory allocation** (`_sbrk`), **file I/O** (`_open`, `_close`, `_fstat`, `_lseek`, ...)
 - **Supports argc/argv program arguments**
 - **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, and a **memory-mapped block device** backed by an image file
-- **Passes all `rv32ui` and `rv32mi` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
+- **Passes all `rv32ui`, `rv32mi`, and `rv32uc` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, and violations of invariants
 - Runs [MicroPython](https://micropython.org/), [CircuitPython](https://circuitpython.org/) with emulated peripherals, and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
 - Self-contained, modular, extensible codebase. Provides a **Python API** enabling users to control execution, inspect state, and script complex tests directly in Python.
@@ -234,7 +235,7 @@ make
 cd -
 ```
 
-The script automatically runs all RV32UI and RV32MI [RISC-V unit tests](https://github.com/riscv-software-src/riscv-tests) in `riscv-tests/`. The emulator passes all of them.
+The script automatically runs all RV32UI, RV32MI, and RV32UC [RISC-V unit tests](https://github.com/riscv-software-src/riscv-tests) in `riscv-tests/`. The emulator passes all of them.
 ```
 ./run_unit_tests.py
 Test rv32ui-p-bltu                 : PASS
