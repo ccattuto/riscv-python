@@ -76,20 +76,30 @@ This test is useful for development but official tests are definitive.
 
 ## Implementation Notes
 
-### misa.C Bit (Read-Only)
+### misa.C Bit (Writable)
 
-Our implementation has the C extension **always enabled**:
+The C extension can be dynamically enabled or disabled by modifying the misa CSR:
 ```python
-self.csrs[0x301] = 0x40000104  # misa: RV32IC
-self.CSR_NOWRITE = { 0x301, ... }  # misa is read-only
+self.csrs[0x301] = 0x40000104  # misa: RV32IC (C bit initially set)
+# misa is writable - can toggle C extension at runtime
 ```
 
-This means:
-- `csrsi misa, C_BIT` - ignored (already set)
-- `csrci misa, C_BIT` - ignored (cannot clear)
-- Tests that require C to be toggleable will skip (pass)
+This allows:
+- `csrsi misa, C_BIT` - enable compressed instructions
+- `csrci misa, C_BIT` - disable compressed instructions
+- Tests that require C to be toggleable work correctly
 
-This is **spec-compliant**: RISC-V allows misa bits to be read-only.
+**Behavior with C enabled:**
+- PC must be 2-byte aligned (bit 0 = 0)
+- Compressed instructions are legal
+- Branches/jumps to odd addresses trap (misaligned)
+- Branches/jumps to 2-byte aligned addresses work
+
+**Behavior with C disabled:**
+- PC must be 4-byte aligned (bits [1:0] = 00)
+- Compressed instructions trap as illegal
+- Branches/jumps to non-4-byte-aligned addresses trap
+- Only 4-byte aligned addresses work
 
 ### PC Alignment
 

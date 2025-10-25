@@ -141,8 +141,18 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 ((inst >> 31) << 12)
         if imm_b >= 0x1000: imm_b -= 0x2000
         addr_target = (cpu.pc + imm_b) & 0xFFFFFFFF
-        if addr_target & 0x1:
-            cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
+
+        # Check alignment based on whether RVC is enabled
+        # With RVC: 2-byte alignment required (bit 0 must be 0)
+        # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
+        misaligned = False
+        if cpu.is_rvc_enabled():
+            misaligned = (addr_target & 0x1) != 0  # Check bit 0 for 2-byte alignment
+        else:
+            misaligned = (addr_target & 0x3) != 0  # Check bits [1:0] for 4-byte alignment
+
+        if misaligned:
+            cpu.trap(cause=0, mtval=addr_target)  # instruction address misaligned
         else:
             cpu.next_pc = addr_target
     elif funct3 == 0x2 or funct3 == 0x3:
@@ -165,8 +175,18 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             ((inst >> 31) << 20)
     if imm_j >= 0x100000: imm_j -= 0x200000
     addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF  # (compared to JALR, no need to clear bit 0 here)
-    if addr_target & 0x1:
-            cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
+
+    # Check alignment based on whether RVC is enabled
+    # With RVC: 2-byte alignment required (bit 0 must be 0)
+    # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
+    misaligned = False
+    if cpu.is_rvc_enabled():
+        misaligned = (addr_target & 0x1) != 0  # Check bit 0 for 2-byte alignment
+    else:
+        misaligned = (addr_target & 0x3) != 0  # Check bits [1:0] for 4-byte alignment
+
+    if misaligned:
+        cpu.trap(cause=0, mtval=addr_target)  # instruction address misaligned
     else:
         if rd != 0:
             cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
@@ -177,9 +197,17 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
-    addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0
-    if addr_target & 0x1:
-        cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
+    addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0 per RISC-V spec
+
+    # Check alignment based on whether RVC is enabled
+    # With RVC: 2-byte alignment required (bit 0 must be 0, which is guaranteed by the mask above)
+    # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
+    misaligned = False
+    if not cpu.is_rvc_enabled():
+        misaligned = (addr_target & 0x2) != 0  # Check bit 1 for 4-byte alignment
+
+    if misaligned:
+        cpu.trap(cause=0, mtval=addr_target)  # instruction address misaligned
     else:
         if rd != 0:
             cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
@@ -199,8 +227,22 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 
     elif inst == 0x30200073:  # MRET
         mepc = cpu.csrs[0x341]
-        if mepc & 0x1:
-            cpu.trap(cause=0, mtval=mepc)  # unaligned address (2-byte alignment required)
+
+        # Check alignment based on whether RVC is enabled
+        # With RVC: 2-byte alignment required (bit 0 must be 0)
+        # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
+        # Note: Per RISC-V spec, if C is disabled and mepc[1]=1, clear mepc[1]
+        if not cpu.is_rvc_enabled() and (mepc & 0x2):
+            mepc = mepc & ~0x2  # Clear bit 1 to make 4-byte aligned
+
+        misaligned = False
+        if cpu.is_rvc_enabled():
+            misaligned = (mepc & 0x1) != 0  # Check bit 0 for 2-byte alignment
+        else:
+            misaligned = (mepc & 0x3) != 0  # Check bits [1:0] for 4-byte alignment
+
+        if misaligned:
+            cpu.trap(cause=0, mtval=mepc)  # instruction address misaligned
         else:
             cpu.next_pc = mepc                              # return address <- mepc
 
@@ -593,8 +635,9 @@ class CPU:
         # (misa should be here, but tests expect it to be writable without trapping)
 
         # read-only CSRs: writes are ignored
-        self.CSR_NOWRITE ={ 0x301, 0xB02, 0xB82, 0x7A0, 0x7A1, 0x7A2 }
-        # misa, minstret, minstreth, tselect, tdata1, tdata2
+        self.CSR_NOWRITE = { 0xB02, 0xB82, 0x7A0, 0x7A1, 0x7A2 }
+        # minstret, minstreth, tselect, tdata1, tdata2
+        # Note: misa is now writable to allow C extension to be toggled
 
         self.mtime = 0x00000000_00000000
         self.mtimecmp = 0xFFFFFFFF_FFFFFFFF
@@ -640,10 +683,21 @@ class CPU:
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
 
+    # Check if RVC (compressed) extension is enabled
+    def is_rvc_enabled(self):
+        return (self.csrs[0x301] & 0x4) != 0  # Check bit 2 (C extension)
+
     # Instruction execution (supports both 32-bit and compressed 16-bit instructions)
     def execute(self, inst):
         # Detect instruction size and expand compressed instructions
         is_compressed = (inst & 0x3) != 0x3
+
+        # If C extension is disabled, compressed instructions are illegal
+        if is_compressed and not self.is_rvc_enabled():
+            if self.logger is not None:
+                self.logger.warning(f"Compressed instruction when C extension disabled at PC={self.pc:08X}: 0x{inst & 0xFFFF:04X}")
+            self.trap(cause=2, mtval=inst & 0xFFFF)  # illegal instruction
+            return
 
         # Use a cache key that differentiates between compressed and standard instructions
         cache_key = (inst & 0xFFFF) if is_compressed else (inst >> 2)
