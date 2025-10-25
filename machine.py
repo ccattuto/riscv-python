@@ -266,6 +266,19 @@ class Machine:
             if self.trace and (cpu.pc in self.symbol_dict):
                 self.logger.debug(f"FUNC {self.symbol_dict[cpu.pc]}, PC={cpu.pc:08X}")
 
+            # Check PC alignment before fetch (must be 2-byte aligned with C extension)
+            if cpu.pc & 0x1:
+                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
+                if timer:
+                    cpu.timer_update()
+                cpu.pc = cpu.next_pc
+                if mmio:
+                    div += 1
+                    if div & DIV_MASK == 0:
+                        self.peripherals_run()
+                        div = 0
+                continue
+
             # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
             inst_low = ram.load_half(cpu.pc, signed=False)
             if (inst_low & 0x3) == 0x3:
@@ -294,6 +307,12 @@ class Machine:
         ram = self.ram
 
         while True:
+            # Check PC alignment before fetch (must be 2-byte aligned with C extension)
+            if cpu.pc & 0x1:
+                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
+                cpu.pc = cpu.next_pc
+                continue
+
             # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
             inst_low = ram.load_half(cpu.pc, signed=False)
             if (inst_low & 0x3) == 0x3:
@@ -313,6 +332,13 @@ class Machine:
         ram = self.ram
 
         while True:
+            # Check PC alignment before fetch (must be 2-byte aligned with C extension)
+            if cpu.pc & 0x1:
+                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
+                cpu.timer_update()
+                cpu.pc = cpu.next_pc
+                continue
+
             # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
             inst_low = ram.load_half(cpu.pc, signed=False)
             if (inst_low & 0x3) == 0x3:
@@ -336,6 +362,18 @@ class Machine:
         DIV_MASK = 0xFF  # call peripheral run() methods every 256 cycles
 
         while True:
+            # Check PC alignment before fetch (must be 2-byte aligned with C extension)
+            if cpu.pc & 0x1:
+                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
+                if timer:
+                    cpu.timer_update()
+                cpu.pc = cpu.next_pc
+                div += 1
+                if div & DIV_MASK == 0:
+                    self.peripherals_run()
+                    div = 0
+                continue
+
             # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
             inst_low = ram.load_half(cpu.pc, signed=False)
             if (inst_low & 0x3) == 0x3:

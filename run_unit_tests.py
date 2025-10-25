@@ -62,6 +62,14 @@ if __name__ == '__main__':
         while True:
             #print ('PC=%08X' % cpu.pc)
 
+            # Check PC alignment before fetch (must be 2-byte aligned with C extension)
+            if cpu.pc & 0x1:
+                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
+                cpu.pc = cpu.next_pc
+                if ram.load_word(tohost_addr) != 0xFFFFFFFF:
+                    break
+                continue
+
             # Fetch using spec-compliant parcel-based approach
             inst_low = ram.load_half(cpu.pc, signed=False)
             if (inst_low & 0x3) == 0x3:
@@ -81,4 +89,5 @@ if __name__ == '__main__':
 
         # Load and check test result
         test_result = ram.load_word(tohost_addr)
-        print (f"Test {os.path.basename(test_fname):<30}: {"PASS" if test_result == 1 else "FAIL"}")
+        result_str = "PASS" if test_result == 1 else "FAIL"
+        print(f"Test {os.path.basename(test_fname):<30}: {result_str}")

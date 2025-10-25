@@ -495,7 +495,11 @@ def expand_compressed(c_inst):
             return ((0x00 << 25) | (shamt << 20) | (rd_rs1 << 15) | (0x1 << 12) | (rd_rs1 << 7) | 0x13, True)
 
         elif funct3 == 0b010:  # C.LWSP
-            imm = ((c_inst >> 2) & 0xE0) | ((c_inst >> 7) & 0x1C) | ((c_inst << 4) & 0x3)
+            # Format: offset[5] from bit 12, offset[4:2] from bits 6:4, offset[7:6] from bits 3:2
+            offset_5 = (c_inst >> 12) & 0x1
+            offset_4_2 = (c_inst >> 4) & 0x7
+            offset_7_6 = (c_inst >> 2) & 0x3
+            imm = (offset_7_6 << 6) | (offset_5 << 5) | (offset_4_2 << 2)
             rd = (c_inst >> 7) & 0x1F
             if rd == 0:
                 return (0, False)  # Illegal
