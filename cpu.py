@@ -690,23 +690,22 @@ class CPU:
 
     # Instruction execution (supports both 32-bit and compressed 16-bit instructions)
     def execute(self, inst):
-        # Detect instruction size and expand compressed instructions
+        # Detect instruction size and use for cache key
+        # Use inst >> 2 for 32-bit instructions to reduce cache space (lower 2 bits always 0x3)
         is_compressed = (inst & 0x3) != 0x3
-
-        # If C extension is disabled, compressed instructions are illegal
-        if is_compressed and not self.is_rvc_enabled():
-            if self.logger is not None:
-                self.logger.warning(f"Compressed instruction when C extension disabled at PC={self.pc:08X}: 0x{inst & 0xFFFF:04X}")
-            self.trap(cause=2, mtval=inst & 0xFFFF)  # illegal instruction
-            return
-
-        # Use a cache key that differentiates between compressed and standard instructions
         cache_key = (inst & 0xFFFF) if is_compressed else (inst >> 2)
 
         try:
             opcode, rd, funct3, rs1, rs2, funct7, inst_size = self.decode_cache[cache_key]
         except KeyError:
             if is_compressed:
+                # Check if C extension is disabled (only on cache miss for compressed instructions)
+                if not self.rvc_enabled:
+                    if self.logger is not None:
+                        self.logger.warning(f"Compressed instruction when C extension disabled at PC={self.pc:08X}: 0x{inst & 0xFFFF:04X}")
+                    self.trap(cause=2, mtval=inst & 0xFFFF)  # illegal instruction
+                    return
+
                 # Expand compressed instruction to 32-bit equivalent
                 expanded_inst, success = expand_compressed(inst & 0xFFFF)
                 if not success:
