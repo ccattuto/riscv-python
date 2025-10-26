@@ -142,17 +142,11 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         if imm_b >= 0x1000: imm_b -= 0x2000
         addr_target = (cpu.pc + imm_b) & 0xFFFFFFFF
 
-        # Check alignment based on whether RVC is enabled
-        # With RVC: 2-byte alignment required (bit 0 must be 0)
-        # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
-        misaligned = False
-        if cpu.rvc_enabled:  # Direct access to cached boolean (faster than function call)
-            misaligned = (addr_target & 0x1) != 0  # Check bit 0 for 2-byte alignment
-        else:
-            misaligned = (addr_target & 0x3) != 0  # Check bits [1:0] for 4-byte alignment
-
-        if misaligned:
+        # Optimized alignment check: bit 0 always required, bit 1 only if RVC disabled
+        if addr_target & 0x1:
             cpu.trap(cause=0, mtval=addr_target)  # instruction address misaligned
+        elif not cpu.rvc_enabled and (addr_target & 0x2):
+            cpu.trap(cause=0, mtval=addr_target)  # 4-byte misalignment (RVC disabled)
         else:
             cpu.next_pc = addr_target
     elif funct3 == 0x2 or funct3 == 0x3:
@@ -174,19 +168,13 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             (((inst >> 12) & 0xFF) << 12) | \
             ((inst >> 31) << 20)
     if imm_j >= 0x100000: imm_j -= 0x200000
-    addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF  # (compared to JALR, no need to clear bit 0 here)
+    addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF
 
-    # Check alignment based on whether RVC is enabled
-    # With RVC: 2-byte alignment required (bit 0 must be 0)
-    # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
-    misaligned = False
-    if cpu.rvc_enabled:  # Direct access to cached boolean (faster than function call)
-        misaligned = (addr_target & 0x1) != 0  # Check bit 0 for 2-byte alignment
-    else:
-        misaligned = (addr_target & 0x3) != 0  # Check bits [1:0] for 4-byte alignment
-
-    if misaligned:
+    # Optimized alignment check: bit 0 always required, bit 1 only if RVC disabled
+    if addr_target & 0x1:
         cpu.trap(cause=0, mtval=addr_target)  # instruction address misaligned
+    elif not cpu.rvc_enabled and (addr_target & 0x2):
+        cpu.trap(cause=0, mtval=addr_target)  # 4-byte misalignment (RVC disabled)
     else:
         if rd != 0:
             cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
@@ -199,15 +187,9 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if imm_i >= 0x800: imm_i -= 0x1000
     addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0 per RISC-V spec
 
-    # Check alignment based on whether RVC is enabled
-    # With RVC: 2-byte alignment required (bit 0 must be 0, which is guaranteed by the mask above)
-    # Without RVC: 4-byte alignment required (bits [1:0] must be 00)
-    misaligned = False
-    if not cpu.rvc_enabled:  # Direct access to cached boolean (faster than function call)
-        misaligned = (addr_target & 0x2) != 0  # Check bit 1 for 4-byte alignment
-
-    if misaligned:
-        cpu.trap(cause=0, mtval=addr_target)  # instruction address misaligned
+    # Optimized alignment check: bit 0 already cleared, only check bit 1 if RVC disabled
+    if not cpu.rvc_enabled and (addr_target & 0x2):
+        cpu.trap(cause=0, mtval=addr_target)  # 4-byte misalignment (RVC disabled)
     else:
         if rd != 0:
             cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
