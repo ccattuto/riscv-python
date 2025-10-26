@@ -141,12 +141,8 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 ((inst >> 31) << 12)
         if imm_b >= 0x1000: imm_b -= 0x2000
         addr_target = (cpu.pc + imm_b) & 0xFFFFFFFF
-
-        # Optimized alignment check: bit 0 always required, bit 1 only if RVC disabled
         if addr_target & 0x1:
-            cpu.trap(cause=0, mtval=addr_target)  # instruction address misaligned
-        elif not cpu.rvc_enabled and (addr_target & 0x2):
-            cpu.trap(cause=0, mtval=addr_target)  # 4-byte misalignment (RVC disabled)
+            cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
         else:
             cpu.next_pc = addr_target
     elif funct3 == 0x2 or funct3 == 0x3:
@@ -168,13 +164,9 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             (((inst >> 12) & 0xFF) << 12) | \
             ((inst >> 31) << 20)
     if imm_j >= 0x100000: imm_j -= 0x200000
-    addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF
-
-    # Optimized alignment check: bit 0 always required, bit 1 only if RVC disabled
+    addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF  # (compared to JALR, no need to clear bit 0 here)
     if addr_target & 0x1:
-        cpu.trap(cause=0, mtval=addr_target)  # instruction address misaligned
-    elif not cpu.rvc_enabled and (addr_target & 0x2):
-        cpu.trap(cause=0, mtval=addr_target)  # 4-byte misalignment (RVC disabled)
+            cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
     else:
         if rd != 0:
             cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
@@ -185,11 +177,9 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
-    addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0 per RISC-V spec
-
-    # Optimized alignment check: bit 0 already cleared, only check bit 1 if RVC disabled
-    if not cpu.rvc_enabled and (addr_target & 0x2):
-        cpu.trap(cause=0, mtval=addr_target)  # 4-byte misalignment (RVC disabled)
+    addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0
+    if addr_target & 0x1:
+        cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
     else:
         if rd != 0:
             cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
@@ -209,25 +199,16 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 
     elif inst == 0x30200073:  # MRET
         mepc = cpu.csrs[0x341]
-
-        # Check alignment and handle per RISC-V spec
-        if cpu.rvc_enabled:  # Direct access to cached boolean (faster than function call)
-            # With RVC: 2-byte alignment required (bit 0 must be 0)
-            if mepc & 0x1:
-                cpu.trap(cause=0, mtval=mepc)  # instruction address misaligned
-                return
+        if mepc & 0x1:
+            cpu.trap(cause=0, mtval=mepc)  # unaligned address (2-byte alignment required)
         else:
-            # Without RVC: Clear bit 1 per spec (don't trap)
-            # RISC-V spec: "If C is not enabled, mepc[1] is masked to 0"
-            mepc = mepc & ~0x2
+            cpu.next_pc = mepc                              # return address <- mepc
 
-        cpu.next_pc = mepc                              # return address <- mepc
-
-        mstatus = cpu.csrs[0x300]                       # mstatus
-        mpie = (mstatus >> 7) & 1                       # extract MPIE
-        mstatus = (mstatus & ~(1 << 3)) | (mpie << 3)   # MIE <- MPIE
-        mstatus |= (1 << 7)                             # MPIE = 1 (re-arm)
-        cpu.csrs[0x300] = mstatus
+            mstatus = cpu.csrs[0x300]                       # mstatus
+            mpie = (mstatus >> 7) & 1                       # extract MPIE
+            mstatus = (mstatus & ~(1 << 3)) | (mpie << 3)   # MIE <- MPIE
+            mstatus |= (1 << 7)                             # MPIE = 1 (re-arm)
+            cpu.csrs[0x300] = mstatus
     
     elif inst == 0x00100073:  # EBREAK
         # syscalls >= 0xFFFF0000 bypass the rest of the EBREAK logic and are used for logging.
@@ -308,9 +289,6 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 
         if csr == 0x300:  # MPP field of mstatus is forced to 0b11 as we only support machine mode
             cpu.csrs[0x300] |= 0x00001800  # set bits 12 and 11
-
-        if csr == 0x301:  # Update cached RVC enabled state when misa is modified
-            cpu.rvc_enabled = (cpu.csrs[0x301] & 0x4) != 0
 
         if rd != 0:
             if csr == 0x7C0:
@@ -602,15 +580,12 @@ class CPU:
         # 0xF13 mimpid (RO)
         # 0xF14 mhartid (RO)
 
-        self.csrs[0x301] = 0x40000104  # misa (bits 30, 8, and 2 set: RV32IC)
+        self.csrs[0x301] = 0x40000104  # misa (RO, bits 30, 8, and 2 set: RV32IC)
         self.csrs[0x300] = 0x00001800  # mstatus (machine mode only: MPP field kept = 0b11)
         self.csrs[0x7C2] = 0xFFFFFFFF  # mtimecmp_low
         self.csrs[0x7C3] = 0xFFFFFFFF  # mtimecmp_hi
         self.csrs[0xF12] = 0x00000001  # marchid (RO)
         self.csrs[0xF13] = 0x20250400  # mimpid (RO)
-
-        # Cache RVC enabled state for performance (avoid CSR read on hot path)
-        self.rvc_enabled = (self.csrs[0x301] & 0x4) != 0
 
         # read-only CSRs: writes cause a trap
         self.CSR_RO = { 0xF11, 0xF12, 0xF13, 0xF14 }
@@ -618,9 +593,8 @@ class CPU:
         # (misa should be here, but tests expect it to be writable without trapping)
 
         # read-only CSRs: writes are ignored
-        self.CSR_NOWRITE = { 0xB02, 0xB82, 0x7A0, 0x7A1, 0x7A2 }
-        # minstret, minstreth, tselect, tdata1, tdata2
-        # Note: misa is now writable to allow C extension to be toggled
+        self.CSR_NOWRITE ={ 0x301, 0xB02, 0xB82, 0x7A0, 0x7A1, 0x7A2 }
+        # misa, minstret, minstreth, tselect, tdata1, tdata2
 
         self.mtime = 0x00000000_00000000
         self.mtimecmp = 0xFFFFFFFF_FFFFFFFF
@@ -666,28 +640,18 @@ class CPU:
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
 
-    # Check if RVC (compressed) extension is enabled (cached for performance)
-    def is_rvc_enabled(self):
-        return self.rvc_enabled
-
     # Instruction execution (supports both 32-bit and compressed 16-bit instructions)
     def execute(self, inst):
-        # Detect instruction size and use for cache key
-        # Use inst >> 2 for 32-bit instructions to reduce cache space (lower 2 bits always 0x3)
+        # Detect instruction size and expand compressed instructions
         is_compressed = (inst & 0x3) != 0x3
+
+        # Use a cache key that differentiates between compressed and standard instructions
         cache_key = (inst & 0xFFFF) if is_compressed else (inst >> 2)
 
         try:
             opcode, rd, funct3, rs1, rs2, funct7, inst_size = self.decode_cache[cache_key]
         except KeyError:
             if is_compressed:
-                # Check if C extension is disabled (only on cache miss for compressed instructions)
-                if not self.rvc_enabled:
-                    if self.logger is not None:
-                        self.logger.warning(f"Compressed instruction when C extension disabled at PC={self.pc:08X}: 0x{inst & 0xFFFF:04X}")
-                    self.trap(cause=2, mtval=inst & 0xFFFF)  # illegal instruction
-                    return
-
                 # Expand compressed instruction to 32-bit equivalent
                 expanded_inst, success = expand_compressed(inst & 0xFFFF)
                 if not success:
