@@ -135,10 +135,52 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 
 ---
 
+## Test rv32uc-p-rvc Test #36: **FIXED** ✅
+
+### Test Description
+```assembly
+la t0, 1f;        # Load target address
+li ra, 0;         # Clear return address
+c.jalr t0;        # Jump to t0, save return address in ra
+c.j 2f;           # Should be skipped
+1:c.j 1f;         # Jump forward
+2:j fail;         # Should not reach
+1:sub ra, ra, t0  # Compute ra - t0
+# Expected: ra - t0 = -2
+```
+
+### Issue Found
+`exec_JAL` and `exec_JALR` always computed return address as PC+4, assuming 4-byte instructions. For compressed instructions (C.JAL, C.JALR), the return address should be PC+2.
+
+Example:
+- C.JALR at PC=X (2-byte instruction)
+- Should save: ra = X + 2 ✓
+- Was saving: ra = X + 4 ✗
+- Test computes: ra - t0 = (X+4) - (X+2) = 2 ✗
+- Expected: ra - t0 = (X+2) - (X+4) = -2 ✓
+
+### Fix Applied
+Modified JAL/JALR handlers to use `cpu.inst_size`:
+1. Added `cpu.inst_size` attribute (2 for compressed, 4 for normal)
+2. Set before calling opcode handlers
+3. Updated `exec_JAL` to use `cpu.pc + cpu.inst_size`
+4. Updated `exec_JALR` to use `cpu.pc + cpu.inst_size`
+
+**Status**: Fixed in commit `8cbc283`
+
+**Testing**:
+- `test_jalr.py`: Both C.JALR (PC+2) and JALR (PC+4) work correctly ✓
+- Official test should now pass test #36 (pending verification)
+
+---
+
 ## Summary
 
-✅ **rv32uc-p-rvc test #12**: Fixed critical decode cache bug
+✅ **rv32uc-p-rvc test #12**: Fixed critical decode cache bug (commit 9cea941)
+✅ **rv32uc-p-rvc test #36**: Fixed compressed JAL/JALR return addresses (commit 8cbc283)
 ⚠️ **rv32mi-p-ma_fetch test #4**: Under investigation
 ✅ **Performance**: No regression from baseline
 
-**Recommendation**: Test the cache fix with official test binaries to verify rv32uc-p-rvc now passes, then investigate ma_fetch test #4 with actual test output.
+**Latest Test Run**: After both fixes, test #36 was the failure point. This should now pass.
+
+**Recommendation**: Run official test suite again to verify both fixes work and identify any remaining failures.
