@@ -61,6 +61,7 @@ if __name__ == '__main__':
         # RUN
         test_num = 0
         test_regs = {}  # Store register snapshots for each test
+        debug_test12 = False
         while True:
             # Track which test we're in and save register state when test starts
             current_testnum = cpu.registers[3]  # x3 is gp, used as TESTNUM
@@ -68,6 +69,9 @@ if __name__ == '__main__':
                 test_num = current_testnum
                 # Save register state at start of each test
                 test_regs[test_num] = list(cpu.registers)
+                if 'rvc' in test_fname and test_num == 12:
+                    debug_test12 = True
+                    print(f"  [DEBUG] Starting test #12, s0 (x8) = 0x{cpu.registers[8]:08X}")
 
             #print ('PC=%08X' % cpu.pc)
 
@@ -88,6 +92,10 @@ if __name__ == '__main__':
             else:
                 # 16-bit compressed instruction
                 inst = inst_low
+
+            # Debug compressed instructions in test #12
+            if debug_test12 and (inst & 0x3) != 0x3:
+                print(f"    PC=0x{cpu.pc:08X} C.inst=0x{inst:04X} s0(x8)=0x{cpu.registers[8]:08X}")
 
             cpu.execute(inst)
             cpu.pc = cpu.next_pc
