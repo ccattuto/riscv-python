@@ -59,20 +59,7 @@ if __name__ == '__main__':
         ram.store_word(tohost_addr, 0xFFFFFFFF)  # store sentinel value
 
         # RUN
-        test_num = 0
-        test_regs = {}  # Store register snapshots for each test
-        debug_test12 = False
         while True:
-            # Track which test we're in and save register state when test starts
-            current_testnum = cpu.registers[3]  # x3 is gp, used as TESTNUM
-            if current_testnum != test_num:
-                test_num = current_testnum
-                # Save register state at start of each test
-                test_regs[test_num] = list(cpu.registers)
-                if 'rvc' in test_fname and test_num == 12:
-                    debug_test12 = True
-                    print(f"  [DEBUG] Starting test #12, s0 (x8) = 0x{cpu.registers[8]:08X}")
-
             #print ('PC=%08X' % cpu.pc)
 
             # Check PC alignment before fetch (must be 2-byte aligned with C extension)
@@ -93,10 +80,6 @@ if __name__ == '__main__':
                 # 16-bit compressed instruction
                 inst = inst_low
 
-            # Debug compressed instructions in test #12
-            if debug_test12 and (inst & 0x3) != 0x3:
-                print(f"    PC=0x{cpu.pc:08X} C.inst=0x{inst:04X} s0(x8)=0x{cpu.registers[8]:08X}")
-
             cpu.execute(inst)
             cpu.pc = cpu.next_pc
 
@@ -108,22 +91,13 @@ if __name__ == '__main__':
         test_result = ram.load_word(tohost_addr)
         result_str = "PASS" if test_result == 1 else f"FAIL (test #{test_result >> 1})"
 
-        # Debug output for failures
+        # Output test result
         if test_result != 1:
-            failed_test_num = test_result >> 1
             print(f"Test {os.path.basename(test_fname):<30}: {result_str}")
             print(f"  tohost value: 0x{test_result:08X}")
             print(f"  Final PC: 0x{cpu.pc:08X}")
             print(f"  mepc: 0x{cpu.csrs[0x341]:08X}")
             print(f"  mcause: 0x{cpu.csrs[0x342]:08X}")
             print(f"  mtval: 0x{cpu.csrs[0x343]:08X}")
-
-            # Show final register state for specific failing tests
-            if 'rvc' in test_fname and failed_test_num == 12:
-                print(f"  Final s0 (x8): 0x{cpu.registers[8]:08X} (expected: 0x000fffe1)")
-                print(f"  Final x7: 0x{cpu.registers[7]:08X}")
-            elif 'ma_fetch' in test_fname and failed_test_num == 4:
-                print(f"  Final t0 (x5): 0x{cpu.registers[5]:08X}")
-                print(f"  Final t1 (x6): 0x{cpu.registers[6]:08X}")
         else:
             print(f"Test {os.path.basename(test_fname):<30}: {result_str}")
