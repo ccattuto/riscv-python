@@ -90,4 +90,14 @@ if __name__ == '__main__':
         # Load and check test result
         test_result = ram.load_word(tohost_addr)
         result_str = "PASS" if test_result == 1 else f"FAIL (test #{test_result >> 1})"
-        print(f"Test {os.path.basename(test_fname):<30}: {result_str}")
+
+        # Debug output for failures
+        if test_result != 1:
+            print(f"Test {os.path.basename(test_fname):<30}: {result_str}")
+            print(f"  tohost value: 0x{test_result:08X}")
+            print(f"  Final PC: 0x{cpu.pc:08X}")
+            print(f"  mepc: 0x{cpu.csrs[0x341]:08X}")
+            print(f"  mcause: 0x{cpu.csrs[0x342]:08X}")
+            print(f"  mtval: 0x{cpu.csrs[0x343]:08X}")
+        else:
+            print(f"Test {os.path.basename(test_fname):<30}: {result_str}")
