@@ -59,7 +59,16 @@ if __name__ == '__main__':
         ram.store_word(tohost_addr, 0xFFFFFFFF)  # store sentinel value
 
         # RUN
+        test_num = 0
         while True:
+            # Track which test we're in
+            if cpu.registers[3] != test_num:  # x3 is gp, used as TESTNUM
+                test_num = cpu.registers[3]
+
+            # Debug output for test #4
+            if 'ma_fetch' in test_fname and test_num == 4:
+                pass  # Will add specific debug later
+
             #print ('PC=%08X' % cpu.pc)
 
             # Check PC alignment before fetch (must be 2-byte aligned with C extension)
