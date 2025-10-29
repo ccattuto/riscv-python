@@ -49,8 +49,8 @@ def initialize_ram(ram, fill='0x00'):
 
 # Base RAM class: fast, no address checks, no MMIO
 class RAM:
-    def __init__(self, size=1024*1024, init=None, logger=None):
-        self.memory = bytearray(size)
+    def __init__(self, size=1024*1024, init=None, logger=None, padding=4):
+        self.memory = bytearray(size + padding)
         self.memory32 = memoryview(self.memory ).cast("I")  # word view
         self.size = size
         self.logger = logger

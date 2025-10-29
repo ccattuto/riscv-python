@@ -313,15 +313,8 @@ class Machine:
                 cpu.pc = cpu.next_pc
                 continue
 
-            # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
-            inst_low = ram.load_half(cpu.pc, signed=False)
-            if (inst_low & 0x3) == 0x3:
-                # 32-bit instruction: fetch upper 16 bits
-                inst_high = ram.load_half(cpu.pc + 2, signed=False)
-                inst = inst_low | (inst_high << 16)
-            else:
-                # 16-bit compressed instruction
-                inst = inst_low
+            inst32 = ram.load_word(cpu.pc)
+            inst = inst32 if (inst32 & 0x3) else (inst32 & 0xFFFF)
 
             cpu.execute(inst)
             cpu.pc = cpu.next_pc
