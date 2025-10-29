@@ -60,18 +60,14 @@ if __name__ == '__main__':
 
         # RUN
         test_num = 0
+        test_regs = {}  # Store register snapshots for each test
         while True:
-            # Track which test we're in
-            if cpu.registers[3] != test_num:  # x3 is gp, used as TESTNUM
-                test_num = cpu.registers[3]
-
-            # Debug output for specific failing tests - capture register state just before test completes
-            tohost_val = ram.load_word(tohost_addr)
-            if tohost_val != 0xFFFFFFFF and tohost_val != 1:  # Test about to fail
-                if 'rvc' in test_fname and (tohost_val >> 1) == 12:
-                    print(f"  [DEBUG Test #12] s0(x8)=0x{cpu.registers[8]:08X}, x7=0x{cpu.registers[7]:08X}, expected s0=0x000fffe1")
-                if 'ma_fetch' in test_fname and (tohost_val >> 1) == 4:
-                    print(f"  [DEBUG Test #4] t0(x5)=0x{cpu.registers[5]:08X}, t1(x6)=0x{cpu.registers[6]:08X}")
+            # Track which test we're in and save register state when test starts
+            current_testnum = cpu.registers[3]  # x3 is gp, used as TESTNUM
+            if current_testnum != test_num:
+                test_num = current_testnum
+                # Save register state at start of each test
+                test_regs[test_num] = list(cpu.registers)
 
             #print ('PC=%08X' % cpu.pc)
 
@@ -106,11 +102,20 @@ if __name__ == '__main__':
 
         # Debug output for failures
         if test_result != 1:
+            failed_test_num = test_result >> 1
             print(f"Test {os.path.basename(test_fname):<30}: {result_str}")
             print(f"  tohost value: 0x{test_result:08X}")
             print(f"  Final PC: 0x{cpu.pc:08X}")
             print(f"  mepc: 0x{cpu.csrs[0x341]:08X}")
             print(f"  mcause: 0x{cpu.csrs[0x342]:08X}")
             print(f"  mtval: 0x{cpu.csrs[0x343]:08X}")
+
+            # Show final register state for specific failing tests
+            if 'rvc' in test_fname and failed_test_num == 12:
+                print(f"  Final s0 (x8): 0x{cpu.registers[8]:08X} (expected: 0x000fffe1)")
+                print(f"  Final x7: 0x{cpu.registers[7]:08X}")
+            elif 'ma_fetch' in test_fname and failed_test_num == 4:
+                print(f"  Final t0 (x5): 0x{cpu.registers[5]:08X}")
+                print(f"  Final t1 (x6): 0x{cpu.registers[6]:08X}")
         else:
             print(f"Test {os.path.basename(test_fname):<30}: {result_str}")
