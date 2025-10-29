@@ -416,7 +416,8 @@ def expand_compressed(c_inst):
                 # LUI rd, nzimm
                 # Need to mask to 32 bits because nzimm can be negative after sign extension
                 imm_20bit = nzimm & 0xFFFFF  # Mask to 20 bits
-                return ((imm_20bit << 12) | (rd << 7) | 0x37, True)
+                expanded = (imm_20bit << 12) | (rd << 7) | 0x37
+                return (expanded, True)
 
         elif funct3 == 0b100:  # Arithmetic operations
             funct2 = (c_inst >> 10) & 0x3
@@ -651,7 +652,10 @@ class CPU:
         cache_key = (inst & 0xFFFF) if is_compressed else (inst >> 2)
 
         try:
-            opcode, rd, funct3, rs1, rs2, funct7, inst_size = self.decode_cache[cache_key]
+            opcode, rd, funct3, rs1, rs2, funct7, inst_size, expanded_inst = self.decode_cache[cache_key]
+            # Use cached expanded instruction for compressed instructions
+            if is_compressed:
+                inst = expanded_inst
         except KeyError:
             if is_compressed:
                 # Expand compressed instruction to 32-bit equivalent
@@ -664,6 +668,7 @@ class CPU:
                 inst = expanded_inst
                 inst_size = 2
             else:
+                expanded_inst = inst  # For non-compressed, store original inst
                 inst_size = 4
 
             # Decode the 32-bit instruction (either original or expanded)
@@ -674,8 +679,8 @@ class CPU:
             rs2 = (inst >> 20) & 0x1F
             funct7 = (inst >> 25) & 0x7F
 
-            # Cache the decoded instruction with its size
-            self.decode_cache[cache_key] = (opcode, rd, funct3, rs1, rs2, funct7, inst_size)
+            # Cache the decoded instruction with its size and expanded instruction
+            self.decode_cache[cache_key] = (opcode, rd, funct3, rs1, rs2, funct7, inst_size, expanded_inst)
 
         self.next_pc = (self.pc + inst_size) & 0xFFFFFFFF
 
