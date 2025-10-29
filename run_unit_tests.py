@@ -65,9 +65,13 @@ if __name__ == '__main__':
             if cpu.registers[3] != test_num:  # x3 is gp, used as TESTNUM
                 test_num = cpu.registers[3]
 
-            # Debug output for test #4
-            if 'ma_fetch' in test_fname and test_num == 4:
-                pass  # Will add specific debug later
+            # Debug output for specific failing tests - capture register state just before test completes
+            tohost_val = ram.load_word(tohost_addr)
+            if tohost_val != 0xFFFFFFFF and tohost_val != 1:  # Test about to fail
+                if 'rvc' in test_fname and (tohost_val >> 1) == 12:
+                    print(f"  [DEBUG Test #12] s0(x8)=0x{cpu.registers[8]:08X}, x7=0x{cpu.registers[7]:08X}, expected s0=0x000fffe1")
+                if 'ma_fetch' in test_fname and (tohost_val >> 1) == 4:
+                    print(f"  [DEBUG Test #4] t0(x5)=0x{cpu.registers[5]:08X}, t1(x6)=0x{cpu.registers[6]:08X}")
 
             #print ('PC=%08X' % cpu.pc)
 
