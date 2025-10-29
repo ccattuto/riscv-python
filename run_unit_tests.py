@@ -49,7 +49,7 @@ if __name__ == '__main__':
         # Instantiate CPU + RAM + machine + syscall handler
         ram = SafeRAMOffset(1024*1024, base_addr=0x8000_0000)  # RAM base and entry point at 0x8000_0000
         cpu = CPU(ram)
-        machine = Machine(cpu, ram)
+        machine = Machine(cpu, ram, rvc=True)  # Enable RVC for tests that use compressed instructions
 
         # Load ELF file of test
         machine.load_elf(test_fname)

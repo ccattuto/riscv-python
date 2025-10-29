@@ -27,13 +27,14 @@ class ExecutionTerminated(MachineError):
     pass
 
 class Machine:
-    def __init__(self, cpu, ram, timer=False, mmio=False, logger=None, trace=False, regs=None, check_inv=False, start_checks=None):
+    def __init__(self, cpu, ram, timer=False, mmio=False, rvc=False, logger=None, trace=False, regs=None, check_inv=False, start_checks=None):
         self.cpu = cpu
         self.ram = ram
 
         # machine options
         self.timer = timer
         self.mmio = mmio
+        self.rvc = rvc
         self.logger = logger
         self.trace = trace
         self.regs = regs
@@ -301,7 +302,25 @@ class Machine:
                     self.peripherals_run()
                     div = 0
 
-    # EXECUTION LOOP: minimal version (fastest)
+    # EXECUTION LOOP: minimal version for RV32I only (fastest, no compressed instructions)
+    def run_fast_no_rvc(self):
+        cpu = self.cpu
+        ram = self.ram
+
+        while True:
+            # Check PC alignment before fetch (must be 4-byte aligned without C extension)
+            if cpu.pc & 0x3:
+                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
+                cpu.pc = cpu.next_pc
+                continue
+
+            # Fetch 32-bit instruction directly (no half-word fetch overhead)
+            inst = ram.load_word(cpu.pc)
+
+            cpu.execute(inst)
+            cpu.pc = cpu.next_pc
+
+    # EXECUTION LOOP: minimal version with RVC support (fast)
     def run_fast(self):
         cpu = self.cpu
         ram = self.ram
@@ -394,12 +413,17 @@ class Machine:
     # with several conditions along the hot execution path.
     def run(self):
         if self.regs or self.check_inv or self.trace:
-            self.run_with_checks()  # checks everything at every cycle, up to 3x slower
+            self.run_with_checks()  # checks everything at every cycle, up to 3x slower (always with RVC support)
         else:
             if self.mmio:
-                self.run_mmio()  # MMIO support, optional timer 
+                self.run_mmio()  # MMIO support, optional timer (always with RVC support)
             else:
                 if self.timer:
-                    self.run_timer()  # timer support, no checks, no MMIO 
+                    self.run_timer()  # timer support, no checks, no MMIO (always with RVC support)
                 else:
-                    self.run_fast()  # fastest option, no timer, no checks, no MMIO
+                    # Fastest option, no timer, no checks, no MMIO
+                    # RVC support is optional for maximum performance on pure RV32I code
+                    if self.rvc:
+                        self.run_fast()  # Fast with RVC support (half-word fetches)
+                    else:
+                        self.run_fast_no_rvc()  # Fastest: pure RV32I (32-bit word fetches)
