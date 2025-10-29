@@ -414,7 +414,9 @@ def expand_compressed(c_inst):
                 if nzimm == 0 or rd == 0:
                     return (0, False)  # Illegal
                 # LUI rd, nzimm
-                return ((nzimm << 12) | (rd << 7) | 0x37, True)
+                # Need to mask to 32 bits because nzimm can be negative after sign extension
+                imm_20bit = nzimm & 0xFFFFF  # Mask to 20 bits
+                return ((imm_20bit << 12) | (rd << 7) | 0x37, True)
 
         elif funct3 == 0b100:  # Arithmetic operations
             funct2 = (c_inst >> 10) & 0x3
