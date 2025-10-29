@@ -169,10 +169,11 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
     else:
         if rd != 0:
-            cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
+            # Use inst_size (2 for compressed, 4 for normal) for return address
+            cpu.registers[rd] = (cpu.pc + cpu.inst_size) & 0xFFFFFFFF
         cpu.next_pc = addr_target
         #if cpu.logger is not None:
-        #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08X}, rd={rd}, target=0x{cpu.next_pc:08X}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08X}")
+        #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08X}, rd={rd}, target=0x{cpu.next_pc:08X}, return_addr=0x{(cpu.pc + cpu.inst_size) & 0xFFFFFFFF:08X}")
 
 def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
@@ -182,7 +183,8 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
     else:
         if rd != 0:
-            cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
+            # Use inst_size (2 for compressed, 4 for normal) for return address
+            cpu.registers[rd] = (cpu.pc + cpu.inst_size) & 0xFFFFFFFF
         cpu.next_pc = addr_target
         #if cpu.logger is not None:
         #    cpu.logger.debug(f"[JALR] jumping to 0x{cpu.next_pc:08X} from rs1=0x{cpu.registers[rs1]:08X}, imm={imm_i}")
@@ -562,7 +564,11 @@ class CPU:
 
         self.logger = logger
         self.trace_traps = trace_traps
- 
+
+        # Instruction size for current instruction (2 for compressed, 4 for normal)
+        # Used by handlers that need to compute return addresses (JAL, JALR)
+        self.inst_size = 4
+
         # CSRs
         self.csrs = [0] * 4096
         # 0x300 mstatus
@@ -683,6 +689,7 @@ class CPU:
             self.decode_cache[cache_key] = (opcode, rd, funct3, rs1, rs2, funct7, inst_size, expanded_inst)
 
         self.next_pc = (self.pc + inst_size) & 0xFFFFFFFF
+        self.inst_size = inst_size  # Store for handlers that need it (JAL, JALR)
 
         if opcode in opcode_handler:
             (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)  # dispatch to opcode handler
