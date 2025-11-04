@@ -35,30 +35,31 @@ print("=" * 70)
 jalr_inst = (3 << 20) | (5 << 15) | (0 << 12) | (6 << 7) | 0x67
 ram.store_word(0x8000_0000, jalr_inst)
 
-# Write c.j +6 at 0x80000004 (offset +6 = 3 instructions of 2 bytes)
-# c.j encoding: funct3=101, offset encoded, quadrant=01
-# For offset +6: need to encode 6/2=3 in the immediate field
-# This is complex, let me use a simpler approach: c.j +4
-# Actually, let's use c.j +2 (skip next instruction)
+# Write C.J instructions with correct encodings
+# C.J offset +4 encodes as 0xA011 (not 0xA001 which is offset=0)
+#
+# offset=+4: bits [3:1]=010, bit[4]=0
+# inst[5:3] = offset[3:1] = 010
+# inst[11] = offset[4] = 0
+# Result: 0xA011
 
-# C.J offset=+4 (jump ahead 4 bytes, skipping 2 compressed instructions)
-# From online assembler: c.j .+4 encodes as 0xa001
-ram.store_half(0x8000_0004, 0xa001)  # c.j +4
+# C.J offset=+4 at 0x80000004 (skip to 0x80000008)
+ram.store_half(0x8000_0004, 0xa011)  # c.j +4
 
-# C.J offset=+4 at 0x80000006 (TARGET - should jump to success)
-ram.store_half(0x8000_0006, 0xa001)  # c.j +4 (to 0x8000000A)
+# C.J offset=+4 at 0x80000006 (TARGET - jump to 0x8000000A)
+ram.store_half(0x8000_0006, 0xa011)  # c.j +4
 
-# At 0x80000008: c.j 0 (infinite loop representing "fail")
-ram.store_half(0x8000_0008, 0xa001)  # c.j +4
+# At 0x80000008: c.j +4 (would skip to 0x8000000C if executed)
+ram.store_half(0x8000_0008, 0xa011)  # c.j +4
 
 # Success marker at 0x8000000A: c.nop
 ram.store_half(0x8000_000A, 0x0001)  # c.nop
 
 print("\nTest setup:")
 print(f"  0x80000000: jalr t1, t0, 3 (0x{jalr_inst:08X})")
-print(f"  0x80000004: c.j +4 (0xa001)")
-print(f"  0x80000006: c.j +4 (0xa001) <- TARGET (t0 + 2)")
-print(f"  0x80000008: c.j +4 (0xa001)")
+print(f"  0x80000004: c.j +4 (0xa011)")
+print(f"  0x80000006: c.j +4 (0xa011) <- TARGET (t0 + 2)")
+print(f"  0x80000008: c.j +4 (0xa011)")
 print(f"  0x8000000A: c.nop (0x0001) <- SUCCESS")
 
 # Set up registers

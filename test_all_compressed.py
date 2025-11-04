@@ -29,8 +29,8 @@ print("=" * 70)
 print("\n### Quadrant 0 (C0) ###")
 
 # C.ADDI4SPN a0, sp, 1020
-# nzuimm=1020=0x3FC
-test_expansion("C.ADDI4SPN a0, sp, 1020", 0x1FFC,
+# nzuimm=1020=0x3FC, rd'=2 (a0=x10, rd'=10-8=2)
+test_expansion("C.ADDI4SPN a0, sp, 1020", 0x1FE8,
                (1020 << 20) | (2 << 15) | (0 << 12) | (10 << 7) | 0x13)
 
 # C.LW a0, 0(a1)
@@ -66,8 +66,8 @@ test_expansion("C.LUI s0, 0x1", 0x6405,
                (1 << 12) | (8 << 7) | 0x37)
 
 # C.ADDI16SP sp, 496
-# nzimm=496=0x1F0
-test_expansion("C.ADDI16SP sp, 496", 0x617C,
+# nzuimm=496=0x1F0, quadrant must be 01
+test_expansion("C.ADDI16SP sp, 496", 0x617D,
                (496 << 20) | (2 << 15) | (0 << 12) | (2 << 7) | 0x13)
 
 # C.SRLI s0, 12
@@ -78,8 +78,9 @@ test_expansion("C.SRLI a0, 1", 0x8105,
 test_expansion("C.SRAI a0, 1", 0x8505,
                (0x20 << 25) | (1 << 20) | (10 << 15) | (0x5 << 12) | (10 << 7) | 0x13)
 
-# C.ANDI s0, ~0x10
-test_expansion("C.ANDI a0, -1", 0x8DFD,
+# C.ANDI a0, -1
+# rd'=2 (a0), imm=-1, funct2=10 for ANDI
+test_expansion("C.ANDI a0, -1", 0x997D,
                (0xFFF << 20) | (10 << 15) | (0x7 << 12) | (10 << 7) | 0x13)
 
 # C.SUB s1, a0
