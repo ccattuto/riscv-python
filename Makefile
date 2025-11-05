@@ -1,6 +1,6 @@
 # Toolchain and tools
-CC = riscv64-linux-gnu-gcc
-OBJCOPY = riscv64-linux-gnu-objcopy
+CC = riscv64-unknown-elf-gcc
+OBJCOPY = riscv64-unknown-elf-objcopy
 
 # Flags - ENABLE RVC (Compressed Instructions)
 CFLAGS_COMMON = -march=rv32ic_zicsr -mabi=ilp32 -O2 -D_REENT_SMALL -I .
