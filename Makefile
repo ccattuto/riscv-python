@@ -1,9 +1,9 @@
 # Toolchain and tools
-CC = riscv64-linux-gnu-gcc
-OBJCOPY = riscv64-linux-gnu-objcopy
+CC = riscv64-unknown-elf-gcc
+OBJCOPY = riscv64-unknown-elf-objcopy
 
 # RVC (Compressed Instructions) option - set to 1 to enable, 0 to disable
-RVC ?= 1
+RVC ?= 0
 MARCH = $(if $(filter 1,$(RVC)),rv32ic_zicsr,rv32i_zicsr)
 
 # Flags

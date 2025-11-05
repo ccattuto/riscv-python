@@ -40,6 +40,7 @@ __asm__ (
 "    mret\n"
 
 // trap handler
+".align 4\n"  // Ensure 4-byte alignment for mtvec (RISC-V spec requirement)
 "trap_handler:\n"
      // save current state
 "    la t0, task_current\n"

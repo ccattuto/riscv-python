@@ -446,7 +446,8 @@ class CPU:
         is_compressed = (inst & 0x3) != 0x3
 
         # Use a cache key that differentiates between compressed and standard instructions
-        cache_key = (inst & 0xFFFF) if is_compressed else (inst >> 2)
+        # Use tuple (is_compressed, value) to avoid collisions
+        cache_key = (True, inst & 0xFFFF) if is_compressed else (False, inst >> 2)
 
         try:
             opcode, rd, funct3, rs1, rs2, funct7, inst_size, expanded_inst = self.decode_cache[cache_key]
@@ -495,7 +496,7 @@ class CPU:
     def trap(self, cause, mtval=0, sync=True):
         if self.csrs[0x305] == 0:
             raise ExecutionTerminated(f"Trap at PC={self.pc:08X} without trap handler installed – execution terminated.")
-        
+
         # for synchronous traps, MEPC <- PC, for asynchronous ones (e.g., timer) MEPC <- next instruction
         self.csrs[0x341] = self.pc if sync else self.next_pc  # mepc
         self.csrs[0x342] = cause  # mcause
@@ -540,7 +541,7 @@ class CPU:
 
         if not mtip_asserted:
             return
-        
+
         # Trigger Machine Timer Interrupt
         if (csrs[0x300] & (1<<3)) and (csrs[0x304] & (1<<7)):
             self.trap(cause=0x80000007, sync=False)  # fire timer interrupt as an asynchronous trap

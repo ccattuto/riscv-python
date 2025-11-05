@@ -26,6 +26,7 @@ volatile int tick_counter = 0;  // interrupt counter
 // Trap (interrupt) handler
 __asm__ (
 ".globl trap_entry\n"
+".align 4\n"  // Ensure 4-byte alignment for mtvec
 
 "trap_entry:\n"
      // save state

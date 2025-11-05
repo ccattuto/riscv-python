@@ -333,7 +333,7 @@ class Machine:
                 continue
 
             inst32 = ram.load_word(cpu.pc)
-            inst = inst32 if (inst32 & 0x3) else (inst32 & 0xFFFF)
+            inst = inst32 if (inst32 & 0x3) == 0x3 else (inst32 & 0xFFFF)
 
             cpu.execute(inst)
             cpu.pc = cpu.next_pc

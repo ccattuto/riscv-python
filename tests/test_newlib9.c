@@ -24,6 +24,7 @@
 // Trap handler
 __asm__ (
 ".globl trap_entry\n"
+".align 4\n"  // Ensure 4-byte alignment for mtvec (RISC-V spec requirement)
 "trap_entry:\n"
 "    addi sp, sp, -16\n"
 "    sw ra, 12(sp)\n"
@@ -48,7 +49,16 @@ __asm__ (
 "    lui t0, %hi(trap_mepc)\n"
 "    sw s1, %lo(trap_mepc)(t0)\n"
 
-"    addi s1, s1, 4\n"
+// Detect instruction size: compressed (2 bytes) or normal (4 bytes)
+"    lh t0, 0(s1)\n"         // Load halfword at mepc
+"    andi t0, t0, 3\n"       // Extract bits [1:0]
+"    li t1, 3\n"
+"    bne t0, t1, skip2\n"    // If bits[1:0] != 0b11, it's compressed
+"    addi s1, s1, 4\n"       // Normal 4-byte instruction
+"    j done\n"
+"skip2:\n"
+"    addi s1, s1, 2\n"       // Compressed 2-byte instruction
+"done:\n"
 "    csrw mepc, s1\n"
 
 "    lw ra, 12(sp)\n"
