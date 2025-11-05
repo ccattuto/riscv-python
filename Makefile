@@ -1,14 +1,15 @@
 # Toolchain and tools
-CC = riscv64-linux-gnu-gcc
-OBJCOPY = riscv64-linux-gnu-objcopy
+CC = riscv64-unknown-elf-gcc
+OBJCOPY = riscv64-unknown-elf-objcopy
 
 # Flags - ENABLE RVC (Compressed Instructions)
 CFLAGS_COMMON = -march=rv32ic_zicsr -mabi=ilp32 -O2 -D_REENT_SMALL -I .
+CFLAGS_PICOLIBC = $(CFLAGS_COMMON) --specs=picolibc.specs
 LDFLAGS_COMMON = -nostartfiles -static
 LINKER_SCRIPT_NEWLIB = -Tlinker_newlib.ld
 LINKER_SCRIPT_BARE = -Tlinker_bare.ld
-NEWLIB_SPECS = --specs=nosys.specs
-NEWLIB_NANO_SPECS = --specs=nano.specs
+NEWLIB_SPECS = --specs=picolibc.specs
+NEWLIB_NANO_SPECS = --specs=picolibc.specs
 
 # Source file groups
 ASM_TARGETS = test_asm1
@@ -22,12 +23,17 @@ ALL_ELF_TARGETS = $(addprefix build/,$(addsuffix .elf,$(ASM_TARGETS) $(BARE_TARG
 ALL_BIN_TARGETS = $(addprefix build/,$(addsuffix .bin,$(ASM_TARGETS) $(BARE_TARGETS)))
 
 # Object file suffixes (all compiled into build/)
-STARTUP_NEWLIB = build/start_newlib.o
+STARTUP_NEWLIB = build/start_picolibc.o
 STARTUP_BARE = build/start_bare.o
 SYSCALLS_NEWLIB = build/syscalls_newlib.o
+PICOLIBC_STDIO = build/picolibc_stdio.o
 
 # Default build
 all: $(ALL_ELF_TARGETS) $(ALL_BIN_TARGETS)
+
+# Target-specific CFLAGS for picolibc targets (newlib targets use picolibc)
+PICOLIBC_OBJ_FILES = $(addprefix build/,$(addsuffix .o,$(NEWLIB_NANO_TARGETS) $(NEWLIB_TARGETS))) $(STARTUP_NEWLIB) $(SYSCALLS_NEWLIB) $(PICOLIBC_STDIO)
+$(PICOLIBC_OBJ_FILES): private CFLAGS_COMMON := $(CFLAGS_PICOLIBC)
 
 # --- ASM-only targets ---
 $(addprefix build/,$(ASM_TARGETS:%=%.elf)): build/%.elf: build/%.o
@@ -38,11 +44,11 @@ $(addprefix build/,$(BARE_TARGETS:%=%.elf)): build/%.elf: $(STARTUP_BARE) build/
 	$(CC) $(CFLAGS_COMMON) $(LDFLAGS_COMMON) $(LINKER_SCRIPT_BARE) -nostdlib -o $@ $^
 
 # --- Newlib nano targets ---
-$(addprefix build/,$(NEWLIB_NANO_TARGETS:%=%.elf)): build/%.elf: $(STARTUP_NEWLIB) $(SYSCALLS_NEWLIB) build/%.o
+$(addprefix build/,$(NEWLIB_NANO_TARGETS:%=%.elf)): build/%.elf: $(STARTUP_NEWLIB) $(SYSCALLS_NEWLIB) $(PICOLIBC_STDIO) build/%.o
 	$(CC) $(CFLAGS_COMMON) $(LDFLAGS_COMMON) $(LINKER_SCRIPT_NEWLIB) $(NEWLIB_NANO_SPECS) -o $@ $^
 
 # --- Newlib (full) + libm targets ---
-$(addprefix build/,$(NEWLIB_TARGETS:%=%.elf)): build/%.elf: $(STARTUP_NEWLIB) $(SYSCALLS_NEWLIB) build/%.o
+$(addprefix build/,$(NEWLIB_TARGETS:%=%.elf)): build/%.elf: $(STARTUP_NEWLIB) $(SYSCALLS_NEWLIB) $(PICOLIBC_STDIO) build/%.o
 	$(CC) $(CFLAGS_COMMON) $(LDFLAGS_COMMON) $(LINKER_SCRIPT_NEWLIB) $(NEWLIB_SPECS) -o $@ $^ -lm
 
 # --- Generate .bin from .elf (only for asm and bare) ---
