@@ -19,20 +19,6 @@
     .globl _unlink
     .globl _rmdir
 
-    # Picolibc also needs non-underscore versions
-    .globl write
-    .globl read
-    .globl exit
-    .globl sbrk
-    .globl open
-    .globl openat
-    .globl close
-    .globl fstat
-    .globl isatty
-    .globl lseek
-    .globl kill
-    .globl getpid
-
     .align 2
 
 # ssize_t _write(int fd, const char *buf, size_t count)
@@ -146,40 +132,3 @@ _rmdir:
     li a7, 35           # unlinkat
     ecall
     ret
-
-# Non-underscore aliases for picolibc
-write:
-    j _write
-
-read:
-    j _read
-
-exit:
-    j _exit
-
-sbrk:
-    j _sbrk
-
-open:
-    j _open
-
-openat:
-    j _openat
-
-close:
-    j _close
-
-fstat:
-    j _fstat
-
-isatty:
-    j _isatty
-
-lseek:
-    j _lseek
-
-kill:
-    j _kill
-
-getpid:
-    j _getpid
