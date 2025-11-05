@@ -87,7 +87,6 @@ def expand_compressed(c_inst):
                   ((c_inst << 1) & 0x80) | ((c_inst >> 1) & 0x40) | ((c_inst << 3) & 0x20) | \
                   ((c_inst >> 7) & 0x10) | ((c_inst >> 2) & 0xE)
             if imm & 0x800: imm -= 0x1000  # sign extend to 12 bits
-            imm = imm & 0xFFFFF  # 20-bit immediate for JAL
             # JAL x1, imm
             imm_bits = ((imm & 0x100000) << 11) | ((imm & 0x7FE) << 20) | ((imm & 0x800) << 9) | (imm & 0xFF000)
             return (imm_bits | (1 << 7) | 0x6F, True)
@@ -167,7 +166,6 @@ def expand_compressed(c_inst):
                   ((c_inst << 1) & 0x80) | ((c_inst >> 1) & 0x40) | ((c_inst << 3) & 0x20) | \
                   ((c_inst >> 7) & 0x10) | ((c_inst >> 2) & 0xE)
             if imm & 0x800: imm -= 0x1000  # sign extend
-            imm = imm & 0xFFFFF  # 20-bit
             # JAL x0, imm
             imm_bits = ((imm & 0x100000) << 11) | ((imm & 0x7FE) << 20) | ((imm & 0x800) << 9) | (imm & 0xFF000)
             return (imm_bits | (0 << 7) | 0x6F, True)
