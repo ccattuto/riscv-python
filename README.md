@@ -1,10 +1,11 @@
-# 🐍 RISC-V Emulator in Python (RV32IC, machine mode, Newlib support)
+# 🐍 RISC-V Emulator in Python (RV32IMC, machine mode, Newlib support)
 
-This is a simple and readable **RISC-V RV32IC emulator** written in pure Python. It supports machine mode, compressed instructions (RVC extension), and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
+This is a simple and readable **RISC-V RV32IMC emulator** written in pure Python. It supports machine mode, compressed instructions (RVC extension), multiply/divide instructions (M extension), and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
 
 ## ✅ Features
 
 - **Implements the full RV32I base integer ISA**
+- **Implements the M extension** with multiply (`MUL`, `MULH`, `MULHSU`, `MULHU`) and divide (`DIV`, `DIVU`, `REM`, `REMU`) instructions
 - **Implements the RVC (Compressed) extension** with full support for 16-bit compressed instructions, achieving 25-30% code density improvement
 - **Implements all RV32MI machine-mode instructions and trap mechanisms**, including synchronous traps (`ecall`, `ebreak`, illegal instruction trap), asynchronous traps (machine timer interrupt), `mret`, and the **Zicsr (Control Status Registers) extension** and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`, ...)
 - **Supports loading ELF and flat binary formats**
@@ -94,6 +95,15 @@ pip install -r requirements.txt
 ```
 make all
 ```
+
+The Makefile supports building with different RISC-V extensions:
+```
+make all                 # Build with rv32i_zicsr (base ISA only)
+make RVC=1 all          # Build with rv32ic_zicsr (+ compressed instructions)
+make MUL=1 all          # Build with rv32im_zicsr (+ multiply/divide)
+make RVC=1 MUL=1 all    # Build with rv32imc_zicsr (+ both extensions)
+```
+
 If you just want to **test the emulator without installing a RISC-V compiler**, you will find pre-built binaries in `prebuilt/`.
 
 To build the examples under `advanced/` (MicroPython, FreeRTOS, ...) you will need to initialize the submodules:

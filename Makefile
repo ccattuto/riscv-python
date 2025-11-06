@@ -4,7 +4,13 @@ OBJCOPY = riscv64-unknown-elf-objcopy
 
 # RVC (Compressed Instructions) option - set to 1 to enable, 0 to disable
 RVC ?= 0
-MARCH = $(if $(filter 1,$(RVC)),rv32ic_zicsr,rv32i_zicsr)
+# M Extension (Multiply/Divide) option - set to 1 to enable, 0 to disable
+MUL ?= 0
+
+# Build march string based on extensions enabled
+MARCH_BASE = rv32i
+MARCH_EXT = $(if $(filter 1,$(RVC)),c,)$(if $(filter 1,$(MUL)),m,)
+MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
 
 # Flags
 CFLAGS_COMMON = -march=$(MARCH) -mabi=ilp32 -O2 -D_REENT_SMALL -I .
@@ -19,7 +25,7 @@ ASM_TARGETS = test_asm1
 BARE_TARGETS = test_bare1
 NEWLIB_NANO_TARGETS = test_newlib1 test_newlib2 test_newlib3 test_newlib4 test_newlib5 \
                  test_newlib6 test_newlib7 test_newlib8 test_newlib9 test_newlib10 test_newlib11 \
-				 test_peripheral_uart test_peripheral_blkdev test_newlib13
+				 test_peripheral_uart test_peripheral_blkdev test_newlib13 test_m_extension
 NEWLIB_TARGETS = test_newlib12
 
 ALL_ELF_TARGETS = $(addprefix build/,$(addsuffix .elf,$(ASM_TARGETS) $(BARE_TARGETS) $(NEWLIB_NANO_TARGETS) $(NEWLIB_TARGETS)))

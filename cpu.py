@@ -25,37 +25,138 @@ def signed32(val):
     return val if val < 0x80000000 else val - 0x100000000
 
 def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    if funct3 == 0x0:  # ADD/SUB
-        if funct7 == 0x00:  # ADD
+    if funct3 == 0x0:  # ADD/SUB/MUL
+        if funct7 == 0x01:  # MUL (M extension)
+            # Multiply: return lower 32 bits of product
+            a = signed32(cpu.registers[rs1])
+            b = signed32(cpu.registers[rs2])
+            result = (a * b) & 0xFFFFFFFF
+            cpu.registers[rd] = result
+        elif funct7 == 0x00:  # ADD
             cpu.registers[rd] = (cpu.registers[rs1] + cpu.registers[rs2]) & 0xFFFFFFFF
         elif funct7 == 0x20:  # SUB
             cpu.registers[rd] = (cpu.registers[rs1] - cpu.registers[rs2]) & 0xFFFFFFFF
         else:
             if cpu.logger is not None:
-                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for ADD/SUB at PC=0x{cpu.pc:08X}")
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for ADD/SUB/MUL at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
-    elif funct3 == 0x1:  # SLL
-        cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
-    elif funct3 == 0x2:  # SLT
-        cpu.registers[rd] = int(signed32(cpu.registers[rs1]) < signed32(cpu.registers[rs2]))
-    elif funct3 == 0x3:  # SLTU
-        cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF))
-    elif funct3 == 0x4:  # XOR
-        cpu.registers[rd] = cpu.registers[rs1] ^ cpu.registers[rs2]
-    elif funct3 == 0x5:  # SRL/SRA
-        shamt = cpu.registers[rs2] & 0x1F
-        if funct7 == 0x00:  # SRL
-            cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
-        elif funct7 == 0x20:  # SRA
-            cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
+    elif funct3 == 0x1:  # SLL/MULH
+        if funct7 == 0x01:  # MULH (M extension)
+            # Multiply high: signed × signed, return upper 32 bits
+            a = signed32(cpu.registers[rs1])
+            b = signed32(cpu.registers[rs2])
+            result = (a * b) >> 32
+            cpu.registers[rd] = result & 0xFFFFFFFF
+        elif funct7 == 0x00:  # SLL
+            cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
         else:
             if cpu.logger is not None:
-                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRL/SRA at PC=0x{cpu.pc:08X}")
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SLL/MULH at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
-    elif funct3 == 0x6:  # OR
-        cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
-    elif funct3 == 0x7:  # AND
-        cpu.registers[rd] = cpu.registers[rs1] & cpu.registers[rs2]
+    elif funct3 == 0x2:  # SLT/MULHSU
+        if funct7 == 0x01:  # MULHSU (M extension)
+            # Multiply high: signed × unsigned, return upper 32 bits
+            a = signed32(cpu.registers[rs1])
+            b = cpu.registers[rs2] & 0xFFFFFFFF
+            result = (a * b) >> 32
+            cpu.registers[rd] = result & 0xFFFFFFFF
+        elif funct7 == 0x00:  # SLT
+            cpu.registers[rd] = int(signed32(cpu.registers[rs1]) < signed32(cpu.registers[rs2]))
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SLT/MULHSU at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+    elif funct3 == 0x3:  # SLTU/MULHU
+        if funct7 == 0x01:  # MULHU (M extension)
+            # Multiply high: unsigned × unsigned, return upper 32 bits
+            a = cpu.registers[rs1] & 0xFFFFFFFF
+            b = cpu.registers[rs2] & 0xFFFFFFFF
+            result = (a * b) >> 32
+            cpu.registers[rd] = result & 0xFFFFFFFF
+        elif funct7 == 0x00:  # SLTU
+            cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF))
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SLTU/MULHU at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+    elif funct3 == 0x4:  # XOR/DIV
+        if funct7 == 0x01:  # DIV (M extension)
+            # Signed division
+            dividend = signed32(cpu.registers[rs1])
+            divisor = signed32(cpu.registers[rs2])
+            if divisor == 0:
+                # Division by zero: quotient = -1
+                cpu.registers[rd] = 0xFFFFFFFF
+            elif dividend == -2147483648 and divisor == -1:
+                # Overflow: return MIN_INT
+                cpu.registers[rd] = 0x80000000
+            else:
+                result = dividend // divisor
+                cpu.registers[rd] = result & 0xFFFFFFFF
+        elif funct7 == 0x00:  # XOR
+            cpu.registers[rd] = cpu.registers[rs1] ^ cpu.registers[rs2]
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for XOR/DIV at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+    elif funct3 == 0x5:  # SRL/SRA/DIVU
+        if funct7 == 0x01:  # DIVU (M extension)
+            # Unsigned division
+            dividend = cpu.registers[rs1] & 0xFFFFFFFF
+            divisor = cpu.registers[rs2] & 0xFFFFFFFF
+            if divisor == 0:
+                # Division by zero: quotient = 2^32 - 1
+                cpu.registers[rd] = 0xFFFFFFFF
+            else:
+                result = dividend // divisor
+                cpu.registers[rd] = result & 0xFFFFFFFF
+        else:
+            shamt = cpu.registers[rs2] & 0x1F
+            if funct7 == 0x00:  # SRL
+                cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
+            elif funct7 == 0x20:  # SRA
+                cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
+            else:
+                if cpu.logger is not None:
+                    cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRL/SRA/DIVU at PC=0x{cpu.pc:08X}")
+                cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+    elif funct3 == 0x6:  # OR/REM
+        if funct7 == 0x01:  # REM (M extension)
+            # Signed remainder
+            dividend = signed32(cpu.registers[rs1])
+            divisor = signed32(cpu.registers[rs2])
+            if divisor == 0:
+                # Division by zero: remainder = dividend
+                cpu.registers[rd] = cpu.registers[rs1] & 0xFFFFFFFF
+            elif dividend == -2147483648 and divisor == -1:
+                # Overflow: remainder = 0
+                cpu.registers[rd] = 0
+            else:
+                result = dividend % divisor
+                cpu.registers[rd] = result & 0xFFFFFFFF
+        elif funct7 == 0x00:  # OR
+            cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for OR/REM at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+    elif funct3 == 0x7:  # AND/REMU
+        if funct7 == 0x01:  # REMU (M extension)
+            # Unsigned remainder
+            dividend = cpu.registers[rs1] & 0xFFFFFFFF
+            divisor = cpu.registers[rs2] & 0xFFFFFFFF
+            if divisor == 0:
+                # Division by zero: remainder = dividend
+                cpu.registers[rd] = cpu.registers[rs1] & 0xFFFFFFFF
+            else:
+                result = dividend % divisor
+                cpu.registers[rd] = result & 0xFFFFFFFF
+        elif funct7 == 0x00:  # AND
+            cpu.registers[rd] = cpu.registers[rs1] & cpu.registers[rs2]
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for AND/REMU at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
 def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
