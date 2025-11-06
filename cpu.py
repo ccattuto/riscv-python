@@ -246,8 +246,7 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         if imm_b >= 0x1000: imm_b -= 0x2000
         addr_target = (cpu.pc + imm_b) & 0xFFFFFFFF
         # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
-        alignment_mask = 0x1 if cpu.rvc_enabled else 0x3
-        if addr_target & alignment_mask:
+        if addr_target & cpu.alignment_mask:
             cpu.trap(cause=0, mtval=addr_target)  # unaligned address
         else:
             cpu.next_pc = addr_target
@@ -272,8 +271,7 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if imm_j >= 0x100000: imm_j -= 0x200000
     addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF  # (compared to JALR, no need to clear bit 0 here)
     # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
-    alignment_mask = 0x1 if cpu.rvc_enabled else 0x3
-    if addr_target & alignment_mask:
+    if addr_target & cpu.alignment_mask:
         cpu.trap(cause=0, mtval=addr_target)  # unaligned address
     else:
         if rd != 0:
@@ -288,8 +286,7 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if imm_i >= 0x800: imm_i -= 0x1000
     addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0
     # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
-    alignment_mask = 0x1 if cpu.rvc_enabled else 0x3
-    if addr_target & alignment_mask:
+    if addr_target & cpu.alignment_mask:
         cpu.trap(cause=0, mtval=addr_target)  # unaligned address
     else:
         if rd != 0:
@@ -312,8 +309,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif inst == 0x30200073:  # MRET
         mepc = cpu.csrs[0x341]
         # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
-        alignment_mask = 0x1 if cpu.rvc_enabled else 0x3
-        if mepc & alignment_mask:
+        if mepc & cpu.alignment_mask:
             cpu.trap(cause=0, mtval=mepc)  # unaligned address
         else:
             cpu.next_pc = mepc                              # return address <- mepc
@@ -464,6 +460,8 @@ class CPU:
         self.ram = ram
         self.handle_ecall = None  # system calls handler
         self.rvc_enabled = rvc_enabled  # RVC extension enabled flag
+        # Cache alignment mask for performance: 0x1 for RVC (2-byte), 0x3 for RV32I (4-byte)
+        self.alignment_mask = 0x1 if rvc_enabled else 0x3
 
         self.logger = logger
         self.trace_traps = trace_traps
