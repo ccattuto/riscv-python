@@ -562,8 +562,9 @@ class CPU:
             0x80000007: "Machine timer interrupt",
         }
 
-        # instruction decode cache
-        self.decode_cache = {}
+        # instruction decode caches
+        self.decode_cache = {}  # For 32-bit instructions (or when RVC disabled)
+        self.decode_cache_compressed = {}  # For 16-bit compressed instructions (when RVC enabled)
 
     # Set handler for system calls
     def set_ecall_handler(self, handler):
@@ -600,39 +601,48 @@ class CPU:
         # RVC path: handle both 32-bit and 16-bit compressed instructions
         is_compressed = (inst & 0x3) != 0x3
 
-        # Use a cache key that differentiates between compressed and standard instructions
-        cache_key = (True, inst & 0xFFFF) if is_compressed else (False, inst >> 2)
-
-        try:
-            opcode, rd, funct3, rs1, rs2, funct7, inst_size, expanded_inst = self.decode_cache[cache_key]
-            # Use cached expanded instruction for compressed instructions
-            if is_compressed:
-                inst = expanded_inst
-        except KeyError:
-            if is_compressed:
-                # Expand compressed instruction to 32-bit equivalent
-                expanded_inst, success = expand_compressed(inst & 0xFFFF)
-                if not success:
-                    if self.logger is not None:
-                        self.logger.warning(f"Invalid compressed instruction at PC={self.pc:08X}: 0x{inst & 0xFFFF:04X}")
-                    self.trap(cause=2, mtval=inst & 0xFFFF)  # illegal instruction
-                    return
+        if is_compressed:
+            # Compressed 16-bit instruction
+            inst16 = inst & 0xFFFF
+            try:
+                opcode, rd, funct3, rs1, rs2, funct7, expanded_inst = self.decode_cache_compressed[inst16]
                 inst = expanded_inst
                 inst_size = 2
-            else:
-                expanded_inst = inst  # For non-compressed, store original inst
-                inst_size = 4
+            except KeyError:
+                # Expand compressed instruction to 32-bit equivalent
+                expanded_inst, success = expand_compressed(inst16)
+                if not success:
+                    if self.logger is not None:
+                        self.logger.warning(f"Invalid compressed instruction at PC={self.pc:08X}: 0x{inst16:04X}")
+                    self.trap(cause=2, mtval=inst16)  # illegal instruction
+                    return
 
-            # Decode the 32-bit instruction (either original or expanded)
-            opcode = inst & 0x7F
-            rd = (inst >> 7) & 0x1F
-            funct3 = (inst >> 12) & 0x7
-            rs1 = (inst >> 15) & 0x1F
-            rs2 = (inst >> 20) & 0x1F
-            funct7 = (inst >> 25) & 0x7F
+                # Decode the expanded 32-bit instruction
+                inst = expanded_inst
+                inst_size = 2
+                opcode = inst & 0x7F
+                rd = (inst >> 7) & 0x1F
+                funct3 = (inst >> 12) & 0x7
+                rs1 = (inst >> 15) & 0x1F
+                rs2 = (inst >> 20) & 0x1F
+                funct7 = (inst >> 25) & 0x7F
 
-            # Cache the decoded instruction with its size and expanded instruction
-            self.decode_cache[cache_key] = (opcode, rd, funct3, rs1, rs2, funct7, inst_size, expanded_inst)
+                # Cache the decoded and expanded instruction
+                self.decode_cache_compressed[inst16] = (opcode, rd, funct3, rs1, rs2, funct7, expanded_inst)
+        else:
+            # Standard 32-bit instruction
+            try:
+                opcode, rd, funct3, rs1, rs2, funct7 = self.decode_cache[inst >> 2]
+            except KeyError:
+                opcode = inst & 0x7F
+                rd = (inst >> 7) & 0x1F
+                funct3 = (inst >> 12) & 0x7
+                rs1 = (inst >> 15) & 0x1F
+                rs2 = (inst >> 20) & 0x1F
+                funct7 = (inst >> 25) & 0x7F
+                self.decode_cache[inst >> 2] = (opcode, rd, funct3, rs1, rs2, funct7)
+
+            inst_size = 4
 
         self.next_pc = (self.pc + inst_size) & 0xFFFFFFFF
         self.inst_size = inst_size  # Store for handlers that need it (JAL, JALR)
