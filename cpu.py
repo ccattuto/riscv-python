@@ -571,11 +571,36 @@ class CPU:
 
     # Instruction execution (supports both 32-bit and compressed 16-bit instructions)
     def execute(self, inst):
-        # Detect instruction size and expand compressed instructions
+        # Fast path for RV32I without RVC extension (zero overhead)
+        if not self.rvc_enabled:
+            try:
+                opcode, rd, funct3, rs1, rs2, funct7 = self.decode_cache[inst >> 2]
+            except KeyError:
+                opcode = inst & 0x7F
+                rd = (inst >> 7) & 0x1F
+                funct3 = (inst >> 12) & 0x7
+                rs1 = (inst >> 15) & 0x1F
+                rs2 = (inst >> 20) & 0x1F
+                funct7 = (inst >> 25) & 0x7F
+                self.decode_cache[inst >> 2] = (opcode, rd, funct3, rs1, rs2, funct7)
+
+            self.next_pc = (self.pc + 4) & 0xFFFFFFFF
+            self.inst_size = 4
+
+            if opcode in opcode_handler:
+                (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)
+            else:
+                if self.logger is not None:
+                    self.logger.warning(f"Invalid instruction at PC={self.pc:08X}: 0x{inst:08X}, opcode=0x{opcode:x}")
+                self.trap(cause=2, mtval=inst)
+
+            self.registers[0] = 0
+            return
+
+        # RVC path: handle both 32-bit and 16-bit compressed instructions
         is_compressed = (inst & 0x3) != 0x3
 
         # Use a cache key that differentiates between compressed and standard instructions
-        # Use tuple (is_compressed, value) to avoid collisions
         cache_key = (True, inst & 0xFFFF) if is_compressed else (False, inst >> 2)
 
         try:
