@@ -216,15 +216,18 @@ def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 
 def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_s = ((inst >> 7) & 0x1F) | ((inst >> 25) << 5)
-    if imm_s >= 0x800: imm_s -= 0x1000                 
+    if imm_s >= 0x800: imm_s -= 0x1000
     addr = (cpu.registers[rs1] + imm_s) & 0xFFFFFFFF
 
     if funct3 == 0x0:  # SB
         ram.store_byte(addr, cpu.registers[rs2] & 0xFF)
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
     elif funct3 == 0x1:  # SH
         ram.store_half(addr, cpu.registers[rs2] & 0xFFFF)
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
     elif funct3 == 0x2:  # SW
         ram.store_word(addr, cpu.registers[rs2])
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
     else:
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08X}")
@@ -428,6 +431,116 @@ def exec_MISCMEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Invalid misc-mem instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
+def exec_AMO(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+    """A extension: Atomic Memory Operations"""
+    if funct3 != 0x2:  # Only word (W) operations supported in RV32
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Invalid funct3=0x{funct3:X} for AMO at PC=0x{cpu.pc:08X}")
+        cpu.trap(cause=2, mtval=inst)
+        return
+
+    # Extract funct5 (bits 31:27) to distinguish AMO operations
+    funct5 = (inst >> 27) & 0x1F
+    addr = cpu.registers[rs1] & 0xFFFFFFFF
+
+    # Check word alignment (4-byte boundary)
+    if addr & 0x3:
+        cpu.trap(cause=6, mtval=addr)  # Store/AMO address misaligned
+        return
+
+    # Single-threaded simplification: atomics are just read-modify-write
+    # In real hardware: aq (bit 26) and rl (bit 25) handle memory ordering
+
+    if funct5 == 0b00010:  # LR.W (Load-Reserved Word)
+        # Load word and set reservation
+        val = ram.load_word(addr)
+        cpu.registers[rd] = val
+        cpu.reservation_valid = True
+        cpu.reservation_addr = addr
+
+    elif funct5 == 0b00011:  # SC.W (Store-Conditional Word)
+        # Store conditional: succeeds only if reservation is valid and matches address
+        if cpu.reservation_valid and cpu.reservation_addr == addr:
+            ram.store_word(addr, cpu.registers[rs2] & 0xFFFFFFFF)
+            cpu.registers[rd] = 0  # Success
+            cpu.reservation_valid = False  # Clear reservation after successful SC
+        else:
+            cpu.registers[rd] = 1  # Failure
+
+    elif funct5 == 0b00001:  # AMOSWAP.W
+        old_val = ram.load_word(addr)
+        new_val = cpu.registers[rs2] & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b00000:  # AMOADD.W
+        old_val = ram.load_word(addr)
+        new_val = (old_val + cpu.registers[rs2]) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b00100:  # AMOXOR.W
+        old_val = ram.load_word(addr)
+        new_val = (old_val ^ cpu.registers[rs2]) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b01100:  # AMOAND.W
+        old_val = ram.load_word(addr)
+        new_val = (old_val & cpu.registers[rs2]) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b01000:  # AMOOR.W
+        old_val = ram.load_word(addr)
+        new_val = (old_val | cpu.registers[rs2]) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b10000:  # AMOMIN.W (signed)
+        old_val = ram.load_word(addr)
+        old_signed = signed32(old_val)
+        rs2_signed = signed32(cpu.registers[rs2])
+        new_val = min(old_signed, rs2_signed) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b10100:  # AMOMAX.W (signed)
+        old_val = ram.load_word(addr)
+        old_signed = signed32(old_val)
+        rs2_signed = signed32(cpu.registers[rs2])
+        new_val = max(old_signed, rs2_signed) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b11000:  # AMOMINU.W (unsigned)
+        old_val = ram.load_word(addr) & 0xFFFFFFFF
+        rs2_unsigned = cpu.registers[rs2] & 0xFFFFFFFF
+        new_val = min(old_val, rs2_unsigned)
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b11100:  # AMOMAXU.W (unsigned)
+        old_val = ram.load_word(addr) & 0xFFFFFFFF
+        rs2_unsigned = cpu.registers[rs2] & 0xFFFFFFFF
+        new_val = max(old_val, rs2_unsigned)
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    else:
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Invalid funct5=0x{funct5:02X} for AMO at PC=0x{cpu.pc:08X}")
+        cpu.trap(cause=2, mtval=inst)
+
 # dispatch table for opcode handlers
 opcode_handler = {
     0x33:   exec_Rtype,     # R-type
@@ -440,7 +553,8 @@ opcode_handler = {
     0x6F:   exec_JAL,       # JAL
     0x67:   exec_JALR,      # JALR
     0x73:   exec_SYSTEM,    # SYSTEM (ECALL/EBREAK)
-    0x0F:   exec_MISCMEM    # MISC-MEM
+    0x0F:   exec_MISCMEM,   # MISC-MEM (FENCE, FENCE.I)
+    0x2F:   exec_AMO        # AMO (A extension: Atomic Memory Operations)
 }
 
 
@@ -470,10 +584,14 @@ class CPU:
         # Used by handlers that need to compute return addresses (JAL, JALR)
         self.inst_size = 4
 
+        # LR/SC reservation tracking (A extension)
+        self.reservation_valid = False
+        self.reservation_addr = 0
+
         # CSRs
         self.csrs = [0] * 4096
         # 0x300 mstatus
-        # 0x301 misa (RO, bits 30 and 8 set: RV32I)
+        # 0x301 misa (RO, bits 30, 12, 8, 2, and 0 set: RV32IMAC)
         # 0x304 mie
         # 0x305 mtvec
         # 0x340 mscratch
@@ -490,7 +608,7 @@ class CPU:
         # 0xF13 mimpid (RO)
         # 0xF14 mhartid (RO)
 
-        self.csrs[0x301] = 0x40000104  # misa (RO, bits 30, 8, and 2 set: RV32IC)
+        self.csrs[0x301] = 0x40001105  # misa (RO, bits 30, 12, 8, 2, and 0 set: RV32IMAC)
         self.csrs[0x300] = 0x00001800  # mstatus (machine mode only: MPP field kept = 0b11)
         self.csrs[0x7C2] = 0xFFFFFFFF  # mtimecmp_low
         self.csrs[0x7C3] = 0xFFFFFFFF  # mtimecmp_hi

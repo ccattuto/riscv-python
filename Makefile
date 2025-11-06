@@ -2,14 +2,14 @@
 CC = riscv64-unknown-elf-gcc
 OBJCOPY = riscv64-unknown-elf-objcopy
 
-# RVC (Compressed Instructions) option - set to 1 to enable, 0 to disable
-RVC ?= 0
-# M Extension (Multiply/Divide) option - set to 1 to enable, 0 to disable
-MUL ?= 0
+# Extension options - set to 1 to enable, 0 to disable
+RVC ?= 0  # Compressed Instructions (C extension)
+MUL ?= 0  # Multiply/Divide (M extension)
+RVA ?= 1  # Atomic Instructions (A extension) - enabled by default
 
-# Build march string based on extensions enabled
+# Build march string based on extensions enabled (canonical order: I, M, A, F, D, C)
 MARCH_BASE = rv32i
-MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVC)),c,)
+MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
 MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
 
 # Flags

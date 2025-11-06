@@ -1,11 +1,12 @@
-# 🐍 RISC-V Emulator in Python (RV32IMC, machine mode, Newlib support)
+# 🐍 RISC-V Emulator in Python (RV32IMAC, machine mode, Newlib support)
 
-This is a simple and readable **RISC-V RV32IMC emulator** written in pure Python. It supports machine mode, compressed instructions (RVC extension), multiply/divide instructions (M extension), and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
+This is a simple and readable **RISC-V RV32IMAC emulator** written in pure Python. It supports machine mode, atomic instructions (A extension), compressed instructions (RVC extension), multiply/divide instructions (M extension), and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
 
 ## ✅ Features
 
 - **Implements the full RV32I base integer ISA**
 - **Implements the M extension** with multiply (`MUL`, `MULH`, `MULHSU`, `MULHU`) and divide (`DIV`, `DIVU`, `REM`, `REMU`) instructions
+- **Implements the A extension** with all 11 atomic memory operations (`LR.W`, `SC.W`, `AMOSWAP.W`, `AMOADD.W`, `AMOXOR.W`, `AMOAND.W`, `AMOOR.W`, `AMOMIN.W`, `AMOMAX.W`, `AMOMINU.W`, `AMOMAXU.W`) and proper LR/SC reservation tracking
 - **Implements the RVC (Compressed) extension** with full support for 16-bit compressed instructions, achieving 25-30% code density improvement
 - **Implements all RV32MI machine-mode instructions and trap mechanisms**, including synchronous traps (`ecall`, `ebreak`, illegal instruction trap), asynchronous traps (machine timer interrupt), `mret`, and the **Zicsr (Control Status Registers) extension** and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`, ...)
 - **Supports loading ELF and flat binary formats**
@@ -13,7 +14,7 @@ This is a simple and readable **RISC-V RV32IMC emulator** written in pure Python
 - **Provides most of the system calls needed by [Newlib](https://en.wikipedia.org/wiki/Newlib)**: `_write`, `_read`, `_exit`, **dynamic memory allocation** (`_sbrk`), **file I/O** (`_open`, `_close`, `_fstat`, `_lseek`, ...)
 - **Supports argc/argv program arguments**
 - **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, and a **memory-mapped block device** backed by an image file
-- **Passes all `rv32ui`, `rv32mi`, `rv32uc`, and `rv32um` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
+- **Passes all `rv32ui`, `rv32mi`, `rv32uc`, `rv32um`, and `rv32ua` unit tests** (60 tests total) provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, and violations of invariants
 - Runs [MicroPython](https://micropython.org/), [CircuitPython](https://circuitpython.org/) with emulated peripherals, and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
 - Self-contained, modular, extensible codebase. Provides a **Python API** enabling users to control execution, inspect state, and script complex tests directly in Python.
@@ -52,7 +53,7 @@ pip install -r requirements.txt
 ├── tests/test_api*.py         # Examples of programmatic control of the emulator in Python
 ├── build/                     # Executable and binaries
 ├── prebuilt/                  # Pre-built examples
-├── run_unit_tests.py          # Runs RISC-V unit tests (RV32UI, RV32MI, RV32UC, and RV32UM)
+├── run_unit_tests.py          # Runs RISC-V unit tests (RV32UI, RV32MI, RV32UC, RV32UM, and RV32UA)
 ├── riscv-tests/               # Git submodule with RISC-V unit tests
 ├── advanced/freertos/         # FreeRTOS port
 ├── advanced/micropython/      # MicroPython port
@@ -98,10 +99,12 @@ make all
 
 The Makefile supports building with different RISC-V extensions:
 ```
-make all                 # Build with rv32i_zicsr (base ISA only)
-make RVC=1 all          # Build with rv32ic_zicsr (+ compressed instructions)
-make MUL=1 all          # Build with rv32im_zicsr (+ multiply/divide)
-make RVC=1 MUL=1 all    # Build with rv32imc_zicsr (+ both extensions)
+make all                           # Build with rv32ia_zicsr (base ISA + atomics, A enabled by default)
+make RVA=0 all                     # Build with rv32i_zicsr (base ISA only, no atomics)
+make RVC=1 all                     # Build with rv32iac_zicsr (+ compressed instructions)
+make MUL=1 all                     # Build with rv32ima_zicsr (+ multiply/divide)
+make RVC=1 MUL=1 all               # Build with rv32imac_zicsr (all extensions)
+make RVC=1 MUL=1 RVA=0 all         # Build with rv32imc_zicsr (no atomics)
 ```
 
 If you just want to **test the emulator without installing a RISC-V compiler**, you will find pre-built binaries in `prebuilt/`.
