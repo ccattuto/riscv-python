@@ -81,7 +81,7 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     elif funct3 == 0x4:  # XOR/DIV
         if funct7 == 0x01:  # DIV (M extension)
-            # Signed division
+            # Signed division (RISC-V uses truncating division, rounding towards zero)
             dividend = signed32(cpu.registers[rs1])
             divisor = signed32(cpu.registers[rs2])
             if divisor == 0:
@@ -91,7 +91,8 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 # Overflow: return MIN_INT
                 cpu.registers[rd] = 0x80000000
             else:
-                result = dividend // divisor
+                # Use truncating division (towards zero), not floor division
+                result = int(dividend / divisor)
                 cpu.registers[rd] = result & 0xFFFFFFFF
         elif funct7 == 0x00:  # XOR
             cpu.registers[rd] = cpu.registers[rs1] ^ cpu.registers[rs2]
@@ -122,7 +123,7 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     elif funct3 == 0x6:  # OR/REM
         if funct7 == 0x01:  # REM (M extension)
-            # Signed remainder
+            # Signed remainder (RISC-V uses truncating division, rounding towards zero)
             dividend = signed32(cpu.registers[rs1])
             divisor = signed32(cpu.registers[rs2])
             if divisor == 0:
@@ -132,7 +133,8 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 # Overflow: remainder = 0
                 cpu.registers[rd] = 0
             else:
-                result = dividend % divisor
+                # Use truncating remainder: dividend - trunc(dividend/divisor) * divisor
+                result = dividend - int(dividend / divisor) * divisor
                 cpu.registers[rd] = result & 0xFFFFFFFF
         elif funct7 == 0x00:  # OR
             cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]

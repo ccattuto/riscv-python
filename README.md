@@ -13,7 +13,7 @@ This is a simple and readable **RISC-V RV32IMC emulator** written in pure Python
 - **Provides most of the system calls needed by [Newlib](https://en.wikipedia.org/wiki/Newlib)**: `_write`, `_read`, `_exit`, **dynamic memory allocation** (`_sbrk`), **file I/O** (`_open`, `_close`, `_fstat`, `_lseek`, ...)
 - **Supports argc/argv program arguments**
 - **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, and a **memory-mapped block device** backed by an image file
-- **Passes all `rv32ui`, `rv32mi`, and `rv32uc` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
+- **Passes all `rv32ui`, `rv32mi`, `rv32uc`, and `rv32um` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, and violations of invariants
 - Runs [MicroPython](https://micropython.org/), [CircuitPython](https://circuitpython.org/) with emulated peripherals, and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
 - Self-contained, modular, extensible codebase. Provides a **Python API** enabling users to control execution, inspect state, and script complex tests directly in Python.
@@ -52,7 +52,7 @@ pip install -r requirements.txt
 ├── tests/test_api*.py         # Examples of programmatic control of the emulator in Python
 ├── build/                     # Executable and binaries
 ├── prebuilt/                  # Pre-built examples
-├── run_unit_tests.py          # Runs RISC-V unit tests (RV32UI and RV32MI)
+├── run_unit_tests.py          # Runs RISC-V unit tests (RV32UI, RV32MI, RV32UC, and RV32UM)
 ├── riscv-tests/               # Git submodule with RISC-V unit tests
 ├── advanced/freertos/         # FreeRTOS port
 ├── advanced/micropython/      # MicroPython port
@@ -252,7 +252,7 @@ make
 cd -
 ```
 
-The script automatically runs all RV32UI, RV32MI, and RV32UC [RISC-V unit tests](https://github.com/riscv-software-src/riscv-tests) in `riscv-tests/`. The emulator passes all of them.
+The script automatically runs all RV32UI, RV32MI, RV32UC, and RV32UM [RISC-V unit tests](https://github.com/riscv-software-src/riscv-tests) in `riscv-tests/`. The emulator passes all of them.
 ```
 ./run_unit_tests.py
 Test rv32ui-p-bltu                 : PASS
