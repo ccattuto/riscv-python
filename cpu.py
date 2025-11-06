@@ -428,9 +428,11 @@ def exec_MISCMEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         # Memory ordering barrier - no-op in single-threaded interpreter
         pass
     elif funct3 == 0b001:  # FENCE.I
-        # Instruction cache flush - clear decode caches for self-modifying code
-        cpu.decode_cache.clear()
-        cpu.decode_cache_compressed.clear()
+        # Instruction cache flush - no-op in this emulator
+        # The decode cache is content-addressed (keyed by instruction bits),
+        # not address-addressed, so it's automatically coherent with memory.
+        # Self-modifying code works correctly without explicit cache invalidation.
+        pass
     else:
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid misc-mem instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
