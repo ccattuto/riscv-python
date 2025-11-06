@@ -570,91 +570,84 @@ class CPU:
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
 
-    # Instruction execution (supports both 32-bit and compressed 16-bit instructions)
-    def execute(self, inst):
-        # Fast path for RV32I without RVC extension (zero overhead)
-        if not self.rvc_enabled:
-            try:
-                opcode, rd, funct3, rs1, rs2, funct7 = self.decode_cache[inst >> 2]
-            except KeyError:
-                opcode = inst & 0x7F
-                rd = (inst >> 7) & 0x1F
-                funct3 = (inst >> 12) & 0x7
-                rs1 = (inst >> 15) & 0x1F
-                rs2 = (inst >> 20) & 0x1F
-                funct7 = (inst >> 25) & 0x7F
-                self.decode_cache[inst >> 2] = (opcode, rd, funct3, rs1, rs2, funct7)
+    # Instruction execution: 32-bit instructions
+    def execute_32(self, inst):
+        """Execute a 32-bit instruction (RV32I)"""
+        try:
+            opcode, rd, funct3, rs1, rs2, funct7 = self.decode_cache[inst >> 2]
+        except KeyError:
+            opcode = inst & 0x7F
+            rd = (inst >> 7) & 0x1F
+            funct3 = (inst >> 12) & 0x7
+            rs1 = (inst >> 15) & 0x1F
+            rs2 = (inst >> 20) & 0x1F
+            funct7 = (inst >> 25) & 0x7F
+            self.decode_cache[inst >> 2] = (opcode, rd, funct3, rs1, rs2, funct7)
 
-            self.next_pc = (self.pc + 4) & 0xFFFFFFFF
-            self.inst_size = 4
-
-            if opcode in opcode_handler:
-                (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)
-            else:
-                if self.logger is not None:
-                    self.logger.warning(f"Invalid instruction at PC={self.pc:08X}: 0x{inst:08X}, opcode=0x{opcode:x}")
-                self.trap(cause=2, mtval=inst)
-
-            self.registers[0] = 0
-            return
-
-        # RVC path: handle both 32-bit and 16-bit compressed instructions
-        is_compressed = (inst & 0x3) != 0x3
-
-        if is_compressed:
-            # Compressed 16-bit instruction
-            inst16 = inst & 0xFFFF
-            try:
-                opcode, rd, funct3, rs1, rs2, funct7, expanded_inst = self.decode_cache_compressed[inst16]
-                inst = expanded_inst
-                inst_size = 2
-            except KeyError:
-                # Expand compressed instruction to 32-bit equivalent
-                expanded_inst, success = expand_compressed(inst16)
-                if not success:
-                    if self.logger is not None:
-                        self.logger.warning(f"Invalid compressed instruction at PC={self.pc:08X}: 0x{inst16:04X}")
-                    self.trap(cause=2, mtval=inst16)  # illegal instruction
-                    return
-
-                # Decode the expanded 32-bit instruction
-                inst = expanded_inst
-                inst_size = 2
-                opcode = inst & 0x7F
-                rd = (inst >> 7) & 0x1F
-                funct3 = (inst >> 12) & 0x7
-                rs1 = (inst >> 15) & 0x1F
-                rs2 = (inst >> 20) & 0x1F
-                funct7 = (inst >> 25) & 0x7F
-
-                # Cache the decoded and expanded instruction
-                self.decode_cache_compressed[inst16] = (opcode, rd, funct3, rs1, rs2, funct7, expanded_inst)
-        else:
-            # Standard 32-bit instruction
-            try:
-                opcode, rd, funct3, rs1, rs2, funct7 = self.decode_cache[inst >> 2]
-            except KeyError:
-                opcode = inst & 0x7F
-                rd = (inst >> 7) & 0x1F
-                funct3 = (inst >> 12) & 0x7
-                rs1 = (inst >> 15) & 0x1F
-                rs2 = (inst >> 20) & 0x1F
-                funct7 = (inst >> 25) & 0x7F
-                self.decode_cache[inst >> 2] = (opcode, rd, funct3, rs1, rs2, funct7)
-
-            inst_size = 4
-
-        self.next_pc = (self.pc + inst_size) & 0xFFFFFFFF
-        self.inst_size = inst_size  # Store for handlers that need it (JAL, JALR)
+        self.next_pc = (self.pc + 4) & 0xFFFFFFFF
+        self.inst_size = 4
 
         if opcode in opcode_handler:
-            (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)  # dispatch to opcode handler
+            (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)
         else:
             if self.logger is not None:
                 self.logger.warning(f"Invalid instruction at PC={self.pc:08X}: 0x{inst:08X}, opcode=0x{opcode:x}")
-            self.trap(cause=2, mtval=inst)  # illegal instruction cause
+            self.trap(cause=2, mtval=inst)
 
-        self.registers[0] = 0       # x0 is always 0
+        self.registers[0] = 0
+
+    # Instruction execution: 16-bit compressed instructions
+    def execute_16(self, inst16):
+        """Execute a 16-bit compressed instruction (RVC)"""
+        try:
+            opcode, rd, funct3, rs1, rs2, funct7, expanded_inst = self.decode_cache_compressed[inst16]
+        except KeyError:
+            # Expand compressed instruction to 32-bit equivalent
+            expanded_inst, success = expand_compressed(inst16)
+            if not success:
+                if self.logger is not None:
+                    self.logger.warning(f"Invalid compressed instruction at PC={self.pc:08X}: 0x{inst16:04X}")
+                self.trap(cause=2, mtval=inst16)
+                return
+
+            # Decode the expanded 32-bit instruction
+            opcode = expanded_inst & 0x7F
+            rd = (expanded_inst >> 7) & 0x1F
+            funct3 = (expanded_inst >> 12) & 0x7
+            rs1 = (expanded_inst >> 15) & 0x1F
+            rs2 = (expanded_inst >> 20) & 0x1F
+            funct7 = (expanded_inst >> 25) & 0x7F
+
+            # Cache the decoded and expanded instruction
+            self.decode_cache_compressed[inst16] = (opcode, rd, funct3, rs1, rs2, funct7, expanded_inst)
+
+        self.next_pc = (self.pc + 2) & 0xFFFFFFFF
+        self.inst_size = 2
+
+        if opcode in opcode_handler:
+            (opcode_handler[opcode])(self, self.ram, expanded_inst, rd, funct3, rs1, rs2, funct7)
+        else:
+            if self.logger is not None:
+                self.logger.warning(f"Invalid instruction at PC={self.pc:08X}: 0x{expanded_inst:08X}, opcode=0x{opcode:x}")
+            self.trap(cause=2, mtval=expanded_inst)
+
+        self.registers[0] = 0
+
+    # Instruction execution: auto-detect and dispatch (compatibility wrapper)
+    def execute(self, inst):
+        """Execute an instruction (auto-detects 16-bit compressed vs 32-bit)"""
+        # Fast path when RVC is disabled: all instructions are 32-bit
+        if not self.rvc_enabled:
+            self.execute_32(inst)
+            return
+
+        # RVC enabled: detect instruction type
+        if (inst & 0x3) == 0x3:
+            # 32-bit instruction
+            self.execute_32(inst)
+        else:
+            # 16-bit compressed instruction
+            self.execute_16(inst & 0xFFFF)
     
     # Trap handling
     def trap(self, cause, mtval=0, sync=True):

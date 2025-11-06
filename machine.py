@@ -300,7 +300,7 @@ class Machine:
             # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
             inst = ram.load_word(cpu.pc)
 
-            cpu.execute(inst)
+            cpu.execute_32(inst)  # Direct call to 32-bit execution path
             cpu.pc = cpu.next_pc
 
     # EXECUTION LOOP: minimal version with RVC support (fast)
@@ -312,9 +312,13 @@ class Machine:
             # Fetch instruction (supports both 32-bit and 16-bit compressed)
             # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
             inst32 = ram.load_word(cpu.pc)
-            inst = inst32 if (inst32 & 0x3) == 0x3 else (inst32 & 0xFFFF)
 
-            cpu.execute(inst)
+            # Dispatch directly to specialized methods (eliminates redundant compression check)
+            if (inst32 & 0x3) == 0x3:
+                cpu.execute_32(inst32)
+            else:
+                cpu.execute_16(inst32 & 0xFFFF)
+
             cpu.pc = cpu.next_pc
 
     # EXECUTION LOOP: minimal version + timer (mtime/mtimecmp)
