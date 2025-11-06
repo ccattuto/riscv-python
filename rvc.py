@@ -57,14 +57,14 @@ def expand_compressed(c_inst):
             return ((nzuimm << 20) | (2 << 15) | (0 << 12) | (rd_prime << 7) | 0x13, True)
 
         elif funct3 == 0b010:  # C.LW
-            imm = ((c_inst >> 7) & 0x38) | ((c_inst >> 4) & 0x4) | ((c_inst << 6) & 0x40)
+            imm = ((c_inst >> 7) & 0x38) | ((c_inst >> 4) & 0x4) | ((c_inst << 1) & 0x40)
             rs1_prime = ((c_inst >> 7) & 0x7) + 8
             rd_prime = ((c_inst >> 2) & 0x7) + 8
             # LW rd', imm(rs1')
             return ((imm << 20) | (rs1_prime << 15) | (0x2 << 12) | (rd_prime << 7) | 0x03, True)
 
         elif funct3 == 0b110:  # C.SW
-            imm = ((c_inst >> 7) & 0x38) | ((c_inst >> 4) & 0x4) | ((c_inst << 6) & 0x40)
+            imm = ((c_inst >> 7) & 0x38) | ((c_inst >> 4) & 0x4) | ((c_inst << 1) & 0x40)
             rs1_prime = ((c_inst >> 7) & 0x7) + 8
             rs2_prime = ((c_inst >> 2) & 0x7) + 8
             imm_low = imm & 0x1F

@@ -231,7 +231,7 @@ print (cpu.registers[5])  # Print result stored in t0/x5
 
 Example Python programs using programmatic access to the emulator are provided in the `tests` directory. Run them from the top-level directory of the emulator, e.g.:
 ```
-PYTHONPATH=. python tests/test_python1.py 
+PYTHONPATH=. python tests/test_api1.py 
 ```
 
 ## 🧪 Running Unit Tests
