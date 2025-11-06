@@ -9,7 +9,7 @@ MUL ?= 0
 
 # Build march string based on extensions enabled
 MARCH_BASE = rv32i
-MARCH_EXT = $(if $(filter 1,$(RVC)),c,)$(if $(filter 1,$(MUL)),m,)
+MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVC)),c,)
 MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
 
 # Flags
