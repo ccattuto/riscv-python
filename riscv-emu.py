@@ -161,7 +161,7 @@ if __name__ == '__main__':
         ram = SafeRAM_MMIO(MEMORY_SIZE, init=args.init_ram, logger=log)
 
     # CPU
-    cpu = CPU(ram, init_regs=args.init_regs, logger=log, trace_traps=args.traps)
+    cpu = CPU(ram, init_regs=args.init_regs, logger=log, trace_traps=args.traps, rvc_enabled=args.rvc)
 
     # System architecture
     machine = Machine(cpu, ram, timer=args.timer, mmio=use_mmio, rvc=args.rvc, logger=log,

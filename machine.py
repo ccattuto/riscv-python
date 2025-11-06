@@ -267,20 +267,8 @@ class Machine:
             if self.trace and (cpu.pc in self.symbol_dict):
                 self.logger.debug(f"FUNC {self.symbol_dict[cpu.pc]}, PC={cpu.pc:08X}")
 
-            # Check PC alignment before fetch (must be 2-byte aligned with C extension)
-            if cpu.pc & 0x1:
-                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
-                if timer:
-                    cpu.timer_update()
-                cpu.pc = cpu.next_pc
-                if mmio:
-                    div += 1
-                    if div & DIV_MASK == 0:
-                        self.peripherals_run()
-                        div = 0
-                continue
-
             # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
+            # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
             inst_low = ram.load_half(cpu.pc, signed=False)
             if (inst_low & 0x3) == 0x3:
                 # 32-bit instruction: fetch upper 16 bits
@@ -308,13 +296,8 @@ class Machine:
         ram = self.ram
 
         while True:
-            # Check PC alignment before fetch (must be 4-byte aligned without C extension)
-            if cpu.pc & 0x3:
-                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
-                cpu.pc = cpu.next_pc
-                continue
-
             # Fetch 32-bit instruction directly (no half-word fetch overhead)
+            # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
             inst = ram.load_word(cpu.pc)
 
             cpu.execute(inst)
@@ -326,12 +309,8 @@ class Machine:
         ram = self.ram
 
         while True:
-            # Check PC alignment before fetch (must be 2-byte aligned with C extension)
-            if cpu.pc & 0x1:
-                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
-                cpu.pc = cpu.next_pc
-                continue
-
+            # Fetch instruction (supports both 32-bit and 16-bit compressed)
+            # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
             inst32 = ram.load_word(cpu.pc)
             inst = inst32 if (inst32 & 0x3) == 0x3 else (inst32 & 0xFFFF)
 
@@ -344,14 +323,8 @@ class Machine:
         ram = self.ram
 
         while True:
-            # Check PC alignment before fetch (must be 2-byte aligned with C extension)
-            if cpu.pc & 0x1:
-                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
-                cpu.timer_update()
-                cpu.pc = cpu.next_pc
-                continue
-
             # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
+            # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
             inst_low = ram.load_half(cpu.pc, signed=False)
             if (inst_low & 0x3) == 0x3:
                 # 32-bit instruction: fetch upper 16 bits
@@ -374,19 +347,8 @@ class Machine:
         DIV_MASK = 0xFF  # call peripheral run() methods every 256 cycles
 
         while True:
-            # Check PC alignment before fetch (must be 2-byte aligned with C extension)
-            if cpu.pc & 0x1:
-                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
-                if timer:
-                    cpu.timer_update()
-                cpu.pc = cpu.next_pc
-                div += 1
-                if div & DIV_MASK == 0:
-                    self.peripherals_run()
-                    div = 0
-                continue
-
             # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
+            # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
             inst_low = ram.load_half(cpu.pc, signed=False)
             if (inst_low & 0x3) == 0x3:
                 # 32-bit instruction: fetch upper 16 bits
@@ -412,6 +374,12 @@ class Machine:
     # selected according to the requested features, rather than having a single implementation
     # with several conditions along the hot execution path.
     def run(self):
+        # Verify initial PC alignment based on RVC support
+        alignment_mask = 0x1 if self.rvc else 0x3
+        if self.cpu.pc & alignment_mask:
+            alignment_name = "2-byte" if self.rvc else "4-byte"
+            raise MachineError(f"Initial PC=0x{self.cpu.pc:08X} violates {alignment_name} alignment requirement")
+
         if self.regs or self.check_inv or self.trace:
             self.run_with_checks()  # checks everything at every cycle, up to 3x slower (always with RVC support)
         else:

@@ -245,8 +245,10 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 ((inst >> 31) << 12)
         if imm_b >= 0x1000: imm_b -= 0x2000
         addr_target = (cpu.pc + imm_b) & 0xFFFFFFFF
-        if addr_target & 0x1:
-            cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
+        # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
+        alignment_mask = 0x1 if cpu.rvc_enabled else 0x3
+        if addr_target & alignment_mask:
+            cpu.trap(cause=0, mtval=addr_target)  # unaligned address
         else:
             cpu.next_pc = addr_target
     elif funct3 == 0x2 or funct3 == 0x3:
@@ -269,8 +271,10 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             ((inst >> 31) << 20)
     if imm_j >= 0x100000: imm_j -= 0x200000
     addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF  # (compared to JALR, no need to clear bit 0 here)
-    if addr_target & 0x1:
-            cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
+    # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
+    alignment_mask = 0x1 if cpu.rvc_enabled else 0x3
+    if addr_target & alignment_mask:
+        cpu.trap(cause=0, mtval=addr_target)  # unaligned address
     else:
         if rd != 0:
             # Use inst_size (2 for compressed, 4 for normal) for return address
@@ -283,8 +287,10 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
     addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0
-    if addr_target & 0x1:
-        cpu.trap(cause=0, mtval=addr_target)  # unaligned address (2-byte alignment required)
+    # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
+    alignment_mask = 0x1 if cpu.rvc_enabled else 0x3
+    if addr_target & alignment_mask:
+        cpu.trap(cause=0, mtval=addr_target)  # unaligned address
     else:
         if rd != 0:
             # Use inst_size (2 for compressed, 4 for normal) for return address
@@ -305,8 +311,10 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 
     elif inst == 0x30200073:  # MRET
         mepc = cpu.csrs[0x341]
-        if mepc & 0x1:
-            cpu.trap(cause=0, mtval=mepc)  # unaligned address (2-byte alignment required)
+        # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
+        alignment_mask = 0x1 if cpu.rvc_enabled else 0x3
+        if mepc & alignment_mask:
+            cpu.trap(cause=0, mtval=mepc)  # unaligned address
         else:
             cpu.next_pc = mepc                              # return address <- mepc
 
@@ -445,7 +453,7 @@ opcode_handler = {
 
 # CPU class
 class CPU:
-    def __init__(self, ram, init_regs=None, logger=None, trace_traps=False):
+    def __init__(self, ram, init_regs=None, logger=None, trace_traps=False, rvc_enabled=False):
         # registers
         self.registers = [0] * 32
         if init_regs is not None and init_regs != 'zero':
@@ -455,6 +463,7 @@ class CPU:
 
         self.ram = ram
         self.handle_ecall = None  # system calls handler
+        self.rvc_enabled = rvc_enabled  # RVC extension enabled flag
 
         self.logger = logger
         self.trace_traps = trace_traps
