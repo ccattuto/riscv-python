@@ -536,6 +536,25 @@ class CPU:
             self.CSR_NAME_ADDR[name] = addr
             self.CSR_ADDR_NAME[addr] = name
 
+        # Trap cause descriptions (RISC-V Privileged Spec)
+        self.TRAP_CAUSE_NAMES = {
+            0: "Instruction address misaligned",
+            1: "Instruction access fault",
+            2: "Illegal instruction",
+            3: "Breakpoint",
+            4: "Load address misaligned",
+            5: "Load access fault",
+            6: "Store/AMO address misaligned",
+            7: "Store/AMO access fault",
+            8: "Environment call from U-mode",
+            9: "Environment call from S-mode",
+            11: "Environment call from M-mode",
+            12: "Instruction page fault",
+            13: "Load page fault",
+            15: "Store/AMO page fault",
+            0x80000007: "Machine timer interrupt",
+        }
+
         # instruction decode cache
         self.decode_cache = {}
 
@@ -598,7 +617,8 @@ class CPU:
     # Trap handling
     def trap(self, cause, mtval=0, sync=True):
         if self.csrs[0x305] == 0:
-            raise ExecutionTerminated(f"Trap at PC={self.pc:08X} without trap handler installed – execution terminated.")
+            cause_name = self.TRAP_CAUSE_NAMES.get(cause, "Unknown")
+            raise ExecutionTerminated(f"Trap at PC={self.pc:08X} without trap handler installed (mcause={cause}: {cause_name}) – execution terminated.")
 
         # for synchronous traps, MEPC <- PC, for asynchronous ones (e.g., timer) MEPC <- next instruction
         self.csrs[0x341] = self.pc if sync else self.next_pc  # mepc
