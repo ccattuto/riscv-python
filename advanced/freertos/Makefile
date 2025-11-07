@@ -30,7 +30,11 @@ endif
 
 APPS = freertos_app1.c freertos_app2.c freertos_app3.c
 
-CFLAGS = -Wall -Wextra -O2 -march=rv32i_zicsr -mabi=ilp32 -D_REENT_SMALL \
+MARCH_BASE = rv32i
+MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVC)),c,)
+MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
+
+CFLAGS = -Wall -Wextra -O2 -march=$(MARCH) -mabi=ilp32 -D_REENT_SMALL \
          -I. -I$(PORT) -I$(KERNEL)/include -I$(KERNEL)/portable/GCC/RISC-V \
          -DMTIMER_MMIO=${MTIMER_MMIO}
 
