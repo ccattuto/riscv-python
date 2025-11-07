@@ -26,124 +26,124 @@ def signed32(val):
 
 def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     if funct3 == 0x0:  # ADD/SUB/MUL
-        if funct7 == 0x01:  # MUL (M extension)
+        if funct7 == 0x00:  # ADD
+            cpu.registers[rd] = (cpu.registers[rs1] + cpu.registers[rs2]) & 0xFFFFFFFF
+        elif funct7 == 0x20:  # SUB
+            cpu.registers[rd] = (cpu.registers[rs1] - cpu.registers[rs2]) & 0xFFFFFFFF
+        elif funct7 == 0x01:  # MUL (M extension)
             # Multiply: return lower 32 bits of product
             a = signed32(cpu.registers[rs1])
             b = signed32(cpu.registers[rs2])
             result = (a * b) & 0xFFFFFFFF
             cpu.registers[rd] = result
-        elif funct7 == 0x00:  # ADD
-            cpu.registers[rd] = (cpu.registers[rs1] + cpu.registers[rs2]) & 0xFFFFFFFF
-        elif funct7 == 0x20:  # SUB
-            cpu.registers[rd] = (cpu.registers[rs1] - cpu.registers[rs2]) & 0xFFFFFFFF
         else:
             if cpu.logger is not None:
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for ADD/SUB/MUL at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
     elif funct3 == 0x1:  # SLL/MULH
-        if funct7 == 0x01:  # MULH (M extension)
+        if funct7 == 0x00:  # SLL
+            cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
+        elif funct7 == 0x01:  # MULH (M extension)
             # Multiply high: signed × signed, return upper 32 bits
             a = signed32(cpu.registers[rs1])
             b = signed32(cpu.registers[rs2])
             result = (a * b) >> 32
             cpu.registers[rd] = result & 0xFFFFFFFF
-        elif funct7 == 0x00:  # SLL
-            cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
         else:
             if cpu.logger is not None:
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SLL/MULH at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
     elif funct3 == 0x2:  # SLT/MULHSU
-        if funct7 == 0x01:  # MULHSU (M extension)
+        if funct7 == 0x00:  # SLT
+            cpu.registers[rd] = int(signed32(cpu.registers[rs1]) < signed32(cpu.registers[rs2]))
+        elif funct7 == 0x01:  # MULHSU (M extension)
             # Multiply high: signed × unsigned, return upper 32 bits
             a = signed32(cpu.registers[rs1])
             b = cpu.registers[rs2] & 0xFFFFFFFF
             result = (a * b) >> 32
             cpu.registers[rd] = result & 0xFFFFFFFF
-        elif funct7 == 0x00:  # SLT
-            cpu.registers[rd] = int(signed32(cpu.registers[rs1]) < signed32(cpu.registers[rs2]))
         else:
             if cpu.logger is not None:
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SLT/MULHSU at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
     elif funct3 == 0x3:  # SLTU/MULHU
-        if funct7 == 0x01:  # MULHU (M extension)
+        if funct7 == 0x00:  # SLTU
+            cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF))
+        elif funct7 == 0x01:  # MULHU (M extension)
             # Multiply high: unsigned × unsigned, return upper 32 bits
             a = cpu.registers[rs1] & 0xFFFFFFFF
             b = cpu.registers[rs2] & 0xFFFFFFFF
             result = (a * b) >> 32
             cpu.registers[rd] = result & 0xFFFFFFFF
-        elif funct7 == 0x00:  # SLTU
-            cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF))
         else:
             if cpu.logger is not None:
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SLTU/MULHU at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
     elif funct3 == 0x4:  # XOR/DIV
-        if funct7 == 0x01:  # DIV (M extension)
+        if funct7 == 0x00:  # XOR
+            cpu.registers[rd] = cpu.registers[rs1] ^ cpu.registers[rs2]
+        elif funct7 == 0x01:  # DIV (M extension)
             # Signed division (RISC-V uses truncating division, rounding towards zero)
             dividend = signed32(cpu.registers[rs1])
             divisor = signed32(cpu.registers[rs2])
-            if divisor == 0:
-                # Division by zero: quotient = -1
+            if divisor == 0:  # Division by zero: quotient = -1
                 cpu.registers[rd] = 0xFFFFFFFF
-            elif dividend == -2147483648 and divisor == -1:
-                # Overflow: return MIN_INT
+            elif dividend == -0x80000000 and divisor == -1:  # Overflow: return MIN_INT
                 cpu.registers[rd] = 0x80000000
-            else:
-                # Use truncating division (towards zero), not floor division
+            else:  # Use truncating division (towards zero), not floor division
                 result = int(dividend / divisor)
                 cpu.registers[rd] = result & 0xFFFFFFFF
-        elif funct7 == 0x00:  # XOR
-            cpu.registers[rd] = cpu.registers[rs1] ^ cpu.registers[rs2]
         else:
             if cpu.logger is not None:
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for XOR/DIV at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
     elif funct3 == 0x5:  # SRL/SRA/DIVU
-        if funct7 == 0x01:  # DIVU (M extension)
-            # Unsigned division
-            dividend = cpu.registers[rs1] & 0xFFFFFFFF
-            divisor = cpu.registers[rs2] & 0xFFFFFFFF
-            if divisor == 0:
-                # Division by zero: quotient = 2^32 - 1
-                cpu.registers[rd] = 0xFFFFFFFF
-            else:
-                result = dividend // divisor
-                cpu.registers[rd] = result & 0xFFFFFFFF
-        else:
             shamt = cpu.registers[rs2] & 0x1F
             if funct7 == 0x00:  # SRL
                 cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
             elif funct7 == 0x20:  # SRA
                 cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
+            elif funct7 == 0x01:  # DIVU (M extension)
+                # Unsigned division
+                dividend = cpu.registers[rs1] & 0xFFFFFFFF
+                divisor = cpu.registers[rs2] & 0xFFFFFFFF
+                if divisor == 0:  # Division by zero: quotient = 2^32 - 1
+                    cpu.registers[rd] = 0xFFFFFFFF
+                else:
+                    result = dividend // divisor
+                    cpu.registers[rd] = result & 0xFFFFFFFF
             else:
                 if cpu.logger is not None:
                     cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRL/SRA/DIVU at PC=0x{cpu.pc:08X}")
                 cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
     elif funct3 == 0x6:  # OR/REM
-        if funct7 == 0x01:  # REM (M extension)
+        if funct7 == 0x00:  # OR
+            cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
+        elif funct7 == 0x01:  # REM (M extension)
             # Signed remainder (RISC-V uses truncating division, rounding towards zero)
             dividend = signed32(cpu.registers[rs1])
             divisor = signed32(cpu.registers[rs2])
-            if divisor == 0:
-                # Division by zero: remainder = dividend
+            if divisor == 0:  # Division by zero: remainder = dividend
                 cpu.registers[rd] = cpu.registers[rs1] & 0xFFFFFFFF
-            elif dividend == -2147483648 and divisor == -1:
-                # Overflow: remainder = 0
+            elif dividend == -0x80000000 and divisor == -1:  # Overflow: remainder = 0
                 cpu.registers[rd] = 0
-            else:
-                # Use truncating remainder: dividend - trunc(dividend/divisor) * divisor
+            else:  # Use truncating remainder: dividend - trunc(dividend/divisor) * divisor
                 result = dividend - int(dividend / divisor) * divisor
                 cpu.registers[rd] = result & 0xFFFFFFFF
-        elif funct7 == 0x00:  # OR
-            cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
         else:
             if cpu.logger is not None:
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for OR/REM at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
     elif funct3 == 0x7:  # AND/REMU
-        if funct7 == 0x01:  # REMU (M extension)
+        if funct7 == 0x00:  # AND
+            cpu.registers[rd] = cpu.registers[rs1] & cpu.registers[rs2]
+        elif funct7 == 0x01:  # REMU (M extension)
             # Unsigned remainder
             dividend = cpu.registers[rs1] & 0xFFFFFFFF
             divisor = cpu.registers[rs2] & 0xFFFFFFFF
@@ -153,8 +153,6 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             else:
                 result = dividend % divisor
                 cpu.registers[rd] = result & 0xFFFFFFFF
-        elif funct7 == 0x00:  # AND
-            cpu.registers[rd] = cpu.registers[rs1] & cpu.registers[rs2]
         else:
             if cpu.logger is not None:
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for AND/REMU at PC=0x{cpu.pc:08X}")
@@ -424,22 +422,14 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
 def exec_MISCMEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    if funct3 == 0b000:  # FENCE
-        # Memory ordering barrier - no-op in single-threaded interpreter
-        pass
-    elif funct3 == 0b001:  # FENCE.I
-        # Instruction cache flush - no-op in this emulator
-        # The decode cache is content-addressed (keyed by instruction bits),
-        # not address-addressed, so it's automatically coherent with memory.
-        # Self-modifying code works correctly without explicit cache invalidation.
-        pass
+    if funct3 in (0b000, 0b001):  # FENCE / FENCE.I
+        pass  # NOP
     else:
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid misc-mem instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
 def exec_AMO(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    """A extension: Atomic Memory Operations"""
     if funct3 != 0x2:  # Only word (W) operations supported in RV32
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid funct3=0x{funct3:X} for AMO at PC=0x{cpu.pc:08X}")
@@ -455,8 +445,8 @@ def exec_AMO(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
         cpu.trap(cause=6, mtval=addr)  # Store/AMO address misaligned
         return
 
-    # Single-threaded simplification: atomics are just read-modify-write
-    # In real hardware: aq (bit 26) and rl (bit 25) handle memory ordering
+    # Single-threaded behavior: atomics are just read-modify-write
+    # In real hardware, aq (bit 26) and rl (bit 25) handle memory ordering
 
     if funct5 == 0b00010:  # LR.W (Load-Reserved Word)
         # Load word and set reservation
@@ -570,7 +560,7 @@ opcode_handler = {
 
 # CPU class
 class CPU:
-    def __init__(self, ram, init_regs=None, logger=None, trace_traps=False, rvc_enabled=False):
+    def __init__(self, ram, rvc_enabled=False, init_regs=None, logger=None, trace_traps=False):
         # registers
         self.registers = [0] * 32
         if init_regs is not None and init_regs != 'zero':
@@ -580,20 +570,17 @@ class CPU:
 
         self.ram = ram
         self.handle_ecall = None  # system calls handler
-        self.rvc_enabled = rvc_enabled  # RVC extension enabled flag
-        # Cache alignment mask for performance: 0x1 for RVC (2-byte), 0x3 for RV32I (4-byte)
-        self.alignment_mask = 0x1 if rvc_enabled else 0x3
-
         self.logger = logger
         self.trace_traps = trace_traps
 
-        # Instruction size for current instruction (2 for compressed, 4 for normal)
-        # Used by handlers that need to compute return addresses (JAL, JALR)
-        self.inst_size = 4
+        # RVC extension enabled flag
+        self.rvc_enabled = rvc_enabled
 
-        # LR/SC reservation tracking (A extension)
-        self.reservation_valid = False
-        self.reservation_addr = 0
+        # Cache alignment mask for performance: 0x3 for RV32I (4-byte), 0x1 for RVC (2-byte)
+        self.alignment_mask = 0x1 if rvc_enabled else 0x3
+
+        # Instruction size for current instruction (4 for normal, 2 for compressed)
+        self.inst_size = 4
 
         # CSRs
         self.csrs = [0] * 4096
@@ -638,6 +625,10 @@ class CPU:
         self.mtimecmp_lo_updated = False
         self.mtimecmp_hi_updated = False
         self.mtip = False
+
+        # LR/SC reservation tracking (A extension)
+        self.reservation_valid = False
+        self.reservation_addr = 0
 
         # name - ID register maps
         self.REG_NUM_NAME = {}
@@ -689,8 +680,8 @@ class CPU:
         }
 
         # instruction decode caches
-        self.decode_cache = {}  # For 32-bit instructions (or when RVC disabled)
-        self.decode_cache_compressed = {}  # For 16-bit compressed instructions (when RVC enabled)
+        self.decode_cache = {}              # Cache for 32-bit instructions
+        self.decode_cache_compressed = {}   # Cache for 16-bit instructions
 
     # Set handler for system calls
     def set_ecall_handler(self, handler):
@@ -698,7 +689,6 @@ class CPU:
 
     # Instruction execution: 32-bit instructions
     def execute_32(self, inst):
-        """Execute a 32-bit instruction (RV32I)"""
         try:
             opcode, rd, funct3, rs1, rs2, funct7 = self.decode_cache[inst >> 2]
         except KeyError:
@@ -724,7 +714,6 @@ class CPU:
 
     # Instruction execution: 16-bit compressed instructions
     def execute_16(self, inst16):
-        """Execute a 16-bit compressed instruction (RVC)"""
         try:
             opcode, rd, funct3, rs1, rs2, funct7, expanded_inst = self.decode_cache_compressed[inst16]
         except KeyError:
@@ -761,7 +750,6 @@ class CPU:
 
     # Instruction execution: auto-detect and dispatch (compatibility wrapper)
     def execute(self, inst):
-        """Execute an instruction (auto-detects 16-bit compressed vs 32-bit)"""
         # Fast path when RVC is disabled: all instructions are 32-bit
         if not self.rvc_enabled:
             self.execute_32(inst)
