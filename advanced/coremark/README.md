@@ -5,16 +5,17 @@ In `riscv-emu.py/core_portme.mak`, set `CC` to your RISC-V compiler.
 ```
 cd coremark
 
-# Build with default extensions (RV32IA)
+# Build with default (RV32I base ISA only)
 make PORT_DIR=../riscv-emu.py
 
 # Build with all extensions (RV32IMAC)
-make PORT_DIR=../riscv-emu.py RVC=1 MUL=1
+make PORT_DIR=../riscv-emu.py RVC=1 MUL=1 RVA=1
 
 # Build with specific combinations
-make PORT_DIR=../riscv-emu.py RVC=1          # RV32IAC (+ compressed)
-make PORT_DIR=../riscv-emu.py MUL=1          # RV32IMA (+ multiply/divide)
-make PORT_DIR=../riscv-emu.py RVA=0          # RV32I (no atomics)
+make PORT_DIR=../riscv-emu.py RVC=1          # RV32IC (+ compressed)
+make PORT_DIR=../riscv-emu.py MUL=1          # RV32IM (+ multiply/divide)
+make PORT_DIR=../riscv-emu.py RVA=1          # RV32IA (+ atomics)
+make PORT_DIR=../riscv-emu.py RVC=1 MUL=1    # RV32IMC
 ```
 
 Inspect the results in `run1.log` and `run2.log`:
