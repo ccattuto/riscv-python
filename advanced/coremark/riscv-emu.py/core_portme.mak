@@ -34,6 +34,9 @@ RVC ?= 0  # Compressed Instructions (C extension)
 MUL ?= 0  # Multiply/Divide (M extension)
 RVA ?= 1  # Atomic Instructions (A extension) - enabled by default
 
+# Export RVC so the wrapper script can see it
+export RVC
+
 # Build march string based on extensions enabled (canonical order: I, M, A, F, D, C)
 MARCH_BASE = rv32i
 MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
