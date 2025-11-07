@@ -311,6 +311,25 @@ Test rv32mi-p-pmpaddr              : PASS
 Test rv32mi-p-instret_overflow     : PASS
 Test rv32mi-p-ma_fetch             : PASS
 Test rv32mi-p-sbreak               : PASS
+Test rv32um-p-rem                  : PASS
+Test rv32um-p-mulhsu               : PASS
+Test rv32um-p-remu                 : PASS
+Test rv32um-p-divu                 : PASS
+Test rv32um-p-mulhu                : PASS
+Test rv32um-p-div                  : PASS
+Test rv32um-p-mul                  : PASS
+Test rv32um-p-mulh                 : PASS
+Test rv32ua-p-amomax_w             : PASS
+Test rv32ua-p-amoxor_w             : PASS
+Test rv32ua-p-amoor_w              : PASS
+Test rv32ua-p-amomaxu_w            : PASS
+Test rv32ua-p-lrsc                 : PASS
+Test rv32ua-p-amomin_w             : PASS
+Test rv32ua-p-amoand_w             : PASS
+Test rv32ua-p-amominu_w            : PASS
+Test rv32ua-p-amoadd_w             : PASS
+Test rv32ua-p-amoswap_w            : PASS
+Test rv32uc-p-rvc                  : PASS
 ```
 
 ## Design Goals

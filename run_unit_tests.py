@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Runs the RV32UI, RV32MI, RV32UC, RV32UM, and RV32UA RISC-V unit tests
+# Runs the RV32UI, RV32MI, RV32UM, RV32UA, and RV32UC RISC-V unit tests
 #
 
 import sys, os, glob, argparse
@@ -38,10 +38,10 @@ if __name__ == '__main__':
     if args.executable is None:
         test_rv32ui_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32ui-p-*') if not '.dump' in fname]
         test_rv32mi_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32mi-p-*') if not '.dump' in fname]
-        test_rv32uc_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32uc-p-*') if not '.dump' in fname]
         test_rv32um_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32um-p-*') if not '.dump' in fname]
         test_rv32ua_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32ua-p-*') if not '.dump' in fname]
-        test_fname_list = test_rv32ui_fnames + test_rv32mi_fnames + test_rv32uc_fnames + test_rv32um_fnames + test_rv32ua_fnames
+        test_rv32uc_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32uc-p-*') if not '.dump' in fname]
+        test_fname_list = test_rv32ui_fnames + test_rv32mi_fnames + test_rv32um_fnames + test_rv32ua_fnames + test_rv32uc_fnames
     else:
         test_fname_list = [ args.executable ]
 
