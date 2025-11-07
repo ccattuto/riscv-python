@@ -30,14 +30,15 @@ LD		= $(CC)
 AS		= $(CC)
 
 # Extension options - set to 1 to enable, 0 to disable
-RVC ?= 0  # Compressed Instructions (C extension)
-MUL ?= 0  # Multiply/Divide (M extension)
-RVA ?= 1  # Atomic Instructions (A extension) - enabled by default
+# Pass these on command line: make PORT_DIR=../riscv-emu.py RVC=1 MUL=1
+export RVC ?= 0  # Compressed Instructions (C extension)
+export MUL ?= 0  # Multiply/Divide (M extension)
+export RVA ?= 1  # Atomic Instructions (A extension) - enabled by default
 
 # Build march string based on extensions enabled (canonical order: I, M, A, F, D, C)
 MARCH_BASE = rv32i
 MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
-MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
+export MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
 
 # Flag : CFLAGS
 #	Use this flag to define compiler options. Note, you can add compiler options from the command line using XCFLAGS="other flags"

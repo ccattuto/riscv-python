@@ -3,6 +3,11 @@
 RISCV_EMU_PY=../../../riscv-emu.py
 RISCV_EMU_OPTS=--timer=csr
 
+# Add --rvc flag if RVC extension was enabled during compilation
+if [ "${RVC}" = "1" ]; then
+  RISCV_EMU_OPTS="$RISCV_EMU_OPTS --rvc"
+fi
+
 # Check if at least one argument (the command itself) is provided
 if [ "$#" -lt 1 ]; then
   echo "Usage: $0 <command> [arg1 arg2 ...]"
