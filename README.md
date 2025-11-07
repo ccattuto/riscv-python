@@ -97,14 +97,9 @@ pip install -r requirements.txt
 make all
 ```
 
-The Makefile supports building with different RISC-V extensions:
+The Makefile supports building with different RISC-V extensions, e.g., to build with rv32iac_zicsr (RV32IMAC):
 ```
-make all                           # Build with rv32ia_zicsr (base ISA + atomics, A enabled by default)
-make RVA=0 all                     # Build with rv32i_zicsr (base ISA only, no atomics)
-make RVC=1 all                     # Build with rv32iac_zicsr (+ compressed instructions)
-make MUL=1 all                     # Build with rv32ima_zicsr (+ multiply/divide)
-make RVC=1 MUL=1 all               # Build with rv32imac_zicsr (all extensions)
-make RVC=1 MUL=1 RVA=0 all         # Build with rv32imc_zicsr (no atomics)
+make RVC=1 MUL=1 RVA=1 all
 ```
 
 If you just want to **test the emulator without installing a RISC-V compiler**, you will find pre-built binaries in `prebuilt/`.
