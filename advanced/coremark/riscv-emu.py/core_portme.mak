@@ -28,9 +28,20 @@ LD		= $(CC)
 # Flag : AS
 #	Use this flag to define compiler to use
 AS		= $(CC)
+
+# Extension options - set to 1 to enable, 0 to disable
+RVC ?= 0  # Compressed Instructions (C extension)
+MUL ?= 0  # Multiply/Divide (M extension)
+RVA ?= 1  # Atomic Instructions (A extension) - enabled by default
+
+# Build march string based on extensions enabled (canonical order: I, M, A, F, D, C)
+MARCH_BASE = rv32i
+MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
+MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
+
 # Flag : CFLAGS
 #	Use this flag to define compiler options. Note, you can add compiler options from the command line using XCFLAGS="other flags"
-PORT_CFLAGS = -march=rv32i_zicsr -mabi=ilp32 -O2 -D_REENT_SMALL
+PORT_CFLAGS = -march=$(MARCH) -mabi=ilp32 -O2 -D_REENT_SMALL
 FLAGS_STR = "$(PORT_CFLAGS) $(XCFLAGS) $(XLFLAGS) $(LFLAGS_END)"
 CFLAGS = $(PORT_CFLAGS) -I$(PORT_DIR) -I. -DFLAGS_STR=\"$(FLAGS_STR)\" 
 #Flag : LFLAGS_END
@@ -40,7 +51,7 @@ SEPARATE_COMPILE=1
 # Flag : SEPARATE_COMPILE
 # You must also define below how to create an object file, and how to link.
 OBJOUT 	= -o
-LFLAGS 	= -march=rv32i_zicsr -mabi=ilp32 -nostartfiles -static -T$(PORT_DIR)/linker_newlib.ld --specs=nano.specs
+LFLAGS 	= -march=$(MARCH) -mabi=ilp32 -nostartfiles -static -T$(PORT_DIR)/linker_newlib.ld --specs=nano.specs
 ASFLAGS = $(CFLAGS)
 OFLAG 	= -o
 COUT 	= -c
