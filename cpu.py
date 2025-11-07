@@ -685,6 +685,7 @@ class CPU:
             13: "Load page fault",
             15: "Store/AMO page fault",
             0x80000007: "Machine timer interrupt",
+            0x8000000B: "Machine external interrupt",
         }
 
         # instruction decode caches
@@ -806,7 +807,7 @@ class CPU:
         self.csrs[0x300] |= (1 << 7)        # MPIE = 1
         # (MIE, bit 3, stays unchanged)
 
-    # Machine timer interrupt logic
+    # Machine timer interrupt logic and interrupt checking
     def timer_update(self):
         csrs = self.csrs
         mtime = self.mtime
@@ -822,12 +823,35 @@ class CPU:
                 csrs[0x344] &= ~(1 << 7)    # clear MTIP
             self.mtip = mtip_asserted
 
-        if not mtip_asserted:
+        # Check for pending interrupts (only if mstatus.MIE is set)
+        if not (csrs[0x300] & (1<<3)):
             return
 
-        # Trigger Machine Timer Interrupt
-        if (csrs[0x300] & (1<<3)) and (csrs[0x304] & (1<<7)):
-            self.trap(cause=0x80000007, sync=False)  # fire timer interrupt as an asynchronous trap
+        # Check timer interrupt (MTIP bit 7)
+        if (csrs[0x344] & (1<<7)) and (csrs[0x304] & (1<<7)):
+            self.trap(cause=0x80000007, sync=False)  # Machine timer interrupt
+            return
+
+        # Check external interrupt (MEIP bit 11)
+        if (csrs[0x344] & (1<<11)) and (csrs[0x304] & (1<<11)):
+            self.trap(cause=0x8000000B, sync=False)  # Machine external interrupt
+            return
+
+    # External interrupt API (for peripherals and Python scripting)
+    def assert_external_interrupt(self):
+        """Set the MEIP bit to signal an external interrupt request.
+
+        Peripherals or Python scripts can call this to request an interrupt.
+        The interrupt will be taken if mstatus.MIE and mie.MEIE are both set.
+        """
+        self.csrs[0x344] |= (1 << 11)  # Set MEIP (bit 11 of mip)
+
+    def clear_external_interrupt(self):
+        """Clear the MEIP bit to acknowledge the external interrupt.
+
+        Interrupt handlers should call this to clear the pending interrupt.
+        """
+        self.csrs[0x344] &= ~(1 << 11)  # Clear MEIP (bit 11 of mip)
 
     # CPU registers initialization
     def init_registers(self, mode='0x00000000'):
