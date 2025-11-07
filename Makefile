@@ -3,9 +3,10 @@ CC = riscv64-unknown-elf-gcc
 OBJCOPY = riscv64-unknown-elf-objcopy
 
 # Extension options - set to 1 to enable, 0 to disable
+# Note: not all combinations might be supported by the toolchain
 RVC ?= 0  # Compressed Instructions (C extension)
 MUL ?= 0  # Multiply/Divide (M extension)
-RVA ?= 1  # Atomic Instructions (A extension) - enabled by default
+RVA ?= 0  # Atomic Instructions (A extension)
 
 # Build march string based on extensions enabled (canonical order: I, M, A, F, D, C)
 MARCH_BASE = rv32i
