@@ -615,7 +615,16 @@ class CPU:
         # 0xF13 mimpid (RO)
         # 0xF14 mhartid (RO)
 
-        self.csrs[0x301] = 0x40001105  # misa (RO, bits 30, 12, 8, 2, and 0 set: RV32IMAC)
+        # Build misa based on enabled extensions
+        # Bit 30: MXL=01 (RV32)
+        # Bit 12: M extension (multiply/divide) - always enabled
+        # Bit 8: I extension (base integer) - always enabled
+        # Bit 2: C extension (compressed) - conditional on rvc_enabled
+        # Bit 0: A extension (atomics) - always enabled
+        misa_base = 0x40001101  # RV32IMA (bits 30, 12, 8, 0)
+        if rvc_enabled:
+            misa_base |= (1 << 2)  # Add C extension
+        self.csrs[0x301] = misa_base
         self.csrs[0x300] = 0x00001800  # mstatus (machine mode only: MPP field kept = 0b11)
         self.csrs[0x7C2] = 0xFFFFFFFF  # mtimecmp_low
         self.csrs[0x7C3] = 0xFFFFFFFF  # mtimecmp_hi
