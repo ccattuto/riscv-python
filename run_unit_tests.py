@@ -62,17 +62,13 @@ if __name__ == '__main__':
 
         # RUN
         while True:
-            #print ('PC=%08X' % cpu.pc)
-
-            # Check PC alignment before fetch (must be 2-byte aligned with C extension)
+            # Check PC alignment before
             if cpu.pc & 0x1:
                 cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
                 cpu.pc = cpu.next_pc
-                if ram.load_word(tohost_addr) != 0xFFFFFFFF:
-                    break
                 continue
 
-            # Fetch using spec-compliant parcel-based approach
+            # Fetch
             inst_low = ram.load_half(cpu.pc, signed=False)
             if (inst_low & 0x3) == 0x3:
                 # 32-bit instruction: fetch upper 16 bits
