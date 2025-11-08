@@ -701,6 +701,7 @@ class CPU:
             self.decode_cache[inst >> 2] = (opcode, rd, funct3, rs1, rs2, funct7)
 
         self.next_pc = (self.pc + 4) & 0xFFFFFFFF
+        # inst_size stays at 4 (set in __init__), no need to write it every instruction
 
         if opcode in opcode_handler:
             (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)
@@ -736,6 +737,7 @@ class CPU:
             self.decode_cache_compressed[inst16] = (opcode, rd, funct3, rs1, rs2, funct7, expanded_inst)
 
         self.next_pc = (self.pc + 2) & 0xFFFFFFFF
+        self.inst_size = 2
 
         if opcode in opcode_handler:
             (opcode_handler[opcode])(self, self.ram, expanded_inst, rd, funct3, rs1, rs2, funct7)
@@ -749,19 +751,16 @@ class CPU:
     # Instruction execution: auto-detect and dispatch (compatibility wrapper)
     def execute(self, inst):
         # Fast path when RVC is disabled: all instructions are 32-bit
-        # (inst_size stays at 4, set in __init__)
         if not self.rvc_enabled:
             self.execute_32(inst)
             return
 
-        # RVC enabled: detect instruction type and set inst_size
+        # RVC enabled: detect instruction type
         if (inst & 0x3) == 0x3:
             # 32-bit instruction
-            self.inst_size = 4
             self.execute_32(inst)
         else:
             # 16-bit compressed instruction
-            self.inst_size = 2
             self.execute_16(inst & 0xFFFF)
     
     # Trap handling
@@ -816,8 +815,8 @@ class CPU:
         if not (csrs[0x300] & (1<<3)):
             return
 
-        # Check timer interrupt - use already-computed mtip_asserted
-        if mtip_asserted and (csrs[0x304] & (1<<7)):
+        # Check timer interrupt (MTIP bit 7)
+        if (csrs[0x344] & (1<<7)) and (csrs[0x304] & (1<<7)):
             self.trap(cause=0x80000007, sync=False)  # Machine timer interrupt
             return
 
