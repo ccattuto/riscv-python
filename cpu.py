@@ -555,9 +555,6 @@ opcode_handler = {
 }
 
 
-# Compressed instruction expansion (RVC extension) - moved to rvc.py
-# Import: from rvc import expand_compressed
-
 # CPU class
 class CPU:
     def __init__(self, ram, rvc_enabled=False, init_regs=None, logger=None, trace_traps=False):
@@ -733,7 +730,7 @@ class CPU:
             rs2 = (expanded_inst >> 20) & 0x1F
             funct7 = (expanded_inst >> 25) & 0x7F
 
-            # Cache the decoded and expanded instruction
+            # Cache the expanded and decoded instruction
             self.decode_cache_compressed[inst16] = (opcode, rd, funct3, rs1, rs2, funct7, expanded_inst)
 
         self.next_pc = (self.pc + 2) & 0xFFFFFFFF
