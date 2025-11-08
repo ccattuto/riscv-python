@@ -701,7 +701,7 @@ class CPU:
             self.decode_cache[inst >> 2] = (opcode, rd, funct3, rs1, rs2, funct7)
 
         self.next_pc = (self.pc + 4) & 0xFFFFFFFF
-        self.inst_size = 4
+        # inst_size stays at 4 (set in __init__), no need to write it every instruction
 
         if opcode in opcode_handler:
             (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)
