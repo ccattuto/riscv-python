@@ -315,8 +315,10 @@ class Machine:
 
             # Dispatch directly to specialized methods (eliminates redundant compression check)
             if (inst32 & 0x3) == 0x3:
+                cpu.inst_size = 4
                 cpu.execute_32(inst32)
             else:
+                cpu.inst_size = 2
                 cpu.execute_16(inst32 & 0xFFFF)
 
             cpu.pc = cpu.next_pc
