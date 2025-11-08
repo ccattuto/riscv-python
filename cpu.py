@@ -815,8 +815,8 @@ class CPU:
         if not (csrs[0x300] & (1<<3)):
             return
 
-        # Check timer interrupt (MTIP bit 7)
-        if (csrs[0x344] & (1<<7)) and (csrs[0x304] & (1<<7)):
+        # Check timer interrupt - use already-computed mtip_asserted
+        if mtip_asserted and (csrs[0x304] & (1<<7)):
             self.trap(cause=0x80000007, sync=False)  # Machine timer interrupt
             return
 
