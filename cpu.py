@@ -270,30 +270,34 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             (((inst >> 12) & 0xFF) << 12) | \
             ((inst >> 31) << 20)
     if imm_j >= 0x100000: imm_j -= 0x200000
+
     addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF  # (compared to JALR, no need to clear bit 0 here)
-    # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
-    if addr_target & cpu.alignment_mask:
+
+    if addr_target & cpu.alignment_mask:  # Check alignment
         cpu.trap(cause=0, mtval=addr_target)  # unaligned address
     else:
         if rd != 0:
-            # Use inst_size (2 for compressed, 4 for normal) for return address
+            # Use inst_size (4 for normal, 2 for compressed) for return address
             cpu.registers[rd] = (cpu.pc + cpu.inst_size) & 0xFFFFFFFF
         cpu.next_pc = addr_target
+
         #if cpu.logger is not None:
         #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08X}, rd={rd}, target=0x{cpu.next_pc:08X}, return_addr=0x{(cpu.pc + cpu.inst_size) & 0xFFFFFFFF:08X}")
 
 def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
+
     addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0
-    # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
-    if addr_target & cpu.alignment_mask:
+
+    if addr_target & cpu.alignment_mask:  # Check alignment
         cpu.trap(cause=0, mtval=addr_target)  # unaligned address
     else:
         if rd != 0:
-            # Use inst_size (2 for compressed, 4 for normal) for return address
+            # Use inst_size (4 for normal, 2 for compressed) for return address
             cpu.registers[rd] = (cpu.pc + cpu.inst_size) & 0xFFFFFFFF
         cpu.next_pc = addr_target
+
         #if cpu.logger is not None:
         #    cpu.logger.debug(f"[JALR] jumping to 0x{cpu.next_pc:08X} from rs1=0x{cpu.registers[rs1]:08X}, imm={imm_i}")
 
@@ -813,7 +817,7 @@ class CPU:
             return
 
         # Check timer interrupt (MTIP bit 7)
-        if (csrs[0x344] & (1<<7)) and (csrs[0x304] & (1<<7)):
+        if mtip_asserted and (csrs[0x304] & (1<<7)):
             self.trap(cause=0x80000007, sync=False)  # Machine timer interrupt
             return
 
