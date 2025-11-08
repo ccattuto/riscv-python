@@ -702,7 +702,6 @@ class CPU:
             self.decode_cache[inst >> 2] = (opcode, rd, funct3, rs1, rs2, funct7)
 
         self.next_pc = (self.pc + 4) & 0xFFFFFFFF
-        self.inst_size = 4
 
         if opcode in opcode_handler:
             (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)
@@ -738,7 +737,6 @@ class CPU:
             self.decode_cache_compressed[inst16] = (opcode, rd, funct3, rs1, rs2, funct7, expanded_inst)
 
         self.next_pc = (self.pc + 2) & 0xFFFFFFFF
-        self.inst_size = 2
 
         if opcode in opcode_handler:
             (opcode_handler[opcode])(self, self.ram, expanded_inst, rd, funct3, rs1, rs2, funct7)
@@ -759,9 +757,11 @@ class CPU:
         # RVC enabled: detect instruction type
         if (inst & 0x3) == 0x3:
             # 32-bit instruction
+            self.inst_size = 4
             self.execute_32(inst)
         else:
             # 16-bit compressed instruction
+            self.inst_size = 2
             self.execute_16(inst & 0xFFFF)
     
     # Trap handling
