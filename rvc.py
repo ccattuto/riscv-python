@@ -15,34 +15,14 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 
-"""
-RISC-V Compressed (RVC) Instruction Extension
 
-This module provides support for the RVC extension, which allows 16-bit
-compressed instructions to be mixed with standard 32-bit instructions,
-improving code density by approximately 25-30%.
-
-The expand_compressed() function takes a 16-bit compressed instruction
-and returns its 32-bit equivalent, ready for execution by the CPU.
-"""
+# Takes a 16-bit compressed instruction and returns its 32-bit equivalent.
+# Supports all RV32C instructions.
+#
+# Returns (32 bit instruction, success) tuple
+# Success is False for illegal RVC instructions.
 
 def expand_compressed(c_inst):
-    """
-    Expand a 16-bit compressed instruction to its 32-bit equivalent.
-
-    Args:
-        c_inst: 16-bit compressed instruction
-
-    Returns:
-        (expanded_32bit_inst, success_flag) tuple
-        - expanded_32bit_inst: The 32-bit equivalent instruction
-        - success_flag: True if expansion succeeded, False for illegal instruction
-
-    Supports all RV32C instructions across three quadrants:
-    - Quadrant 0 (C0): Stack/memory operations
-    - Quadrant 1 (C1): Arithmetic & control flow
-    - Quadrant 2 (C2): Register operations
-    """
     quadrant = c_inst & 0x3
     funct3 = (c_inst >> 13) & 0x7
 
@@ -244,5 +224,5 @@ def expand_compressed(c_inst):
             # SW rs2, imm(x2)
             return ((imm_high << 25) | (rs2 << 20) | (2 << 15) | (0x2 << 12) | (imm_low << 7) | 0x23, True)
 
-    # Invalid compressed instruction
+    # Invalid RVC instruction
     return (0, False)
