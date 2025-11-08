@@ -296,11 +296,9 @@ class Machine:
         ram = self.ram
 
         while True:
-            # Fetch 32-bit instruction directly (no half-word fetch overhead)
-            # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
             inst = ram.load_word(cpu.pc)
 
-            cpu.execute_32(inst)  # Direct call to 32-bit execution path
+            cpu.execute_32(inst)
             cpu.pc = cpu.next_pc
 
     # EXECUTION LOOP: minimal version with RVC support (fast)
@@ -309,17 +307,14 @@ class Machine:
         ram = self.ram
 
         while True:
-            # Fetch instruction (supports both 32-bit and 16-bit compressed)
-            # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
-            inst32 = ram.load_word(cpu.pc)
+            inst = ram.load_word(cpu.pc)
 
-            # Dispatch directly to specialized methods (eliminates redundant compression check)
-            if (inst32 & 0x3) == 0x3:
+            if (inst & 0x3) == 0x3:
                 cpu.inst_size = 4
-                cpu.execute_32(inst32)
+                cpu.execute_32(inst)
             else:
                 cpu.inst_size = 2
-                cpu.execute_16(inst32 & 0xFFFF)
+                cpu.execute_16(inst & 0xFFFF)
 
             cpu.pc = cpu.next_pc
 
@@ -329,18 +324,15 @@ class Machine:
         ram = self.ram
 
         while True:
-            # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
-            # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
-            inst_low = ram.load_half(cpu.pc, signed=False)
-            if (inst_low & 0x3) == 0x3:
-                # 32-bit instruction: fetch upper 16 bits
-                inst_high = ram.load_half(cpu.pc + 2, signed=False)
-                inst = inst_low | (inst_high << 16)
-            else:
-                # 16-bit compressed instruction
-                inst = inst_low
+            inst = ram.load_word(cpu.pc)
 
-            cpu.execute(inst)
+            if (inst & 0x3) == 0x3:
+                cpu.inst_size = 4
+                cpu.execute_32(inst)
+            else:
+                cpu.inst_size = 2
+                cpu.execute_16(inst & 0xFFFF)
+
             cpu.timer_update()
             cpu.pc = cpu.next_pc
 
@@ -353,18 +345,15 @@ class Machine:
         DIV_MASK = 0xFF  # call peripheral run() methods every 256 cycles
 
         while True:
-            # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
-            # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
-            inst_low = ram.load_half(cpu.pc, signed=False)
-            if (inst_low & 0x3) == 0x3:
-                # 32-bit instruction: fetch upper 16 bits
-                inst_high = ram.load_half(cpu.pc + 2, signed=False)
-                inst = inst_low | (inst_high << 16)
-            else:
-                # 16-bit compressed instruction
-                inst = inst_low
+            inst = ram.load_word(cpu.pc)
 
-            cpu.execute(inst)
+            if (inst & 0x3) == 0x3:
+                cpu.inst_size = 4
+                cpu.execute_32(inst)
+            else:
+                cpu.inst_size = 2
+                cpu.execute_16(inst & 0xFFFF)
+
             if timer:
                 cpu.timer_update()
             cpu.pc = cpu.next_pc
@@ -383,8 +372,7 @@ class Machine:
         # Verify initial PC alignment based on RVC support
         alignment_mask = 0x1 if self.rvc else 0x3
         if self.cpu.pc & alignment_mask:
-            alignment_name = "2-byte" if self.rvc else "4-byte"
-            raise MachineError(f"Initial PC=0x{self.cpu.pc:08X} violates {alignment_name} alignment requirement")
+            raise MachineError(f"Initial PC=0x{self.cpu.pc:08X} violates {2 if self.rvc else 4}-byte alignment requirement")
 
         if self.regs or self.check_inv or self.trace:
             self.run_with_checks()  # checks everything at every cycle, up to 3x slower (always with RVC support)
