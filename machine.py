@@ -27,13 +27,14 @@ class ExecutionTerminated(MachineError):
     pass
 
 class Machine:
-    def __init__(self, cpu, ram, timer=False, mmio=False, logger=None, trace=False, regs=None, check_inv=False, start_checks=None):
+    def __init__(self, cpu, ram, timer=False, mmio=False, rvc=False, logger=None, trace=False, regs=None, check_inv=False, start_checks=None):
         self.cpu = cpu
         self.ram = ram
 
         # machine options
         self.timer = timer
         self.mmio = mmio
+        self.rvc = rvc
         self.logger = logger
         self.trace = trace
         self.regs = regs
@@ -266,7 +267,17 @@ class Machine:
             if self.trace and (cpu.pc in self.symbol_dict):
                 self.logger.debug(f"FUNC {self.symbol_dict[cpu.pc]}, PC={cpu.pc:08X}")
 
-            inst = ram.load_word(cpu.pc)
+            # Fetch 16 bits first to determine instruction length (RISC-V spec compliant)
+            # Note: PC alignment is checked in control flow instructions (JAL, JALR, branches, MRET)
+            inst_low = ram.load_half(cpu.pc, signed=False)
+            if (inst_low & 0x3) == 0x3:
+                # 32-bit instruction: fetch upper 16 bits
+                inst_high = ram.load_half(cpu.pc + 2, signed=False)
+                inst = inst_low | (inst_high << 16)
+            else:
+                # 16-bit compressed instruction
+                inst = inst_low
+
             cpu.execute(inst)
             if timer:
                 cpu.timer_update()
@@ -279,24 +290,45 @@ class Machine:
                     self.peripherals_run()
                     div = 0
 
-    # EXECUTION LOOP: minimal version (fastest)
+    # EXECUTION LOOP: minimal version for RV32I only (fastest, no compressed instructions)
+    def run_fast_no_rvc(self):
+        cpu = self.cpu
+        ram = self.ram
+
+        while True:
+            inst = ram.load_word(cpu.pc)
+
+            cpu.execute_32(inst)
+            cpu.pc = cpu.next_pc
+
+    # EXECUTION LOOP: minimal version with RVC support (fast)
     def run_fast(self):
         cpu = self.cpu
         ram = self.ram
-        
+
         while True:
             inst = ram.load_word(cpu.pc)
-            cpu.execute(inst)
+
+            if (inst & 0x3) == 0x3:
+                cpu.execute_32(inst)
+            else:
+                cpu.execute_16(inst & 0xFFFF)
+
             cpu.pc = cpu.next_pc
 
     # EXECUTION LOOP: minimal version + timer (mtime/mtimecmp)
     def run_timer(self):
         cpu = self.cpu
         ram = self.ram
-        
+
         while True:
             inst = ram.load_word(cpu.pc)
-            cpu.execute(inst)
+
+            if (inst & 0x3) == 0x3:
+                cpu.execute_32(inst)
+            else:
+                cpu.execute_16(inst & 0xFFFF)
+
             cpu.timer_update()
             cpu.pc = cpu.next_pc
 
@@ -307,10 +339,15 @@ class Machine:
         timer = self.timer
         div = 0
         DIV_MASK = 0xFF  # call peripheral run() methods every 256 cycles
-        
+
         while True:
             inst = ram.load_word(cpu.pc)
-            cpu.execute(inst)
+
+            if (inst & 0x3) == 0x3:
+                cpu.execute_32(inst)
+            else:
+                cpu.execute_16(inst & 0xFFFF)
+
             if timer:
                 cpu.timer_update()
             cpu.pc = cpu.next_pc
@@ -326,13 +363,23 @@ class Machine:
     # selected according to the requested features, rather than having a single implementation
     # with several conditions along the hot execution path.
     def run(self):
+        # Verify initial PC alignment based on RVC support
+        alignment_mask = 0x1 if self.rvc else 0x3
+        if self.cpu.pc & alignment_mask:
+            raise MachineError(f"Initial PC=0x{self.cpu.pc:08X} violates {2 if self.rvc else 4}-byte alignment requirement")
+
         if self.regs or self.check_inv or self.trace:
-            self.run_with_checks()  # checks everything at every cycle, up to 3x slower
+            self.run_with_checks()  # checks everything at every cycle, up to 3x slower (always with RVC support)
         else:
             if self.mmio:
-                self.run_mmio()  # MMIO support, optional timer 
+                self.run_mmio()  # MMIO support, optional timer (always with RVC support)
             else:
                 if self.timer:
-                    self.run_timer()  # timer support, no checks, no MMIO 
+                    self.run_timer()  # timer support, no checks, no MMIO (always with RVC support)
                 else:
-                    self.run_fast()  # fastest option, no timer, no checks, no MMIO
+                    # Fastest option, no timer, no checks, no MMIO
+                    # RVC support is optional for maximum performance on pure RV32I code
+                    if self.rvc:
+                        self.run_fast()  # Fast with RVC support (half-word fetches)
+                    else:
+                        self.run_fast_no_rvc()  # Fastest: pure RV32I (32-bit word fetches)

@@ -1,5 +1,6 @@
 .section .text
 .globl trap_handler_riscvpy
+.align 4
 
 trap_handler_riscvpy:
     addi    sp, sp, -64

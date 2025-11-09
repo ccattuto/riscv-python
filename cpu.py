@@ -16,6 +16,7 @@
 #
 
 from machine import MachineError, ExecutionTerminated, SetupError
+from rvc import expand_compressed
 import random
 
 # Opcode handlers
@@ -23,40 +24,142 @@ import random
 def signed32(val):
     return val if val < 0x80000000 else val - 0x100000000
 
-def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    if funct3 == 0x0:  # ADD/SUB
+def exec_Rtype(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
+    if funct3 == 0x0:  # ADD/SUB/MUL
         if funct7 == 0x00:  # ADD
             cpu.registers[rd] = (cpu.registers[rs1] + cpu.registers[rs2]) & 0xFFFFFFFF
         elif funct7 == 0x20:  # SUB
             cpu.registers[rd] = (cpu.registers[rs1] - cpu.registers[rs2]) & 0xFFFFFFFF
+        elif funct7 == 0x01:  # MUL (M extension)
+            # Multiply: return lower 32 bits of product
+            a = signed32(cpu.registers[rs1])
+            b = signed32(cpu.registers[rs2])
+            result = (a * b) & 0xFFFFFFFF
+            cpu.registers[rd] = result
         else:
             if cpu.logger is not None:
-                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for ADD/SUB at PC=0x{cpu.pc:08X}")
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for ADD/SUB/MUL at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
-    elif funct3 == 0x1:  # SLL
-        cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
-    elif funct3 == 0x2:  # SLT
-        cpu.registers[rd] = int(signed32(cpu.registers[rs1]) < signed32(cpu.registers[rs2]))
-    elif funct3 == 0x3:  # SLTU
-        cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF))
-    elif funct3 == 0x4:  # XOR
-        cpu.registers[rd] = cpu.registers[rs1] ^ cpu.registers[rs2]
-    elif funct3 == 0x5:  # SRL/SRA
-        shamt = cpu.registers[rs2] & 0x1F
-        if funct7 == 0x00:  # SRL
-            cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
-        elif funct7 == 0x20:  # SRA
-            cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
-        else:
-            if cpu.logger is not None:
-                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRL/SRA at PC=0x{cpu.pc:08X}")
-            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
-    elif funct3 == 0x6:  # OR
-        cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
-    elif funct3 == 0x7:  # AND
-        cpu.registers[rd] = cpu.registers[rs1] & cpu.registers[rs2]
 
-def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+    elif funct3 == 0x1:  # SLL/MULH
+        if funct7 == 0x00:  # SLL
+            cpu.registers[rd] = (cpu.registers[rs1] << (cpu.registers[rs2] & 0x1F)) & 0xFFFFFFFF
+        elif funct7 == 0x01:  # MULH (M extension)
+            # Multiply high: signed × signed, return upper 32 bits
+            a = signed32(cpu.registers[rs1])
+            b = signed32(cpu.registers[rs2])
+            result = (a * b) >> 32
+            cpu.registers[rd] = result & 0xFFFFFFFF
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SLL/MULH at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
+    elif funct3 == 0x2:  # SLT/MULHSU
+        if funct7 == 0x00:  # SLT
+            cpu.registers[rd] = int(signed32(cpu.registers[rs1]) < signed32(cpu.registers[rs2]))
+        elif funct7 == 0x01:  # MULHSU (M extension)
+            # Multiply high: signed × unsigned, return upper 32 bits
+            a = signed32(cpu.registers[rs1])
+            b = cpu.registers[rs2] & 0xFFFFFFFF
+            result = (a * b) >> 32
+            cpu.registers[rd] = result & 0xFFFFFFFF
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SLT/MULHSU at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
+    elif funct3 == 0x3:  # SLTU/MULHU
+        if funct7 == 0x00:  # SLTU
+            cpu.registers[rd] = int((cpu.registers[rs1] & 0xFFFFFFFF) < (cpu.registers[rs2] & 0xFFFFFFFF))
+        elif funct7 == 0x01:  # MULHU (M extension)
+            # Multiply high: unsigned × unsigned, return upper 32 bits
+            a = cpu.registers[rs1] & 0xFFFFFFFF
+            b = cpu.registers[rs2] & 0xFFFFFFFF
+            result = (a * b) >> 32
+            cpu.registers[rd] = result & 0xFFFFFFFF
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SLTU/MULHU at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
+    elif funct3 == 0x4:  # XOR/DIV
+        if funct7 == 0x00:  # XOR
+            cpu.registers[rd] = cpu.registers[rs1] ^ cpu.registers[rs2]
+        elif funct7 == 0x01:  # DIV (M extension)
+            # Signed division (RISC-V uses truncating division, rounding towards zero)
+            dividend = signed32(cpu.registers[rs1])
+            divisor = signed32(cpu.registers[rs2])
+            if divisor == 0:  # Division by zero: quotient = -1
+                cpu.registers[rd] = 0xFFFFFFFF
+            elif dividend == -0x80000000 and divisor == -1:  # Overflow: return MIN_INT
+                cpu.registers[rd] = 0x80000000
+            else:  # Use truncating division (towards zero), not floor division
+                result = int(dividend / divisor)
+                cpu.registers[rd] = result & 0xFFFFFFFF
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for XOR/DIV at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
+    elif funct3 == 0x5:  # SRL/SRA/DIVU
+            shamt = cpu.registers[rs2] & 0x1F
+            if funct7 == 0x00:  # SRL
+                cpu.registers[rd] = (cpu.registers[rs1] & 0xFFFFFFFF) >> shamt
+            elif funct7 == 0x20:  # SRA
+                cpu.registers[rd] = (signed32(cpu.registers[rs1]) >> shamt) & 0xFFFFFFFF
+            elif funct7 == 0x01:  # DIVU (M extension)
+                # Unsigned division
+                dividend = cpu.registers[rs1] & 0xFFFFFFFF
+                divisor = cpu.registers[rs2] & 0xFFFFFFFF
+                if divisor == 0:  # Division by zero: quotient = 2^32 - 1
+                    cpu.registers[rd] = 0xFFFFFFFF
+                else:
+                    result = dividend // divisor
+                    cpu.registers[rd] = result & 0xFFFFFFFF
+            else:
+                if cpu.logger is not None:
+                    cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRL/SRA/DIVU at PC=0x{cpu.pc:08X}")
+                cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
+    elif funct3 == 0x6:  # OR/REM
+        if funct7 == 0x00:  # OR
+            cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
+        elif funct7 == 0x01:  # REM (M extension)
+            # Signed remainder (RISC-V uses truncating division, rounding towards zero)
+            dividend = signed32(cpu.registers[rs1])
+            divisor = signed32(cpu.registers[rs2])
+            if divisor == 0:  # Division by zero: remainder = dividend
+                cpu.registers[rd] = cpu.registers[rs1] & 0xFFFFFFFF
+            elif dividend == -0x80000000 and divisor == -1:  # Overflow: remainder = 0
+                cpu.registers[rd] = 0
+            else:  # Use truncating remainder: dividend - trunc(dividend/divisor) * divisor
+                result = dividend - int(dividend / divisor) * divisor
+                cpu.registers[rd] = result & 0xFFFFFFFF
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for OR/REM at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
+    elif funct3 == 0x7:  # AND/REMU
+        if funct7 == 0x00:  # AND
+            cpu.registers[rd] = cpu.registers[rs1] & cpu.registers[rs2]
+        elif funct7 == 0x01:  # REMU (M extension)
+            # Unsigned remainder
+            dividend = cpu.registers[rs1] & 0xFFFFFFFF
+            divisor = cpu.registers[rs2] & 0xFFFFFFFF
+            if divisor == 0:
+                # Division by zero: remainder = dividend
+                cpu.registers[rd] = cpu.registers[rs1] & 0xFFFFFFFF
+            else:
+                result = dividend % divisor
+                cpu.registers[rd] = result & 0xFFFFFFFF
+        else:
+            if cpu.logger is not None:
+                cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for AND/REMU at PC=0x{cpu.pc:08X}")
+            cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
+def exec_Itype(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
 
@@ -90,7 +193,7 @@ def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif funct3 == 0x7: # ANDI
         cpu.registers[rd] = (cpu.registers[rs1] & imm_i) & 0xFFFFFFFF
 
-def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_loads(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
     addr = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
@@ -110,23 +213,26 @@ def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for LOAD at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_stores(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_s = ((inst >> 7) & 0x1F) | ((inst >> 25) << 5)
-    if imm_s >= 0x800: imm_s -= 0x1000                 
+    if imm_s >= 0x800: imm_s -= 0x1000
     addr = (cpu.registers[rs1] + imm_s) & 0xFFFFFFFF
 
     if funct3 == 0x0:  # SB
         ram.store_byte(addr, cpu.registers[rs2] & 0xFF)
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
     elif funct3 == 0x1:  # SH
         ram.store_half(addr, cpu.registers[rs2] & 0xFFFF)
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
     elif funct3 == 0x2:  # SW
         ram.store_word(addr, cpu.registers[rs2])
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
     else:
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_branches(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     if (
         (funct3 == 0x0 and cpu.registers[rs1] == cpu.registers[rs2]) or  # BEQ
         (funct3 == 0x1 and cpu.registers[rs1] != cpu.registers[rs2]) or  # BNE
@@ -141,7 +247,8 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 ((inst >> 31) << 12)
         if imm_b >= 0x1000: imm_b -= 0x2000
         addr_target = (cpu.pc + imm_b) & 0xFFFFFFFF
-        if addr_target & 0x3:
+        # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
+        if addr_target & cpu.alignment_mask:
             cpu.trap(cause=0, mtval=addr_target)  # unaligned address
         else:
             cpu.next_pc = addr_target
@@ -150,44 +257,58 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-def exec_LUI(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_LUI(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_u = inst >> 12
     cpu.registers[rd] = (imm_u << 12) & 0xFFFFFFFF
 
-def exec_AUIPC(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_AUIPC(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_u = inst >> 12
     cpu.registers[rd] = (cpu.pc + (imm_u << 12)) & 0xFFFFFFFF
 
-def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_JAL(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_j = (((inst >> 21) & 0x3FF) << 1) | \
             (((inst >> 20) & 0x1) << 11)  | \
             (((inst >> 12) & 0xFF) << 12) | \
             ((inst >> 31) << 20)
     if imm_j >= 0x100000: imm_j -= 0x200000
-    addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF  # (compared to JALR, no need to clear bit 0 here)
-    if addr_target & 0x3:
-            cpu.trap(cause=0, mtval=addr_target)  # unaligned address
-    else:
-        if rd != 0:
-            cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
-        cpu.next_pc = addr_target
-        #if cpu.logger is not None:
-        #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08X}, rd={rd}, target=0x{cpu.next_pc:08X}, return_addr=0x{(cpu.pc + 4) & 0xFFFFFFFF:08X}")
 
-def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
-    imm_i = inst >> 20
-    if imm_i >= 0x800: imm_i -= 0x1000
-    addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0
-    if addr_target & 0x3:
+    addr_target = (cpu.pc + imm_j) & 0xFFFFFFFF  # (compared to JALR, no need to clear bit 0 here)
+
+    if addr_target & cpu.alignment_mask:  # Check alignment
         cpu.trap(cause=0, mtval=addr_target)  # unaligned address
     else:
         if rd != 0:
-            cpu.registers[rd] = (cpu.pc + 4) & 0xFFFFFFFF
+            # Use inst_size (4 for normal, 2 for compressed) for return address
+            cpu.registers[rd] = (cpu.pc + inst_size) & 0xFFFFFFFF
         cpu.next_pc = addr_target
+
+        #if cpu.logger is not None:
+        #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08X}, rd={rd}, target=0x{cpu.next_pc:08X}, return_addr=0x{(cpu.pc + inst_size) & 0xFFFFFFFF:08X}")
+
+def exec_JALR(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
+    if funct3 != 0x0:
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Invalid funct3=0x{funct3:X} for JALR at PC=0x{cpu.pc:08X}")
+        cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+        return
+
+    imm_i = inst >> 20
+    if imm_i >= 0x800: imm_i -= 0x1000
+
+    addr_target = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFE  # clear bit 0
+
+    if addr_target & cpu.alignment_mask:  # Check alignment
+        cpu.trap(cause=0, mtval=addr_target)  # unaligned address
+    else:
+        if rd != 0:
+            # Use inst_size (4 for normal, 2 for compressed) for return address
+            cpu.registers[rd] = (cpu.pc + inst_size) & 0xFFFFFFFF
+        cpu.next_pc = addr_target
+
         #if cpu.logger is not None:
         #    cpu.logger.debug(f"[JALR] jumping to 0x{cpu.next_pc:08X} from rs1=0x{cpu.registers[rs1]:08X}, imm={imm_i}")
 
-def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_SYSTEM(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     if inst == 0x00000073:  # ECALL
         if (cpu.csrs[0x305] == 0) and (cpu.handle_ecall is not None):  # no trap handler, Python handler set
             cpu.handle_ecall()
@@ -199,7 +320,8 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
 
     elif inst == 0x30200073:  # MRET
         mepc = cpu.csrs[0x341]
-        if mepc & 0x3:
+        # Check alignment: 2-byte (RVC) or 4-byte (no RVC)
+        if mepc & cpu.alignment_mask:
             cpu.trap(cause=0, mtval=mepc)  # unaligned address
         else:
             cpu.next_pc = mepc                              # return address <- mepc
@@ -310,13 +432,122 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Unhandled system instruction 0x{inst:08X} at PC={cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-def exec_MISCMEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_MISCMEM(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     if funct3 in (0b000, 0b001):  # FENCE / FENCE.I
         pass  # NOP
     else:
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid misc-mem instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
+def exec_AMO(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
+    if funct3 != 0x2:  # Only word (W) operations supported in RV32
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Invalid funct3=0x{funct3:X} for AMO at PC=0x{cpu.pc:08X}")
+        cpu.trap(cause=2, mtval=inst)
+        return
+
+    # Extract funct5 (bits 31:27) to distinguish AMO operations
+    funct5 = (inst >> 27) & 0x1F
+    addr = cpu.registers[rs1] & 0xFFFFFFFF
+
+    # Check word alignment (4-byte boundary)
+    if addr & 0x3:
+        cpu.trap(cause=6, mtval=addr)  # Store/AMO address misaligned
+        return
+
+    # Single-threaded behavior: atomics are just read-modify-write
+    # In real hardware, aq (bit 26) and rl (bit 25) handle memory ordering
+
+    if funct5 == 0b00010:  # LR.W (Load-Reserved Word)
+        # Load word and set reservation
+        val = ram.load_word(addr)
+        cpu.registers[rd] = val
+        cpu.reservation_valid = True
+        cpu.reservation_addr = addr
+
+    elif funct5 == 0b00011:  # SC.W (Store-Conditional Word)
+        # Store conditional: succeeds only if reservation is valid and matches address
+        if cpu.reservation_valid and cpu.reservation_addr == addr:
+            ram.store_word(addr, cpu.registers[rs2] & 0xFFFFFFFF)
+            cpu.registers[rd] = 0  # Success
+            cpu.reservation_valid = False  # Clear reservation after successful SC
+        else:
+            cpu.registers[rd] = 1  # Failure
+
+    elif funct5 == 0b00001:  # AMOSWAP.W
+        old_val = ram.load_word(addr)
+        new_val = cpu.registers[rs2] & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b00000:  # AMOADD.W
+        old_val = ram.load_word(addr)
+        new_val = (old_val + cpu.registers[rs2]) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b00100:  # AMOXOR.W
+        old_val = ram.load_word(addr)
+        new_val = (old_val ^ cpu.registers[rs2]) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b01100:  # AMOAND.W
+        old_val = ram.load_word(addr)
+        new_val = (old_val & cpu.registers[rs2]) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b01000:  # AMOOR.W
+        old_val = ram.load_word(addr)
+        new_val = (old_val | cpu.registers[rs2]) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b10000:  # AMOMIN.W (signed)
+        old_val = ram.load_word(addr)
+        old_signed = signed32(old_val)
+        rs2_signed = signed32(cpu.registers[rs2])
+        new_val = min(old_signed, rs2_signed) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b10100:  # AMOMAX.W (signed)
+        old_val = ram.load_word(addr)
+        old_signed = signed32(old_val)
+        rs2_signed = signed32(cpu.registers[rs2])
+        new_val = max(old_signed, rs2_signed) & 0xFFFFFFFF
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b11000:  # AMOMINU.W (unsigned)
+        old_val = ram.load_word(addr) & 0xFFFFFFFF
+        rs2_unsigned = cpu.registers[rs2] & 0xFFFFFFFF
+        new_val = min(old_val, rs2_unsigned)
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    elif funct5 == 0b11100:  # AMOMAXU.W (unsigned)
+        old_val = ram.load_word(addr) & 0xFFFFFFFF
+        rs2_unsigned = cpu.registers[rs2] & 0xFFFFFFFF
+        new_val = max(old_val, rs2_unsigned)
+        ram.store_word(addr, new_val)
+        cpu.registers[rd] = old_val
+        cpu.reservation_valid = False  # Clear any LR/SC reservation
+
+    else:
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Invalid funct5=0x{funct5:02X} for AMO at PC=0x{cpu.pc:08X}")
+        cpu.trap(cause=2, mtval=inst)
 
 # dispatch table for opcode handlers
 opcode_handler = {
@@ -330,13 +561,14 @@ opcode_handler = {
     0x6F:   exec_JAL,       # JAL
     0x67:   exec_JALR,      # JALR
     0x73:   exec_SYSTEM,    # SYSTEM (ECALL/EBREAK)
-    0x0F:   exec_MISCMEM    # MISC-MEM
+    0x0F:   exec_MISCMEM,   # MISC-MEM (FENCE, FENCE.I)
+    0x2F:   exec_AMO        # AMO (A extension: Atomic Memory Operations)
 }
 
 
 # CPU class
 class CPU:
-    def __init__(self, ram, init_regs=None, logger=None, trace_traps=False):
+    def __init__(self, ram, rvc_enabled=False, init_regs=None, logger=None, trace_traps=False):
         # registers
         self.registers = [0] * 32
         if init_regs is not None and init_regs != 'zero':
@@ -346,14 +578,17 @@ class CPU:
 
         self.ram = ram
         self.handle_ecall = None  # system calls handler
-
         self.logger = logger
         self.trace_traps = trace_traps
- 
+
+        # RVC extension enabled flag & cache alignment mask
+        self.rvc_enabled = rvc_enabled
+        self.alignment_mask = 0x1 if rvc_enabled else 0x3
+
         # CSRs
         self.csrs = [0] * 4096
         # 0x300 mstatus
-        # 0x301 misa (RO, bits 30 and 8 set: RV32I)
+        # 0x301 misa (RO, bits 30, 12, 8, 2, and 0 set: RV32IMAC)
         # 0x304 mie
         # 0x305 mtvec
         # 0x340 mscratch
@@ -370,7 +605,7 @@ class CPU:
         # 0xF13 mimpid (RO)
         # 0xF14 mhartid (RO)
 
-        self.csrs[0x301] = 0x40000100  # misa (RO, bits 30 and 8 set: RV32I)
+        self.csrs[0x301] = 0x40001101 | ((1 << 2) if rvc_enabled else 0)  # misa: RV32IMA(C)
         self.csrs[0x300] = 0x00001800  # mstatus (machine mode only: MPP field kept = 0b11)
         self.csrs[0x7C2] = 0xFFFFFFFF  # mtimecmp_low
         self.csrs[0x7C3] = 0xFFFFFFFF  # mtimecmp_hi
@@ -393,6 +628,10 @@ class CPU:
         self.mtimecmp_lo_updated = False
         self.mtimecmp_hi_updated = False
         self.mtip = False
+
+        # LR/SC reservation tracking (A extension)
+        self.reservation_valid = False
+        self.reservation_addr = 0
 
         # name - ID register maps
         self.REG_NUM_NAME = {}
@@ -423,15 +662,36 @@ class CPU:
             self.CSR_NAME_ADDR[name] = addr
             self.CSR_ADDR_NAME[addr] = name
 
-        # instruction decode cache
-        self.decode_cache = {}
+        # Trap cause descriptions (RISC-V Privileged Spec)
+        self.TRAP_CAUSE_NAMES = {
+            0: "Instruction address misaligned",
+            1: "Instruction access fault",
+            2: "Illegal instruction",
+            3: "Breakpoint",
+            4: "Load address misaligned",
+            5: "Load access fault",
+            6: "Store/AMO address misaligned",
+            7: "Store/AMO access fault",
+            8: "Environment call from U-mode",
+            9: "Environment call from S-mode",
+            11: "Environment call from M-mode",
+            12: "Instruction page fault",
+            13: "Load page fault",
+            15: "Store/AMO page fault",
+            0x80000007: "Machine timer interrupt",
+            0x8000000B: "Machine external interrupt",
+        }
+
+        # instruction decode caches
+        self.decode_cache = {}              # Cache for 32-bit instructions
+        self.decode_cache_compressed = {}   # Cache for 16-bit instructions
 
     # Set handler for system calls
     def set_ecall_handler(self, handler):
         self.handle_ecall = handler
 
-    # Instruction execution
-    def execute(self, inst):
+    # Instruction execution: 32-bit instructions
+    def execute_32(self, inst):
         try:
             opcode, rd, funct3, rs1, rs2, funct7 = self.decode_cache[inst >> 2]
         except KeyError:
@@ -446,19 +706,67 @@ class CPU:
         self.next_pc = (self.pc + 4) & 0xFFFFFFFF
 
         if opcode in opcode_handler:
-            (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)  # dispatch to opcode handler
+            (opcode_handler[opcode])(self, self.ram, inst, 4, rd, funct3, rs1, rs2, funct7)
         else:
             if self.logger is not None:
                 self.logger.warning(f"Invalid instruction at PC={self.pc:08X}: 0x{inst:08X}, opcode=0x{opcode:x}")
-            self.trap(cause=2, mtval=inst)  # illegal instruction cause
+            self.trap(cause=2, mtval=inst)
 
-        self.registers[0] = 0       # x0 is always 0
+        self.registers[0] = 0
+
+    # Instruction execution: 16-bit compressed instructions
+    def execute_16(self, inst16):
+        try:
+            opcode, rd, funct3, rs1, rs2, funct7, expanded_inst = self.decode_cache_compressed[inst16]
+        except KeyError:
+            # Expand compressed instruction to 32-bit equivalent
+            expanded_inst, success = expand_compressed(inst16)
+            if not success:
+                if self.logger is not None:
+                    self.logger.warning(f"Invalid compressed instruction at PC={self.pc:08X}: 0x{inst16:04X}")
+                self.trap(cause=2, mtval=inst16)
+                return
+
+            # Decode the expanded 32-bit instruction
+            opcode = expanded_inst & 0x7F
+            rd = (expanded_inst >> 7) & 0x1F
+            funct3 = (expanded_inst >> 12) & 0x7
+            rs1 = (expanded_inst >> 15) & 0x1F
+            rs2 = (expanded_inst >> 20) & 0x1F
+            funct7 = (expanded_inst >> 25) & 0x7F
+
+            # Cache the expanded and decoded instruction
+            self.decode_cache_compressed[inst16] = (opcode, rd, funct3, rs1, rs2, funct7, expanded_inst)
+
+        self.next_pc = (self.pc + 2) & 0xFFFFFFFF
+
+        if opcode in opcode_handler:
+            (opcode_handler[opcode])(self, self.ram, expanded_inst, 2, rd, funct3, rs1, rs2, funct7)
+        else:
+            if self.logger is not None:
+                self.logger.warning(f"Invalid instruction at PC={self.pc:08X}: 0x{expanded_inst:08X}, opcode=0x{opcode:x}")
+            self.trap(cause=2, mtval=expanded_inst)
+
+        self.registers[0] = 0
+
+    # Instruction execution: auto-detect and dispatch (compatibility wrapper)
+    def execute(self, inst):
+        if not self.rvc_enabled:  # Fast path when RVC is disabled
+            self.execute_32(inst)
+            return
+
+        # RVC enabled: detect instruction type
+        if (inst & 0x3) == 0x3:  # 32-bit instruction
+            self.execute_32(inst)
+        else:  # 16-bit compressed instruction
+            self.execute_16(inst & 0xFFFF)
     
     # Trap handling
     def trap(self, cause, mtval=0, sync=True):
         if self.csrs[0x305] == 0:
-            raise ExecutionTerminated(f"Trap at PC={self.pc:08X} without trap handler installed – execution terminated.")
-        
+            cause_name = self.TRAP_CAUSE_NAMES.get(cause, "Unknown")
+            raise ExecutionTerminated(f"Trap at PC={self.pc:08X} without trap handler installed (mcause={cause}: {cause_name}) – execution terminated.")
+
         # for synchronous traps, MEPC <- PC, for asynchronous ones (e.g., timer) MEPC <- next instruction
         self.csrs[0x341] = self.pc if sync else self.next_pc  # mepc
         self.csrs[0x342] = cause  # mcause
@@ -485,7 +793,7 @@ class CPU:
         self.csrs[0x300] |= (1 << 7)        # MPIE = 1
         # (MIE, bit 3, stays unchanged)
 
-    # Machine timer interrupt logic
+    # Machine timer interrupt logic and interrupt checking
     def timer_update(self):
         csrs = self.csrs
         mtime = self.mtime
@@ -503,10 +811,14 @@ class CPU:
 
         if not mtip_asserted:
             return
-        
-        # Trigger Machine Timer Interrupt
-        if (csrs[0x300] & (1<<3)) and (csrs[0x304] & (1<<7)):
-            self.trap(cause=0x80000007, sync=False)  # fire timer interrupt as an asynchronous trap
+
+        # Check for pending interrupts (only if mstatus.MIE is set)
+        if not (csrs[0x300] & (1<<3)):
+            return
+
+        # Check timer interrupt (MTIP bit 7)
+        if csrs[0x304] & (1<<7):
+            self.trap(cause=0x80000007, sync=False)  # Machine timer interrupt
 
     # CPU registers initialization
     def init_registers(self, mode='0x00000000'):

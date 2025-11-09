@@ -3,6 +3,11 @@
 RISCV_EMU_PY=../../../riscv-emu.py
 RISCV_EMU_OPTS=--timer=csr
 
+# Add RVC flag if enabled
+if [ "${RVC}" = "1" ]; then
+  RISCV_EMU_OPTS="$RISCV_EMU_OPTS --rvc"
+fi
+
 # Check if at least one argument (the command itself) is provided
 if [ "$#" -lt 1 ]; then
   echo "Usage: $0 <command> [arg1 arg2 ...]"
@@ -21,7 +26,7 @@ shift
 # execute the command with "--" followed by these arguments.
 # Otherwise, just execute the command.
 if [ "$#" -gt 0 ]; then
-  exec "$RISCV_EMU_PY" "$RISCV_EMU_OPTS" "$COMMAND" -- "$@"
+  exec "$RISCV_EMU_PY" $RISCV_EMU_OPTS "$COMMAND" -- "$@"
 else
-  exec "$RISCV_EMU_PY" "$RISCV_EMU_OPTS" "$COMMAND"
+  exec "$RISCV_EMU_PY" $RISCV_EMU_OPTS "$COMMAND"
 fi

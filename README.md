@@ -1,17 +1,18 @@
-# 🐍 RISC-V Emulator in Python (RV32I, machine mode, Newlib support)
+# 🐍 RISC-V Emulator in Python (RV32IMAC, machine mode, Newlib support)
 
-This is a simple and readable **RISC-V RV32I emulator** written in pure Python. It supports machine mode, and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
+This is a simple and readable **RISC-V RV32IMAC emulator** written in pure Python. It supports machine mode, multiply/divide instructions (M extension), atomic instructions (A extension), compressed instructions (C extension), and can run programs compiled with **Newlib** or **Newlib-nano**. It is designed for educational use, experimentation, and portability — not for high performance or full system emulation.
 
 ## ✅ Features
 
-- **Implements the full RV32I base integer ISA**
+- **Implements the full RV32I base integer ISA** with the **M extension** (multiply and divide instructions) and the **A extension** (atomic memory operations)
+- **Implements the C extension** (compressed instructions), switchable at run time
 - **Implements all RV32MI machine-mode instructions and trap mechanisms**, including synchronous traps (`ecall`, `ebreak`, illegal instruction trap), asynchronous traps (machine timer interrupt), `mret`, and the **Zicsr (Control Status Registers) extension** and registers (`mstatus`, `mepc`, `mtvec`, `mcause`, `mscratch`, ...)
 - **Supports loading ELF and flat binary formats**
 - **Supports terminal I/O**, both "cooked" and raw
 - **Provides most of the system calls needed by [Newlib](https://en.wikipedia.org/wiki/Newlib)**: `_write`, `_read`, `_exit`, **dynamic memory allocation** (`_sbrk`), **file I/O** (`_open`, `_close`, `_fstat`, `_lseek`, ...)
 - **Supports argc/argv program arguments**
 - **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, and a **memory-mapped block device** backed by an image file
-- **Passes all `rv32ui` and `rv32mi` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
+- **Passes all `rv32ui`, `rv32mi`, `rv32um`, `rv32ua`, and `rv32uc` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, and violations of invariants
 - Runs [MicroPython](https://micropython.org/), [CircuitPython](https://circuitpython.org/) with emulated peripherals, and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
 - Self-contained, modular, extensible codebase. Provides a **Python API** enabling users to control execution, inspect state, and script complex tests directly in Python.
@@ -31,6 +32,7 @@ pip install -r requirements.txt
 ```
 ├── riscv-emu.py               # Emulator
 ├── cpu.py                     # CPU emulation logic
+├── rvc.py                     # RVC logic
 ├── ram.py                     # RAM emulation logic
 ├── machine.py                 # Host logic (executable loading, invariants check)
 ├── peripherals.py             # Peripherals (UART, block device)
@@ -50,7 +52,7 @@ pip install -r requirements.txt
 ├── tests/test_api*.py         # Examples of programmatic control of the emulator in Python
 ├── build/                     # Executable and binaries
 ├── prebuilt/                  # Pre-built examples
-├── run_unit_tests.py          # Runs RISC-V unit tests (RV32UI and RV32MI)
+├── run_unit_tests.py          # Runs RISC-V unit tests (RV32UI, RV32MI, RV32UM, RV32UA, and RV32UC)
 ├── riscv-tests/               # Git submodule with RISC-V unit tests
 ├── advanced/freertos/         # FreeRTOS port
 ├── advanced/micropython/      # MicroPython port
@@ -67,6 +69,7 @@ pip install -r requirements.txt
 
 | Option                  | Description                                                                 |
 |-------------------------|-----------------------------------------------------------------------------|
+| `--rvc`                 | Enable RVC support (compressed instructions)                                |
 | `--regs REGS`           | Print selected registers at each instruction                                |
 | `--trace`               | Log the names of functions traversed during execution                       |
 | `--syscalls`            | Log Newlib syscalls                                                         |
@@ -92,6 +95,12 @@ pip install -r requirements.txt
 ```
 make all
 ```
+
+The Makefile supports building with different RISC-V extensions, e.g., to build with rv32iac_zicsr (RV32IMAC):
+```
+make RVM=1 RVA=1 RVC=1 all
+```
+
 If you just want to **test the emulator without installing a RISC-V compiler**, you will find pre-built binaries in `prebuilt/`.
 
 To build the examples under `advanced/` (MicroPython, FreeRTOS, ...) you will need to initialize the submodules:
@@ -118,32 +127,38 @@ or
 Newlib C examples:
 ```
 ./riscv-emu.py build/test_newlib4.elf
-                                                                                
-                        .................................                       
-                  .............................................                 
-              .....................................................             
-           ...........................................................          
-        ..........................::::::.................................       
-      .....................::::::::::===@:::::.............................     
-    ...................:::::::::::=++@@++=:::::::............................   
-   ................:::::::::*+===++++@@+=+=+=::=:::...........................  
-  ............::::::::::::===@@@@@@@@@@@@@@@@@@+::::........................... 
+
+                        .................................
+                  .............................................
+              .....................................................
+           ...........................................................
+        ..........................::::::.................................
+      .....................::::::::::===@:::::.............................
+    ...................:::::::::::=++@@++=:::::::............................
+   ................:::::::::*+===++++@@+=+=+=::=:::...........................
+  ............::::::::::::===@@@@@@@@@@@@@@@@@@+::::...........................
  ....::::::::::+==========*@@@@@@@@@@@@@@@@@@@@@@+:::...........................
  :::::::::::===+*@@@@@@@#+@@@@@@@@@@@@@@@@@@@@@@=:::::..........................
  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@==::::::..........................
  :::::::::::===+*@@@@@@@#+@@@@@@@@@@@@@@@@@@@@@@=:::::..........................
  ....::::::::::+==========*@@@@@@@@@@@@@@@@@@@@@@+:::...........................
-  ............::::::::::::===@@@@@@@@@@@@@@@@@@+::::........................... 
-   ................:::::::::*+===++++@@+=+=+=::=:::...........................  
-    ...................:::::::::::=++@@++=:::::::............................   
-      .....................::::::::::===@:::::.............................     
-        ..........................::::::.................................       
-           ...........................................................          
-              .....................................................             
-                  .............................................                 
-                        .................................                       
+  ............::::::::::::===@@@@@@@@@@@@@@@@@@+::::...........................
+   ................:::::::::*+===++++@@+=+=+=::=:::...........................
+    ...................:::::::::::=++@@++=:::::::............................
+      .....................::::::::::===@:::::.............................
+        ..........................::::::.................................
+           ...........................................................
+              .....................................................
+                  .............................................
+                        .................................
 
 ```
+
+Programs compiled with RVC support (16-bit compressed instructions) using `-march=rv32ic_zicsr`:
+```
+./riscv-emu.py --rvc build/test_bare1.elf
+```
+Note: The `--rvc` flag enables support for mixed 16-bit and 32-bit instructions, improving code density by 25-30%.
 
 Use the `--` separator to pass command-line arguments to the emulated program (the basename of the executable is automatically passed as `argv[0]`):
 ```
@@ -191,7 +206,7 @@ and connect to the console using your favorite terminal program, e.g., `screen /
 
 ### Using the Python API
 
-The emulator provides a Python API that allows users to control execution, set and inspect state, and run complex tests directly from Python programs. Here is an example of how you can load and run a simple program:
+The emulator provides a Python API that allows users to control execution, set and inspect state, and run complex tests directly from Python programs. Here is an example of how you can load and run a simple RV32I program:
 ```python
 from cpu import CPU
 from ram import RAM
@@ -223,7 +238,7 @@ print (cpu.registers[5])  # Print result stored in t0/x5
 
 Example Python programs using programmatic access to the emulator are provided in the `tests` directory. Run them from the top-level directory of the emulator, e.g.:
 ```
-PYTHONPATH=. python tests/test_python1.py 
+PYTHONPATH=. python tests/test_api1.py 
 ```
 
 ## 🧪 Running Unit Tests
@@ -234,7 +249,7 @@ make
 cd -
 ```
 
-The script automatically runs all RV32UI and RV32MI [RISC-V unit tests](https://github.com/riscv-software-src/riscv-tests) in `riscv-tests/`. The emulator passes all of them.
+The script automatically runs all RV32UI, RV32MI, RV32UM, RV32UA, and RV32UC [RISC-V unit tests](https://github.com/riscv-software-src/riscv-tests) in `riscv-tests/`. The emulator passes all of them.
 ```
 ./run_unit_tests.py
 Test rv32ui-p-bltu                 : PASS
@@ -295,6 +310,25 @@ Test rv32mi-p-pmpaddr              : PASS
 Test rv32mi-p-instret_overflow     : PASS
 Test rv32mi-p-ma_fetch             : PASS
 Test rv32mi-p-sbreak               : PASS
+Test rv32um-p-rem                  : PASS
+Test rv32um-p-mulhsu               : PASS
+Test rv32um-p-remu                 : PASS
+Test rv32um-p-divu                 : PASS
+Test rv32um-p-mulhu                : PASS
+Test rv32um-p-div                  : PASS
+Test rv32um-p-mul                  : PASS
+Test rv32um-p-mulh                 : PASS
+Test rv32ua-p-amomax_w             : PASS
+Test rv32ua-p-amoxor_w             : PASS
+Test rv32ua-p-amoor_w              : PASS
+Test rv32ua-p-amomaxu_w            : PASS
+Test rv32ua-p-lrsc                 : PASS
+Test rv32ua-p-amomin_w             : PASS
+Test rv32ua-p-amoand_w             : PASS
+Test rv32ua-p-amominu_w            : PASS
+Test rv32ua-p-amoadd_w             : PASS
+Test rv32ua-p-amoswap_w            : PASS
+Test rv32uc-p-rvc                  : PASS
 ```
 
 ## Design Goals
@@ -319,27 +353,19 @@ Test rv32mi-p-sbreak               : PASS
 The emulator achieves **over 2 MIPS** (million instructions per second) using Python 3.12 (Anaconda distribution) on a Macbook Pro (M1, 2020) running macOS Sequoia. Execution times for some binaries in `prebuilt/`:
 ```
 time ./riscv-emu.py prebuilt/test_newlib2.elf
-./riscv-emu.py prebuilt/test_newlib2.elf  11.43s user 0.05s system 99% cpu 11.506 total
+./riscv-emu.py prebuilt/test_newlib2.elf  1.71s user 0.03s system 98% cpu 1.772 total
 ```
 ```
 time ./riscv-emu.py prebuilt/test_newlib4.elf
-./riscv-emu.py prebuilt/test_newlib4.elf  4.90s user 0.03s system 99% cpu 4.973 total
+./riscv-emu.py prebuilt/test_newlib4.elf  0.37s user 0.03s system 94% cpu 0.416 total
 ```
 ```
 time ./riscv-emu.py prebuilt/test_newlib6.elf
-./riscv-emu.py prebuilt/test_newlib6.elf  75.85s user 0.24s system 99% cpu 1:16.37 total
+./riscv-emu.py prebuilt/test_newlib6.elf  76.19s user 0.29s system 99% cpu 1:16.56 total
 ```
 
 Running the emulator with [PyPy](https://pypy.org/) yields a speedup of almost 4x over CPython, achieving **over 9 MIPS**.
 ```
-time pypy3 ./riscv-emu.py prebuilt/test_newlib2.elf
-pypy3 ./riscv-emu.py prebuilt/test_newlib2.elf  2.76s user 0.06s system 97% cpu 2.891 total
-```
-```
-time pypy3 ./riscv-emu.py prebuilt/test_newlib4.elf
-pypy3 ./riscv-emu.py prebuilt/test_newlib4.elf  1.24s user 0.03s system 99% cpu 1.276 total
-```
-```
 time pypy3 ./riscv-emu.py prebuilt/test_newlib6.elf
-pypy3 ./riscv-emu.py prebuilt/test_newlib6.elf  19.82s user 0.15s system 99% cpu 20.046 total
+pypy3 ./riscv-emu.py prebuilt/test_newlib6.elf  19.77s user 0.11s system 99% cpu 20.009 total
 ```

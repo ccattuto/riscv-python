@@ -18,13 +18,18 @@ INC += \
 	-Iboards/ \
 	-I$(BUILD)
 
+MARCH_BASE = rv32i
+RVM ?= 1
+MARCH_EXT = $(if $(filter 1,$(RVM)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
+MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
+
 CFLAGS += -Os
 
 DISABLE_WARNINGS = -Wno-cast-align
 CFLAGS += $(INC) -Wall -Werror -std=gnu11 -fshort-enums $(BASE_CFLAGS) $(CFLAGS_MOD) $(COPT) $(DISABLE_WARNINGS) -Werror=missing-prototypes
 
 CFLAGS += \
-	-march=rv32i_zicsr \
+	-march=$(MARCH) \
 	-mabi=ilp32 \
 	-D_REENT_SMALL \
 	-nostartfiles \

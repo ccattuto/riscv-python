@@ -3,3 +3,6 @@
 build
 .DS_Store
 *.log
+
+# Test output files
+fseek_stress_test.bin

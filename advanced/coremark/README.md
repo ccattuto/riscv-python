@@ -4,7 +4,12 @@ In `riscv-emu.py/core_portme.mak`, set `CC` to your RISC-V compiler.
 
 ```
 cd coremark
-make PORT_DIR=../riscv-emu.py 
+
+# Build with default (RV32IM)
+make PORT_DIR=../riscv-emu.py
+
+# Build with all extensions (RV32IMAC)
+make PORT_DIR=../riscv-emu.py RVM=1 RVA=1 RVC=1
 ```
 
 Inspect the results in `run1.log` and `run2.log`:

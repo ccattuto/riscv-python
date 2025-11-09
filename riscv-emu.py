@@ -60,6 +60,7 @@ def parse_args():
     parser.add_argument("--init-regs", metavar="VALUE", default="zero", help='Initial register state (zero, random, 0xDEADBEEF)')
     parser.add_argument('--init-ram', metavar='PATTERN', default='zero', help='Initialize RAM with pattern (zero, random, addr, 0xAA)')
     parser.add_argument('--ram-size', metavar="KBS", type=int, default=1024, help='Emulated RAM size (kB, default 1024)')
+    parser.add_argument('--rvc', action="store_true", help='Enable RVC (compressed instructions) support')
     parser.add_argument('--timer', choices=['csr', 'mmio'], help="Enable machine timer")
     parser.add_argument('--uart', action="store_true", help='Enable UART')
     parser.add_argument('--blkdev', metavar="PATH", default=None, help='Enable MMIO block device')
@@ -160,10 +161,10 @@ if __name__ == '__main__':
         ram = SafeRAM_MMIO(MEMORY_SIZE, init=args.init_ram, logger=log)
 
     # CPU
-    cpu = CPU(ram, init_regs=args.init_regs, logger=log, trace_traps=args.traps)
+    cpu = CPU(ram, init_regs=args.init_regs, logger=log, trace_traps=args.traps, rvc_enabled=args.rvc)
 
     # System architecture
-    machine = Machine(cpu, ram, timer=args.timer, mmio=use_mmio, logger=log,
+    machine = Machine(cpu, ram, timer=args.timer, mmio=use_mmio, rvc=args.rvc, logger=log,
                       trace=args.trace, regs=args.regs, check_inv=args.check_inv, start_checks=args.start_checks)
     
     # MMIO peripherals

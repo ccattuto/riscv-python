@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Runs the RV32UI and RV32MI RISC-V unit tests
+# Runs the RV32UI, RV32MI, RV32UM, RV32UA, and RV32UC RISC-V unit tests
 #
 
 import sys, os, glob, argparse
@@ -38,7 +38,10 @@ if __name__ == '__main__':
     if args.executable is None:
         test_rv32ui_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32ui-p-*') if not '.dump' in fname]
         test_rv32mi_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32mi-p-*') if not '.dump' in fname]
-        test_fname_list = test_rv32ui_fnames + test_rv32mi_fnames
+        test_rv32um_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32um-p-*') if not '.dump' in fname]
+        test_rv32ua_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32ua-p-*') if not '.dump' in fname]
+        test_rv32uc_fnames = [fname for fname in glob.glob('riscv-tests/isa/rv32uc-p-*') if not '.dump' in fname]
+        test_fname_list = test_rv32ui_fnames + test_rv32mi_fnames + test_rv32um_fnames + test_rv32ua_fnames + test_rv32uc_fnames
     else:
         test_fname_list = [ args.executable ]
 
@@ -47,8 +50,8 @@ if __name__ == '__main__':
 
         # Instantiate CPU + RAM + machine + syscall handler
         ram = SafeRAMOffset(1024*1024, base_addr=0x8000_0000)  # RAM base and entry point at 0x8000_0000
-        cpu = CPU(ram)
-        machine = Machine(cpu, ram)
+        cpu = CPU(ram, rvc_enabled=True)  # Enable RVC for tests that use compressed instructions
+        machine = Machine(cpu, ram, rvc=True)  # Enable RVC for tests that use compressed instructions
 
         # Load ELF file of test
         machine.load_elf(test_fname)
@@ -59,15 +62,40 @@ if __name__ == '__main__':
 
         # RUN
         while True:
-            #print ('PC=%08X' % cpu.pc)
-            inst = ram.load_word(cpu.pc)
+            # Check PC alignment before
+            if cpu.pc & 0x1:
+                cpu.trap(cause=0, mtval=cpu.pc)  # Instruction address misaligned
+                cpu.pc = cpu.next_pc
+                continue
+
+            # Fetch
+            inst_low = ram.load_half(cpu.pc, signed=False)
+            if (inst_low & 0x3) == 0x3:
+                # 32-bit instruction: fetch upper 16 bits
+                inst_high = ram.load_half(cpu.pc + 2, signed=False)
+                inst = inst_low | (inst_high << 16)
+            else:
+                # 16-bit compressed instruction
+                inst = inst_low
+
             cpu.execute(inst)
             cpu.pc = cpu.next_pc
-            
-            # if sentinel value has been overwritted, the test is over
+
+            # if sentinel value has been overwritten, the test is over
             if ram.load_word(tohost_addr) != 0xFFFFFFFF:
                 break
 
         # Load and check test result
         test_result = ram.load_word(tohost_addr)
-        print (f"Test {os.path.basename(test_fname):<30}: {"PASS" if test_result == 1 else "FAIL"}")
+        result_str = "PASS" if test_result == 1 else f"FAIL (test #{test_result >> 1})"
+
+        # Output test result
+        if test_result != 1:
+            print(f"Test {os.path.basename(test_fname):<30}: {result_str}")
+            print(f"  tohost value: 0x{test_result:08X}")
+            print(f"  Final PC: 0x{cpu.pc:08X}")
+            print(f"  mepc: 0x{cpu.csrs[0x341]:08X}")
+            print(f"  mcause: 0x{cpu.csrs[0x342]:08X}")
+            print(f"  mtval: 0x{cpu.csrs[0x343]:08X}")
+        else:
+            print(f"Test {os.path.basename(test_fname):<30}: {result_str}")

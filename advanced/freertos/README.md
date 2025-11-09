@@ -1,6 +1,10 @@
 ## Compiling the FreeRTOS examples
 ```
+# Build with default (RV32IM)
 make
+
+# Build with all extensions (RV32IMAC)
+make RVM=1 RVA=1 RVC=1
 ```
 In `Makefile`, set `MTIMER_MMIO = 1` to use the memory-mapped timer registers (standard, requires memory-mapped IO, uses the unmodified FreeRTOS RISC-V trap handler) or `MTIMER_MMIO = 1` to use the CSR-based timer registers (faster, it doesn't need memory-mapped IO, uses a custom trap handler).
 

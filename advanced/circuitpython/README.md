@@ -10,7 +10,12 @@ cd ..
 Compile CircuitPython (requires GCC 14):
 ```
 cd riscv-emu.py
+
+# Build with default (RV32IM)
 make
+
+# Build with all extensions (RV32IMAC)
+make RVM=1 RVA=1 RVC=1
 ```
 
 ## Running CircuitPython

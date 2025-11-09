@@ -2,8 +2,19 @@
 CC = riscv64-unknown-elf-gcc
 OBJCOPY = riscv64-unknown-elf-objcopy
 
+# Extension options - set to 1 to enable, 0 to disable
+# Note: the toolchain might not support all combinations
+RVM ?= 1  # Multiply/Divide (M extension)
+RVA ?= 0  # Atomic Instructions (A extension)
+RVC ?= 0  # Compressed Instructions (C extension)
+
+# Build march string based on extensions enabled (canonical order: I, M, A, F, D, C)
+MARCH_BASE = rv32i
+MARCH_EXT = $(if $(filter 1,$(RVM)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
+MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
+
 # Flags
-CFLAGS_COMMON = -march=rv32i_zicsr -mabi=ilp32 -O2 -D_REENT_SMALL -I .
+CFLAGS_COMMON = -march=$(MARCH) -mabi=ilp32 -O2 -D_REENT_SMALL -I .
 LDFLAGS_COMMON = -nostartfiles -static
 LINKER_SCRIPT_NEWLIB = -Tlinker_newlib.ld
 LINKER_SCRIPT_BARE = -Tlinker_bare.ld
@@ -15,7 +26,7 @@ ASM_TARGETS = test_asm1
 BARE_TARGETS = test_bare1
 NEWLIB_NANO_TARGETS = test_newlib1 test_newlib2 test_newlib3 test_newlib4 test_newlib5 \
                  test_newlib6 test_newlib7 test_newlib8 test_newlib9 test_newlib10 test_newlib11 \
-				 test_peripheral_uart test_peripheral_blkdev test_newlib13
+				 test_peripheral_uart test_peripheral_blkdev test_newlib13 test_newlib14
 NEWLIB_TARGETS = test_newlib12
 
 ALL_ELF_TARGETS = $(addprefix build/,$(addsuffix .elf,$(ASM_TARGETS) $(BARE_TARGETS) $(NEWLIB_NANO_TARGETS) $(NEWLIB_TARGETS)))

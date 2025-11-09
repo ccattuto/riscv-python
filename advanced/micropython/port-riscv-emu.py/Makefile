@@ -15,6 +15,17 @@ ifeq ($(CROSS), 1)
 CROSS_COMPILE ?= riscv64-unknown-elf-
 endif
 
+# Extension options - set to 1 to enable, 0 to disable
+# Note: the toolchain might not support all combinations
+RVM ?= 1  # Multiply/Divide (M extension)
+RVA ?= 0  # Compressed Instructions (C extension)
+RVC ?= 0  # Atomic Instructions (A extension)
+
+# Build march string based on extensions enabled (canonical order: I, M, A, F, D, C)
+MARCH_BASE = rv32i
+MARCH_EXT = $(if $(filter 1,$(RVM)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
+MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
+
 INC += -I.
 INC += -I$(TOP)
 INC += -I$(BUILD)
@@ -22,7 +33,7 @@ INC += -I$(BUILD)
 ifeq ($(CROSS), 1)
 DFU = $(TOP)/tools/dfu.py
 PYDFU = $(TOP)/tools/pydfu.py
-CFLAGS_RISCV  = -march=rv32i_zicsr -mabi=ilp32 -D_REENT_SMALL
+CFLAGS_RISCV  = -march=$(MARCH) -mabi=ilp32 -D_REENT_SMALL
 CFLAGS += $(INC) -Wall -Werror -std=c99 $(CFLAGS_RISCV) $(COPT) #-O2
 LDFLAGS += -nostartfiles -static -Tlinker_newlib.ld --specs=nosys.specs
 else
