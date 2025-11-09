@@ -310,10 +310,8 @@ class Machine:
             inst = ram.load_word(cpu.pc)
 
             if (inst & 0x3) == 0x3:
-                cpu.inst_size = 4
                 cpu.execute_32(inst)
             else:
-                cpu.inst_size = 2
                 cpu.execute_16(inst & 0xFFFF)
 
             cpu.pc = cpu.next_pc
@@ -327,10 +325,8 @@ class Machine:
             inst = ram.load_word(cpu.pc)
 
             if (inst & 0x3) == 0x3:
-                cpu.inst_size = 4
                 cpu.execute_32(inst)
             else:
-                cpu.inst_size = 2
                 cpu.execute_16(inst & 0xFFFF)
 
             cpu.timer_update()
@@ -348,10 +344,8 @@ class Machine:
             inst = ram.load_word(cpu.pc)
 
             if (inst & 0x3) == 0x3:
-                cpu.inst_size = 4
                 cpu.execute_32(inst)
             else:
-                cpu.inst_size = 2
                 cpu.execute_16(inst & 0xFFFF)
 
             if timer:

@@ -24,7 +24,7 @@ import random
 def signed32(val):
     return val if val < 0x80000000 else val - 0x100000000
 
-def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_Rtype(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     if funct3 == 0x0:  # ADD/SUB/MUL
         if funct7 == 0x00:  # ADD
             cpu.registers[rd] = (cpu.registers[rs1] + cpu.registers[rs2]) & 0xFFFFFFFF
@@ -121,6 +121,7 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 if cpu.logger is not None:
                     cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for SRL/SRA/DIVU at PC=0x{cpu.pc:08X}")
                 cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+
     elif funct3 == 0x6:  # OR/REM
         if funct7 == 0x00:  # OR
             cpu.registers[rd] = cpu.registers[rs1] | cpu.registers[rs2]
@@ -158,7 +159,7 @@ def exec_Rtype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
                 cpu.logger.warning(f"Invalid funct7=0x{funct7:02x} for AND/REMU at PC=0x{cpu.pc:08X}")
             cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_Itype(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
 
@@ -192,7 +193,7 @@ def exec_Itype(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     elif funct3 == 0x7: # ANDI
         cpu.registers[rd] = (cpu.registers[rs1] & imm_i) & 0xFFFFFFFF
 
-def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_loads(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
     addr = (cpu.registers[rs1] + imm_i) & 0xFFFFFFFF
@@ -212,7 +213,7 @@ def exec_loads(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for LOAD at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_stores(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_s = ((inst >> 7) & 0x1F) | ((inst >> 25) << 5)
     if imm_s >= 0x800: imm_s -= 0x1000
     addr = (cpu.registers[rs1] + imm_s) & 0xFFFFFFFF
@@ -231,7 +232,7 @@ def exec_stores(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Invalid funct3=0x{funct3:02x} for STORE at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_branches(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     if (
         (funct3 == 0x0 and cpu.registers[rs1] == cpu.registers[rs2]) or  # BEQ
         (funct3 == 0x1 and cpu.registers[rs1] != cpu.registers[rs2]) or  # BNE
@@ -256,15 +257,15 @@ def exec_branches(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Invalid branch instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-def exec_LUI(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_LUI(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_u = inst >> 12
     cpu.registers[rd] = (imm_u << 12) & 0xFFFFFFFF
 
-def exec_AUIPC(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_AUIPC(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_u = inst >> 12
     cpu.registers[rd] = (cpu.pc + (imm_u << 12)) & 0xFFFFFFFF
 
-def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_JAL(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     imm_j = (((inst >> 21) & 0x3FF) << 1) | \
             (((inst >> 20) & 0x1) << 11)  | \
             (((inst >> 12) & 0xFF) << 12) | \
@@ -278,13 +279,19 @@ def exec_JAL(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     else:
         if rd != 0:
             # Use inst_size (4 for normal, 2 for compressed) for return address
-            cpu.registers[rd] = (cpu.pc + cpu.inst_size) & 0xFFFFFFFF
+            cpu.registers[rd] = (cpu.pc + inst_size) & 0xFFFFFFFF
         cpu.next_pc = addr_target
 
         #if cpu.logger is not None:
-        #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08X}, rd={rd}, target=0x{cpu.next_pc:08X}, return_addr=0x{(cpu.pc + cpu.inst_size) & 0xFFFFFFFF:08X}")
+        #    cpu.logger.debug(f"[JAL] pc=0x{cpu.pc:08X}, rd={rd}, target=0x{cpu.next_pc:08X}, return_addr=0x{(cpu.pc + inst_size) & 0xFFFFFFFF:08X}")
 
-def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_JALR(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
+    if funct3 != 0x0:
+        if cpu.logger is not None:
+            cpu.logger.warning(f"Invalid funct3=0x{funct3:X} for JALR at PC=0x{cpu.pc:08X}")
+        cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
+        return
+
     imm_i = inst >> 20
     if imm_i >= 0x800: imm_i -= 0x1000
 
@@ -295,13 +302,13 @@ def exec_JALR(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
     else:
         if rd != 0:
             # Use inst_size (4 for normal, 2 for compressed) for return address
-            cpu.registers[rd] = (cpu.pc + cpu.inst_size) & 0xFFFFFFFF
+            cpu.registers[rd] = (cpu.pc + inst_size) & 0xFFFFFFFF
         cpu.next_pc = addr_target
 
         #if cpu.logger is not None:
         #    cpu.logger.debug(f"[JALR] jumping to 0x{cpu.next_pc:08X} from rs1=0x{cpu.registers[rs1]:08X}, imm={imm_i}")
 
-def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_SYSTEM(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     if inst == 0x00000073:  # ECALL
         if (cpu.csrs[0x305] == 0) and (cpu.handle_ecall is not None):  # no trap handler, Python handler set
             cpu.handle_ecall()
@@ -425,7 +432,7 @@ def exec_SYSTEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Unhandled system instruction 0x{inst:08X} at PC={cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-def exec_MISCMEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_MISCMEM(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     if funct3 in (0b000, 0b001):  # FENCE / FENCE.I
         pass  # NOP
     else:
@@ -433,7 +440,7 @@ def exec_MISCMEM(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
             cpu.logger.warning(f"Invalid misc-mem instruction funct3=0x{funct3:X} at PC=0x{cpu.pc:08X}")
         cpu.trap(cause=2, mtval=inst)  # illegal instruction cause
 
-def exec_AMO(cpu, ram, inst, rd, funct3, rs1, rs2, funct7):
+def exec_AMO(cpu, ram, inst, inst_size, rd, funct3, rs1, rs2, funct7):
     if funct3 != 0x2:  # Only word (W) operations supported in RV32
         if cpu.logger is not None:
             cpu.logger.warning(f"Invalid funct3=0x{funct3:X} for AMO at PC=0x{cpu.pc:08X}")
@@ -574,14 +581,9 @@ class CPU:
         self.logger = logger
         self.trace_traps = trace_traps
 
-        # RVC extension enabled flag
+        # RVC extension enabled flag & cache alignment mask
         self.rvc_enabled = rvc_enabled
-
-        # Cache alignment mask for performance: 0x3 for RV32I (4-byte), 0x1 for RVC (2-byte)
         self.alignment_mask = 0x1 if rvc_enabled else 0x3
-
-        # Instruction size for current instruction (4 for normal, 2 for compressed)
-        self.inst_size = 4
 
         # CSRs
         self.csrs = [0] * 4096
@@ -704,7 +706,7 @@ class CPU:
         self.next_pc = (self.pc + 4) & 0xFFFFFFFF
 
         if opcode in opcode_handler:
-            (opcode_handler[opcode])(self, self.ram, inst, rd, funct3, rs1, rs2, funct7)
+            (opcode_handler[opcode])(self, self.ram, inst, 4, rd, funct3, rs1, rs2, funct7)
         else:
             if self.logger is not None:
                 self.logger.warning(f"Invalid instruction at PC={self.pc:08X}: 0x{inst:08X}, opcode=0x{opcode:x}")
@@ -739,7 +741,7 @@ class CPU:
         self.next_pc = (self.pc + 2) & 0xFFFFFFFF
 
         if opcode in opcode_handler:
-            (opcode_handler[opcode])(self, self.ram, expanded_inst, rd, funct3, rs1, rs2, funct7)
+            (opcode_handler[opcode])(self, self.ram, expanded_inst, 2, rd, funct3, rs1, rs2, funct7)
         else:
             if self.logger is not None:
                 self.logger.warning(f"Invalid instruction at PC={self.pc:08X}: 0x{expanded_inst:08X}, opcode=0x{opcode:x}")
@@ -749,19 +751,14 @@ class CPU:
 
     # Instruction execution: auto-detect and dispatch (compatibility wrapper)
     def execute(self, inst):
-        # Fast path when RVC is disabled: all instructions are 32-bit
-        if not self.rvc_enabled:
+        if not self.rvc_enabled:  # Fast path when RVC is disabled
             self.execute_32(inst)
             return
 
         # RVC enabled: detect instruction type
-        if (inst & 0x3) == 0x3:
-            # 32-bit instruction
-            self.inst_size = 4
+        if (inst & 0x3) == 0x3:  # 32-bit instruction
             self.execute_32(inst)
-        else:
-            # 16-bit compressed instruction
-            self.inst_size = 2
+        else:  # 16-bit compressed instruction
             self.execute_16(inst & 0xFFFF)
     
     # Trap handling
