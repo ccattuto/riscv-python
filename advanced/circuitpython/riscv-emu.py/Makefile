@@ -19,7 +19,8 @@ INC += \
 	-I$(BUILD)
 
 MARCH_BASE = rv32i
-MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
+RVM ?= 1
+MARCH_EXT = $(if $(filter 1,$(RVM)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
 MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
 
 CFLAGS += -Os

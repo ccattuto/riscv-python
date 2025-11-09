@@ -16,14 +16,14 @@ CROSS_COMPILE ?= riscv64-unknown-elf-
 endif
 
 # Extension options - set to 1 to enable, 0 to disable
-# Note: not all combinations might be supported by the toolchain
-RVC ?= 0  # Compressed Instructions (C extension)
-MUL ?= 0  # Multiply/Divide (M extension)
-RVA ?= 0  # Atomic Instructions (A extension)
+# Note: the toolchain might not support all combinations
+RVM ?= 1  # Multiply/Divide (M extension)
+RVA ?= 0  # Compressed Instructions (C extension)
+RVC ?= 0  # Atomic Instructions (A extension)
 
 # Build march string based on extensions enabled (canonical order: I, M, A, F, D, C)
 MARCH_BASE = rv32i
-MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
+MARCH_EXT = $(if $(filter 1,$(RVM)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
 MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
 
 INC += -I.

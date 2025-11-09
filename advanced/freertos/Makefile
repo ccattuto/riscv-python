@@ -31,7 +31,8 @@ endif
 APPS = freertos_app1.c freertos_app2.c freertos_app3.c
 
 MARCH_BASE = rv32i
-MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVC)),c,)
+RVM ?= 1
+MARCH_EXT = $(if $(filter 1,$(RVM)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
 MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
 
 CFLAGS = -Wall -Wextra -O2 -march=$(MARCH) -mabi=ilp32 -D_REENT_SMALL \

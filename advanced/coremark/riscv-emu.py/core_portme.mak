@@ -30,14 +30,14 @@ LD		= $(CC)
 AS		= $(CC)
 
 # Extension options - set to 1 to enable, 0 to disable
-# Pass these on command line: make PORT_DIR=../riscv-emu.py RVC=1 MUL=1
-export RVC ?= 0  # Compressed Instructions (C extension)
-export MUL ?= 0  # Multiply/Divide (M extension)
+# Pass these on command line: make PORT_DIR=../riscv-emu.py RVC=1
+export RVM ?= 1  # Multiply/Divide (M extension)
 export RVA ?= 0  # Atomic Instructions (A extension)
+export RVC ?= 0  # Compressed Instructions (C extension)
 
 # Build march string based on extensions enabled (canonical order: I, M, A, F, D, C)
 MARCH_BASE = rv32i
-MARCH_EXT = $(if $(filter 1,$(MUL)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
+MARCH_EXT = $(if $(filter 1,$(RVM)),m,)$(if $(filter 1,$(RVA)),a,)$(if $(filter 1,$(RVC)),c,)
 MARCH = $(MARCH_BASE)$(MARCH_EXT)_zicsr
 
 # Flag : CFLAGS
