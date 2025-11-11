@@ -121,7 +121,7 @@ class SyscallHandler:
         data = self.ram.load_binary(addr, count)
         if fd == 1 or fd == 2:  # stdout or stderr
             if not self.raw_tty:
-                print(data.decode(), end='')
+                print(data.decode('latin-1'), end='')
             else:
                 sys.stdout.buffer.write(data)
                 sys.stdout.flush()
@@ -167,7 +167,7 @@ class SyscallHandler:
             self.ram.store_binary(addr, data)
             self.cpu.registers[10] = len(data)
         else:
-            self.fd_mapcpu.registers[10] = -errno.EBADF
+            self.cpu.registers[10] = -errno.EBADF
             self.logger.warning(f"SYSCALL _read: unknown fd={fd}")
         return True
         
