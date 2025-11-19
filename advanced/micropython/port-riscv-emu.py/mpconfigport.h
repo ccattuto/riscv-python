@@ -23,6 +23,7 @@
 #define MICROPY_PY_GC                     (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE   (1)
 #define MICROPY_PY_BUILTINS_FLOAT         (1)
+#define MICROPY_LONGINT_IMPL              (MICROPY_LONGINT_IMPL_LONGLONG)
 #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
 #define MICROPY_PY_BUILTINS_COMPLEX       (0)
 #define MICROPY_PY_IO                     (0)  // no file system or streams
@@ -34,7 +35,7 @@
 #define MICROPY_PY_ERRNO                  (1)
 #define MICROPY_PY_BINASCII               (1)
 #define MICROPY_PY_RE                     (1)
-#define MICROPY_PY_UCTYPES                (0)
+#define MICROPY_PY_UCTYPES                (1)
 
 #define MICROPY_PY_SYS                    (1)
 #define MICROPY_PY_SYS_MODULES            (1)
@@ -57,6 +58,9 @@
 typedef intptr_t mp_int_t; // must be pointer size
 typedef uintptr_t mp_uint_t; // must be pointer size
 typedef long mp_off_t;
+
+// Define SSIZE_MAX for bare-metal environment (32-bit system)
+#define SSIZE_MAX INT32_MAX
 
 // We need to provide a declaration/definition of alloca()
 #include <alloca.h>
