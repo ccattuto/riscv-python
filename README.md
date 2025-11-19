@@ -154,12 +154,6 @@ Newlib C examples:
 
 ```
 
-Programs compiled with RVC support (16-bit compressed instructions) using `-march=rv32ic_zicsr`:
-```
-./riscv-emu.py --rvc build/test_bare1.elf
-```
-Note: The `--rvc` flag enables support for mixed 16-bit and 32-bit instructions, improving code density by 25-30%.
-
 Use the `--` separator to pass command-line arguments to the emulated program (the basename of the executable is automatically passed as `argv[0]`):
 ```
 ./riscv-emu.py build/test_newlib7.elf -- arg1 arg2 arg3    
