@@ -3,10 +3,10 @@
 // options to control how MicroPython is built
 
 // Mode definitions (set via Makefile)
-#define MODE_REPL_SYSCALL    1  // REPL with syscalls (current behavior)
-#define MODE_EMBEDDED_SILENT 2  // Frozen script, no I/O, no Newlib
-#define MODE_REPL_UART       3  // REPL over UART MMIO, no Newlib
-#define MODE_EMBEDDED_UART   4  // Frozen script + UART REPL, no Newlib
+#define MODE_REPL_SYSCALL    1  // REPL with syscalls
+#define MODE_EMBEDDED_SILENT 2  // Frozen script, no I/O
+#define MODE_REPL_UART       3  // REPL over UART MMIO
+#define MODE_EMBEDDED_UART   4  // Frozen script + UART REPL
 
 #ifndef MICROPY_PORT_MODE
 #define MICROPY_PORT_MODE MODE_REPL_SYSCALL

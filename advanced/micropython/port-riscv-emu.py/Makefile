@@ -25,16 +25,12 @@ endif
 # Mode-specific configuration
 ifeq ($(MODE),REPL_SYSCALL)
     MODE_FLAG = MODE_REPL_SYSCALL
-    USE_NEWLIB = 1
 else ifeq ($(MODE),EMBEDDED_SILENT)
     MODE_FLAG = MODE_EMBEDDED_SILENT
-    USE_NEWLIB = 0
 else ifeq ($(MODE),REPL_UART)
     MODE_FLAG = MODE_REPL_UART
-    USE_NEWLIB = 0
 else ifeq ($(MODE),EMBEDDED_UART)
     MODE_FLAG = MODE_EMBEDDED_UART
-    USE_NEWLIB = 0
 else
     $(error Invalid MODE=$(MODE). Valid values: REPL_SYSCALL, EMBEDDED_SILENT, REPL_UART, EMBEDDED_UART)
 endif
@@ -62,28 +58,19 @@ INC += -I$(BUILD)
 ifeq ($(CROSS), 1)
 DFU = $(TOP)/tools/dfu.py
 PYDFU = $(TOP)/tools/pydfu.py
-CFLAGS_RISCV  = -march=$(MARCH) -mabi=ilp32
-ifeq ($(USE_NEWLIB), 1)
-    CFLAGS_RISCV += -D_REENT_SMALL
-endif
+CFLAGS_RISCV  = -march=$(MARCH) -mabi=ilp32 -D_REENT_SMALL
 CFLAGS += $(INC) -Wall -Werror -std=c99 $(CFLAGS_RISCV) $(COPT) -DMICROPY_PORT_MODE=$(MODE_FLAG)
-ifeq ($(USE_NEWLIB), 1)
-    LDFLAGS += -nostartfiles -static -Tlinker_newlib.ld --specs=nosys.specs
-else
-    LDFLAGS += -nostartfiles -static -Tlinker_nolib.ld -nostdlib
-endif
+# All modes use Newlib linker script and specs
+LDFLAGS += -nostartfiles -static -Tlinker_newlib.ld --specs=nosys.specs
 else
 UNAME_S := $(shell uname -s)
 LD = $(CC)
 CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 $(COPT) -DMICROPY_PORT_MODE=$(MODE_FLAG)
-ifeq ($(USE_NEWLIB), 1)
-    ifeq ($(UNAME_S),Linux)
-    LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
-    else ifeq ($(UNAME_S),Darwin)
-    LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
-    endif
-else
-    LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_nolib.ld -nostdlib -Wl,-map,$@.map -Wl,-dead_strip
+# All modes use Newlib
+ifeq ($(UNAME_S),Linux)
+LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
+else ifeq ($(UNAME_S),Darwin)
+LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
 endif
 endif
 
@@ -101,15 +88,9 @@ endif
 # Flags for optional C++ source code
 CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
 
-# Libraries
-ifeq ($(USE_NEWLIB), 1)
-    # Newlib mode: math library for float support
-    LIBS = -lm
-else
-    # Non-Newlib modes: need libgcc for 64-bit integer ops, libc for strtoll
-    # (even without float support, we use LONGLONG integers)
-    LIBS = -lc -lm -lgcc
-endif
+# Libraries (all modes use Newlib)
+# Need libgcc for 64-bit integer ops, libc for standard functions, libm for math
+LIBS = -lc -lm -lgcc
 
 # Common source files for all modes
 SRC_C = \
@@ -122,21 +103,20 @@ SRC_C = \
 	extmod/moductypes.c
 
 # Mode-specific source files
-ifeq ($(USE_NEWLIB), 1)
-    # Mode 1: REPL_SYSCALL - use Newlib
-    SRC_C += minimal_stubs.c mphalport.c shared/libc/printf.c
-    SRC_S = start_newlib.S syscalls_newlib.S gchelper_rv32i.S
+# All modes use Newlib startup and syscalls (since we link Newlib libraries)
+SRC_C += minimal_stubs.c shared/libc/printf.c
+SRC_S = start_newlib.S syscalls_newlib.S gchelper_rv32i.S
+
+# Select HAL based on mode
+ifeq ($(MODE),REPL_SYSCALL)
+    # Mode 1: syscall-based I/O
+    SRC_C += mphalport.c
+else ifeq ($(MODE),EMBEDDED_SILENT)
+    # Mode 2: silent (no I/O)
+    SRC_C += mphalport_silent.c
 else
-    # Modes 2,3,4: No Newlib
-    SRC_C += minimal_nolib.c shared/libc/printf.c
-    SRC_S = start_bare.S gchelper_rv32i.S
-    # Select HAL based on mode
-    ifeq ($(MODE),EMBEDDED_SILENT)
-        SRC_C += mphalport_silent.c
-    else
-        # REPL_UART or EMBEDDED_UART
-        SRC_C += mphalport_uart.c
-    endif
+    # Modes 3,4: UART MMIO I/O
+    SRC_C += mphalport_uart.c
 endif
 
 ifeq ($(CROSS), 1)
@@ -158,7 +138,6 @@ endif
 
 # Print build configuration
 $(info Building MicroPython port in MODE=$(MODE))
-$(info USE_NEWLIB=$(USE_NEWLIB))
 
 
 $(BUILD)/firmware.elf: $(OBJ)
