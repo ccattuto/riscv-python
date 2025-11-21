@@ -101,12 +101,14 @@ endif
 # Flags for optional C++ source code
 CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
 
-# Math library (only for Newlib mode with float support)
+# Libraries
 ifeq ($(USE_NEWLIB), 1)
+    # Newlib mode: math library for float support
     LIBS = -lm
 else
-    # Non-Newlib modes: no floats, no libm needed
-    LIBS =
+    # Non-Newlib modes: need libgcc for 64-bit integer ops, libc for strtoll
+    # (even without float support, we use LONGLONG integers)
+    LIBS = -lc -lm -lgcc
 endif
 
 # Common source files for all modes
