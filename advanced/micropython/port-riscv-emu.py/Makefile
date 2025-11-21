@@ -102,7 +102,12 @@ endif
 CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
 
 # Math library (always needed for MicroPython)
-LIBS = -lm
+ifeq ($(USE_NEWLIB), 1)
+    LIBS = -lm
+else
+    # Non-Newlib modes need libgcc for soft-float operations
+    LIBS = -lm -lgcc
+endif
 
 # Common source files for all modes
 SRC_C = \
