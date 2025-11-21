@@ -40,14 +40,23 @@
 #define MICROPY_PY_BUILTINS_HELP_MODULES  (1)
 #define MICROPY_PY_GC                     (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE   (1)
-#define MICROPY_PY_BUILTINS_FLOAT         (1)
+
+// Float support: only for Newlib mode (REPL_SYSCALL)
+#if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL)
+    #define MICROPY_PY_BUILTINS_FLOAT         (1)
+    #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
+    #define MICROPY_PY_MATH                   (1)
+#else
+    #define MICROPY_PY_BUILTINS_FLOAT         (0)
+    #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_NONE)
+    #define MICROPY_PY_MATH                   (0)
+#endif
+
 #define MICROPY_LONGINT_IMPL              (MICROPY_LONGINT_IMPL_LONGLONG)
-#define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
 #define MICROPY_PY_BUILTINS_COMPLEX       (0)
 #define MICROPY_PY_IO                     (0)  // no file system or streams
 #define MICROPY_PY_ARRAY                  (1)
 #define MICROPY_PY_COLLECTIONS            (1)
-#define MICROPY_PY_MATH                   (1)
 #define MICROPY_PY_URANDOM                (1)
 #define MICROPY_PY_STRUCT                 (1)
 #define MICROPY_PY_ERRNO                  (1)
@@ -87,15 +96,3 @@ typedef long mp_off_t;
 #define MICROPY_HW_MCU_NAME "riscv-emu.py"
 
 #define MP_STATE_PORT MP_STATE_VM
-
-// Disable floats for non-Newlib builds to avoid libm/libgcc dependencies
-#if (MICROPY_PORT_MODE == MODE_EMBEDDED_SILENT) || \
-    (MICROPY_PORT_MODE == MODE_REPL_UART) || \
-    (MICROPY_PORT_MODE == MODE_EMBEDDED_UART)
-    #undef MICROPY_PY_BUILTINS_FLOAT
-    #define MICROPY_PY_BUILTINS_FLOAT (0)
-    #undef MICROPY_FLOAT_IMPL
-    #define MICROPY_FLOAT_IMPL (MICROPY_FLOAT_IMPL_NONE)
-    #undef MICROPY_PY_MATH
-    #define MICROPY_PY_MATH (0)
-#endif
