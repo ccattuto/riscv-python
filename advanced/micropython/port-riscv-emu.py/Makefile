@@ -8,11 +8,35 @@ QSTR_DEFS = qstrdefsport.h
 # MicroPython feature configurations
 MICROPY_ROM_TEXT_COMPRESSION ?= 1
 
+# Mode selection (default to REPL_SYSCALL for backwards compatibility)
+# Valid values: REPL_SYSCALL, EMBEDDED_SILENT, REPL_UART, EMBEDDED_UART
+MODE ?= REPL_SYSCALL
+
+# Script to embed (for EMBEDDED_SILENT and EMBEDDED_UART modes)
+FROZEN_SCRIPT ?= startup.py
+
 # include py core make definitions
 include $(TOP)/py/py.mk
 
 ifeq ($(CROSS), 1)
 CROSS_COMPILE ?= riscv64-unknown-elf-
+endif
+
+# Mode-specific configuration
+ifeq ($(MODE),REPL_SYSCALL)
+    MODE_FLAG = MODE_REPL_SYSCALL
+    USE_NEWLIB = 1
+else ifeq ($(MODE),EMBEDDED_SILENT)
+    MODE_FLAG = MODE_EMBEDDED_SILENT
+    USE_NEWLIB = 0
+else ifeq ($(MODE),REPL_UART)
+    MODE_FLAG = MODE_REPL_UART
+    USE_NEWLIB = 0
+else ifeq ($(MODE),EMBEDDED_UART)
+    MODE_FLAG = MODE_EMBEDDED_UART
+    USE_NEWLIB = 0
+else
+    $(error Invalid MODE=$(MODE). Valid values: REPL_SYSCALL, EMBEDDED_SILENT, REPL_UART, EMBEDDED_UART)
 endif
 
 # Extension options - set to 1 to enable, 0 to disable
@@ -33,17 +57,28 @@ INC += -I$(BUILD)
 ifeq ($(CROSS), 1)
 DFU = $(TOP)/tools/dfu.py
 PYDFU = $(TOP)/tools/pydfu.py
-CFLAGS_RISCV  = -march=$(MARCH) -mabi=ilp32 -D_REENT_SMALL
-CFLAGS += $(INC) -Wall -Werror -std=c99 $(CFLAGS_RISCV) $(COPT) #-O2
-LDFLAGS += -nostartfiles -static -Tlinker_newlib.ld --specs=nosys.specs
+CFLAGS_RISCV  = -march=$(MARCH) -mabi=ilp32
+ifeq ($(USE_NEWLIB), 1)
+    CFLAGS_RISCV += -D_REENT_SMALL
+endif
+CFLAGS += $(INC) -Wall -Werror -std=c99 $(CFLAGS_RISCV) $(COPT) -DMICROPY_PORT_MODE=$(MODE_FLAG)
+ifeq ($(USE_NEWLIB), 1)
+    LDFLAGS += -nostartfiles -static -Tlinker_newlib.ld --specs=nosys.specs
+else
+    LDFLAGS += -nostartfiles -static -Tlinker_nolib.ld -nostdlib
+endif
 else
 UNAME_S := $(shell uname -s)
 LD = $(CC)
-CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 $(COPT)
-ifeq ($(UNAME_S),Linux)
-LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
-else ifeq ($(UNAME_S),Darwin)
-LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
+CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 $(COPT) -DMICROPY_PORT_MODE=$(MODE_FLAG)
+ifeq ($(USE_NEWLIB), 1)
+    ifeq ($(UNAME_S),Linux)
+    LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
+    else ifeq ($(UNAME_S),Darwin)
+    LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
+    endif
+else
+    LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_nolib.ld -nostdlib -Wl,-map,$@.map -Wl,-dead_strip
 endif
 endif
 
@@ -61,30 +96,42 @@ endif
 # Flags for optional C++ source code
 CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
 
+# Math library (always needed for MicroPython)
 LIBS = -lm
 
+# Common source files for all modes
 SRC_C = \
 	main.c \
-	minimal_stubs.c \
 	gccollect.c \
-	mphalport.c \
-	shared/libc/printf.c \
 	shared/readline/readline.c \
 	shared/runtime/pyexec.c \
 	shared/runtime/gchelper_native.c \
 	shared/runtime/stdout_helpers.c \
 	extmod/moductypes.c
 
+# Mode-specific source files
+ifeq ($(USE_NEWLIB), 1)
+    # Mode 1: REPL_SYSCALL - use Newlib
+    SRC_C += minimal_stubs.c mphalport.c shared/libc/printf.c
+    SRC_S = start_newlib.S syscalls_newlib.S gchelper_rv32i.S
+else
+    # Modes 2,3,4: No Newlib
+    SRC_C += minimal_nolib.c shared/libc/printf.c
+    SRC_S = start_bare.S gchelper_rv32i.S
+    # Select HAL based on mode
+    ifeq ($(MODE),EMBEDDED_SILENT)
+        SRC_C += mphalport_silent.c
+    else
+        # REPL_UART or EMBEDDED_UART
+        SRC_C += mphalport_uart.c
+    endif
+endif
+
 ifeq ($(CROSS), 1)
 SRC_C += shared/libc/string0.c
 endif
 
 SRC_QSTR += shared/readline/readline.c shared/runtime/pyexec.c extmod/moductypes.c
-
-SRC_S = \
-	start_newlib.S \
-    syscalls_newlib.S \
-	gchelper_rv32i.S
 
 OBJ += $(PY_CORE_O)
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
@@ -96,6 +143,10 @@ all: $(BUILD)/firmware.dfu
 else
 all: $(BUILD)/firmware.elf
 endif
+
+# Print build configuration
+$(info Building MicroPython port in MODE=$(MODE))
+$(info USE_NEWLIB=$(USE_NEWLIB))
 
 $(BUILD)/_frozen_mpy.c: $(TOP)/tests/frozen/frozentest.mpy $(BUILD)/genhdr/qstrdefs.generated.h
 	$(ECHO) "MISC freezing bytecode"

@@ -5,6 +5,7 @@
 #include "py/objlist.h"
 #include "shared/runtime/pyexec.h"
 #include "shared/runtime/gchelper.h"
+#include "mpconfigport.h"
 
 extern uint8_t _gc_heap_start, _gc_heap_end;
 
@@ -19,9 +20,25 @@ int main(int argc, char *argv[]) {
 		mp_obj_list_append(mp_sys_argv, mp_obj_new_str(argv[i], strlen(argv[i])));
     }
 
+#if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL) || \
+    (MICROPY_PORT_MODE == MODE_REPL_UART)
+    // Welcome message for REPL-only modes
     mp_printf(&mp_plat_print, "Welcome to MicroPython on RISC-V!\n");
+#endif
 
+#if (MICROPY_PORT_MODE == MODE_EMBEDDED_SILENT) || \
+    (MICROPY_PORT_MODE == MODE_EMBEDDED_UART)
+    // Execute frozen script
+    // TODO: implement frozen script execution
+    // pyexec_frozen_module("startup", false);
+#endif
+
+#if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL) || \
+    (MICROPY_PORT_MODE == MODE_REPL_UART) || \
+    (MICROPY_PORT_MODE == MODE_EMBEDDED_UART)
+    // Start REPL
 	pyexec_friendly_repl();
+#endif
 
     gc_sweep_all();
     mp_deinit();

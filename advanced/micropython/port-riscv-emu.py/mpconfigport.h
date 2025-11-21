@@ -2,6 +2,16 @@
 
 // options to control how MicroPython is built
 
+// Mode definitions (set via Makefile)
+#define MODE_REPL_SYSCALL    1  // REPL with syscalls (current behavior)
+#define MODE_EMBEDDED_SILENT 2  // Frozen script, no I/O, no Newlib
+#define MODE_REPL_UART       3  // REPL over UART MMIO, no Newlib
+#define MODE_EMBEDDED_UART   4  // Frozen script + UART REPL, no Newlib
+
+#ifndef MICROPY_PORT_MODE
+#define MICROPY_PORT_MODE MODE_REPL_SYSCALL
+#endif
+
 #define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EXTRA_FEATURES)
 
 #define MICROPY_ENABLE_COMPILER     (1)
@@ -12,7 +22,15 @@
 #define MICROPY_ENABLE_GC                 (1)
 #define MICROPY_HELPER_REPL               (1)
 #define MICROPY_ENABLE_REPL_HELPERS       (1)
-#define MICROPY_MODULE_FROZEN_MPY         (0)
+
+// Enable frozen modules for embedded modes
+#if (MICROPY_PORT_MODE == MODE_EMBEDDED_SILENT) || \
+    (MICROPY_PORT_MODE == MODE_EMBEDDED_UART)
+    #define MICROPY_MODULE_FROZEN_MPY         (1)
+#else
+    #define MICROPY_MODULE_FROZEN_MPY         (0)
+#endif
+
 #define MICROPY_ENABLE_EXTERNAL_IMPORT    (0)
 #define MICROPY_KBD_EXCEPTION             (1)
 
