@@ -69,8 +69,3 @@ const mp_obj_base_t mp_sys_stdin_obj  = { &mp_dummy_stream_type };
 const mp_obj_base_t mp_sys_stdout_obj = { &mp_dummy_stream_type };
 const mp_obj_base_t mp_sys_stderr_obj = { &mp_dummy_stream_type };
 
-// Provide __errno for libm (needed when using -nostdlib)
-int errno;
-int *__errno(void) {
-    return &errno;
-}

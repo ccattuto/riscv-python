@@ -87,3 +87,15 @@ typedef long mp_off_t;
 #define MICROPY_HW_MCU_NAME "riscv-emu.py"
 
 #define MP_STATE_PORT MP_STATE_VM
+
+// Disable floats for non-Newlib builds to avoid libm/libgcc dependencies
+#if (MICROPY_PORT_MODE == MODE_EMBEDDED_SILENT) || \
+    (MICROPY_PORT_MODE == MODE_REPL_UART) || \
+    (MICROPY_PORT_MODE == MODE_EMBEDDED_UART)
+    #undef MICROPY_PY_BUILTINS_FLOAT
+    #define MICROPY_PY_BUILTINS_FLOAT (0)
+    #undef MICROPY_FLOAT_IMPL
+    #define MICROPY_FLOAT_IMPL (MICROPY_FLOAT_IMPL_NONE)
+    #undef MICROPY_PY_MATH
+    #define MICROPY_PY_MATH (0)
+#endif

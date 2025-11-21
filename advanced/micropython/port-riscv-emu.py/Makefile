@@ -101,12 +101,12 @@ endif
 # Flags for optional C++ source code
 CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
 
-# Math library (always needed for MicroPython)
+# Math library (only for Newlib mode with float support)
 ifeq ($(USE_NEWLIB), 1)
     LIBS = -lm
 else
-    # Non-Newlib modes need libgcc for soft-float operations
-    LIBS = -lm -lgcc
+    # Non-Newlib modes: no floats, no libm needed
+    LIBS =
 endif
 
 # Common source files for all modes
