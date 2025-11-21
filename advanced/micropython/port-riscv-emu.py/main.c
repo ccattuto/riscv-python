@@ -29,8 +29,7 @@ int main(int argc, char *argv[]) {
 #if (MICROPY_PORT_MODE == MODE_EMBEDDED_SILENT) || \
     (MICROPY_PORT_MODE == MODE_EMBEDDED_UART)
     // Execute frozen script
-    // TODO: implement frozen script execution
-    // pyexec_frozen_module("startup", false);
+    pyexec_frozen_module("startup", false);
 #endif
 
 #if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL) || \

@@ -39,6 +39,11 @@ else
     $(error Invalid MODE=$(MODE). Valid values: REPL_SYSCALL, EMBEDDED_SILENT, REPL_UART, EMBEDDED_UART)
 endif
 
+# MicroPython build tools
+MPY_CROSS ?= $(TOP)/mpy-cross/build/mpy-cross
+MPY_TOOL ?= $(PYTHON) $(TOP)/tools/mpy-tool.py
+
+
 # Extension options - set to 1 to enable, 0 to disable
 # Note: the toolchain might not support all combinations
 RVM ?= 1  # Multiply/Divide (M extension)
@@ -148,9 +153,6 @@ endif
 $(info Building MicroPython port in MODE=$(MODE))
 $(info USE_NEWLIB=$(USE_NEWLIB))
 
-$(BUILD)/_frozen_mpy.c: $(TOP)/tests/frozen/frozentest.mpy $(BUILD)/genhdr/qstrdefs.generated.h
-	$(ECHO) "MISC freezing bytecode"
-	$(Q)$(TOP)/tools/mpy-tool.py -f -q $(BUILD)/genhdr/qstrdefs.preprocessed.h -mlongint-impl=none $< > $@
 
 $(BUILD)/firmware.elf: $(OBJ)
 	$(ECHO) "LINK $@"
@@ -180,3 +182,30 @@ test: $(BUILD)/firmware.elf
 	$(Q)/usr/bin/printf "print('hello world!', list(x+1 for x in range(10)), end='eol\\\\n')\\r\\n\\004" | $(BUILD)/firmware.elf | tail -n2 | grep "^hello world! \\[1, 2, 3, 4, 5, 6, 7, 8, 9, 10\\]eol"
 
 include $(TOP)/py/mkrules.mk
+
+# Frozen module support for embedded modes
+ifeq ($(MODE),EMBEDDED_SILENT)
+    FROZEN_ENABLED = 1
+else ifeq ($(MODE),EMBEDDED_UART)
+    FROZEN_ENABLED = 1
+else
+    FROZEN_ENABLED = 0
+endif
+
+ifeq ($(FROZEN_ENABLED),1)
+    # Compile Python script to .mpy bytecode
+    $(BUILD)/$(FROZEN_SCRIPT:.py=.mpy): $(FROZEN_SCRIPT)
+	$(ECHO) "MPY $(FROZEN_SCRIPT)"
+	$(Q)$(MPY_CROSS) -o $@ -s $(FROZEN_SCRIPT) $<
+
+    # Generate C code from .mpy bytecode
+    $(BUILD)/_frozen_mpy.c: $(BUILD)/$(FROZEN_SCRIPT:.py=.mpy) $(BUILD)/genhdr/qstrdefs.generated.h
+	$(ECHO) "MISC freezing bytecode"
+	$(Q)$(MPY_TOOL) -f -q $(BUILD)/genhdr/qstrdefs.preprocessed.h -mlongint-impl=longlong $< > $@
+
+    # Add frozen module C file to sources
+    SRC_C += $(BUILD)/_frozen_mpy.c
+    
+    # Make firmware depend on frozen module
+    $(BUILD)/firmware.elf: $(BUILD)/_frozen_mpy.c
+endif
