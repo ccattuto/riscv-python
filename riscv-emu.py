@@ -24,7 +24,7 @@ from machine import Machine, MachineError, SetupError, ExecutionTerminated
 from cpu import CPU
 from ram import RAM, SafeRAM, RAM_MMIO, SafeRAM_MMIO
 from syscalls import SyscallHandler
-from peripherals import PtyUART, MMIOTimer, MMIOBlockDevice
+from peripherals import PtyUART, MMIOTimer, MMIOBlockDevice, LED_GPIO, TerminalStatusLine
 
 LOG_COLORS = {
     logging.DEBUG: "\033[36m",      # Cyan
@@ -65,6 +65,7 @@ def parse_args():
     parser.add_argument('--uart', action="store_true", help='Enable UART')
     parser.add_argument('--blkdev', metavar="PATH", default=None, help='Enable MMIO block device')
     parser.add_argument('--blkdev-size', metavar="NUM", type=int, default=1024, help='Block device size (512-byte blocks, default 1024)')
+    parser.add_argument('--status-line', action="store_true", help='Enable terminal status line with LED GPIO peripheral')
     parser.add_argument("--raw-tty", action="store_true", help="Raw terminal mode")
     parser.add_argument("--no-color", action="store_false", help="Remove ANSI colors in terminal output")
     parser.add_argument("--log", help="Path to log file")
@@ -126,7 +127,7 @@ if __name__ == '__main__':
         args.check_inv = True
         args.check_ram = True
         args.check_text = True
-    if args.uart or args.blkdev or (args.timer == "mmio"):
+    if args.uart or args.blkdev or (args.timer == "mmio") or args.status_line:
         use_mmio = True
 
     MEMORY_SIZE = 1024 * args.ram_size  # (default 1 Mb)
@@ -166,7 +167,12 @@ if __name__ == '__main__':
     # System architecture
     machine = Machine(cpu, ram, timer=args.timer, mmio=use_mmio, rvc=args.rvc, logger=log,
                       trace=args.trace, regs=args.regs, check_inv=args.check_inv, start_checks=args.start_checks)
-    
+
+    # Terminal status line (if enabled)
+    status_line = None
+    if args.status_line:
+        status_line = TerminalStatusLine()
+
     # MMIO peripherals
     if args.uart:  # create and register UART peripheral
         uart = PtyUART(logger=log)
@@ -182,7 +188,11 @@ if __name__ == '__main__':
         timer = MMIOTimer(cpu)
         ram.register_peripheral(timer)
         machine.register_peripheral(timer)
-      
+
+    if args.status_line:  # create and register LED GPIO peripheral
+        led_gpio = LED_GPIO(status_line=status_line, logger=log)
+        ram.register_peripheral(led_gpio)
+
     # Create and register syscall handler
     syscall_handler = SyscallHandler(cpu, ram, machine, logger=log, raw_tty=args.raw_tty, trace_syscalls=args.syscalls)
     cpu.set_ecall_handler(syscall_handler.handle)  # Set syscall handler

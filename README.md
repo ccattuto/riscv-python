@@ -11,7 +11,7 @@ This is a simple and readable **RISC-V RV32IMAC emulator** written in pure Pytho
 - **Supports terminal I/O**, both "cooked" and raw
 - **Provides most of the system calls needed by [Newlib](https://en.wikipedia.org/wiki/Newlib)**: `_write`, `_read`, `_exit`, **dynamic memory allocation** (`_sbrk`), **file I/O** (`_open`, `_close`, `_fstat`, `_lseek`, ...)
 - **Supports argc/argv program arguments**
-- **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, and a **memory-mapped block device** backed by an image file
+- **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, a **memory-mapped block device** backed by an image file, and a **multi-color LED GPIO peripheral** with visual terminal status line display
 - **Passes all `rv32ui`, `rv32mi`, `rv32um`, `rv32ua`, and `rv32uc` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, and violations of invariants
 - Runs [MicroPython](https://micropython.org/), [CircuitPython](https://circuitpython.org/) with emulated peripherals, and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
@@ -35,7 +35,7 @@ pip install -r requirements.txt
 ├── rvc.py                     # RVC logic
 ├── ram.py                     # RAM emulation logic
 ├── machine.py                 # Host logic (executable loading, invariants check)
-├── peripherals.py             # Peripherals (UART, block device)
+├── peripherals.py             # Peripherals (UART, block device, LED GPIO, status line)
 ├── syscalls.py                # System calls and terminal I/O
 ├── Makefile                   # Builds ELF/binary targets
 ├── start_bare.S               # Minimal startup code
@@ -86,6 +86,7 @@ pip install -r requirements.txt
 | `--uart`                | Enable PTY UART                                                             |
 | `--blkdev PATH`         | Enable MMIO block device                                                    |
 | `--blkdev-size NUM`     | Block device size in 512-byte blocks (default 1024)                         |
+| `--status-line`         | Enable terminal status line with LED GPIO peripheral                        |
 | `--raw-tty`             | Enable raw terminal mode                                                    |
 | `--no-color`            | Remove ANSI colors in debugging output                                      |
 | `--log LOG_FILE`        | Log debug information to file `LOG_FILE`                                    |
@@ -187,8 +188,14 @@ and connect to the serial device using your favorite terminal program, e.g., `sc
 
 Run an example using a file-backed block device:
 ```
-./riscv-emu.py --blkdev=image.img prebuilt/test_peripheral_blkdev.elf 
+./riscv-emu.py --blkdev=image.img prebuilt/test_peripheral_blkdev.elf
 ```
+
+Run an example with visual LED GPIO display in the terminal status line:
+```
+./riscv-emu.py --status-line prebuilt/test_peripheral_led_gpio.elf
+```
+The status line at the top of the terminal shows 8 multi-color LEDs (OFF/RED/GREEN/BLUE) that update in real-time as the program controls them via memory-mapped I/O at address `0x10020000`.
 
 Run CircuitPython:
 ```

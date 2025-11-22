@@ -15,7 +15,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 
-import os, fcntl, selectors, tty
+import os, fcntl, selectors, tty, sys
 from ram import MemoryAccessError
 
 # Base class for peripherals with memory-mapped IO
@@ -232,3 +232,123 @@ class MMIOBlockDevice(MMIOPeripheral):
             #    self.logger.debug(f"[BLOCK] WRITE blk={self.blk} <- 0x{self.ptr:08x}")
 
         self.status = 1
+
+# Terminal status line manager
+class TerminalStatusLine:
+    """Manages a fixed status line at the top of the terminal using ANSI escape codes."""
+
+    def __init__(self):
+        # Clear screen and set up scroll region
+        # Reserve line 1 for status, allow scrolling from line 2 onwards
+        print("\033[2J", end="")       # Clear screen
+        print("\033[1;1H", end="")     # Move cursor to home (1,1)
+        print("\033[2;r", end="")      # Set scroll region starting at line 2
+        sys.stdout.flush()
+
+        self.sections = {}
+        self.last_display = ""
+
+    def update_section(self, name, content):
+        """Update a named section of the status line."""
+        self.sections[name] = content
+        self._redraw()
+
+    def remove_section(self, name):
+        """Remove a named section from the status line."""
+        if name in self.sections:
+            del self.sections[name]
+            self._redraw()
+
+    def _redraw(self):
+        """Redraw the entire status line."""
+        # Build the full status line
+        status_parts = [f"{name}: {content}" for name, content in self.sections.items()]
+        status_line = " │ ".join(status_parts) if status_parts else ""
+
+        # Only redraw if changed
+        if status_line == self.last_display:
+            return
+        self.last_display = status_line
+
+        # Save cursor, move to top, clear line, print status, restore cursor
+        print(f"\033[s"          # Save cursor position
+              f"\033[1;1H"       # Move to line 1, column 1
+              f"\033[K"          # Clear line
+              f"{status_line}"   # Print status
+              f"\033[u",         # Restore cursor position
+              end="", flush=True)
+
+# Multi-color LED GPIO peripheral
+class LED_GPIO(MMIOPeripheral):
+    """
+    GPIO peripheral with 8 multi-color LEDs.
+    Each LED can display 4 colors (2 bits per LED):
+      00 = OFF (dark gray)
+      01 = RED
+      10 = GREEN
+      11 = BLUE (or YELLOW)
+
+    Register map:
+      REG_BASE + 0x00: LED state (bits 15:0, 2 bits per LED)
+                       Bits [1:0] = LED0, [3:2] = LED1, ..., [15:14] = LED7
+    """
+
+    # Color definitions using ANSI escape codes
+    COLORS = [
+        "\033[90m●\033[0m",   # 00 = OFF (dark gray circle)
+        "\033[91m●\033[0m",   # 01 = RED (bright red)
+        "\033[92m●\033[0m",   # 10 = GREEN (bright green)
+        "\033[94m●\033[0m",   # 11 = BLUE (bright blue)
+    ]
+
+    COLOR_NAMES = ["OFF", "RED", "GRN", "BLU"]
+
+    def __init__(self, reg_base=0x1002_0000, num_leds=8, status_line=None, logger=None):
+        super().__init__()
+
+        self.REG_BASE = reg_base
+        self.REG_OUT  = reg_base + 0x00  # LED output register
+        self.REG_END  = reg_base + 0x04
+
+        self.num_leds = num_leds
+        self.led_state = 0  # 2 bits per LED
+        self.status_line = status_line
+        self.logger = logger
+
+        if self.logger is not None:
+            self.logger.info(f"[LED_GPIO] Initialized with {num_leds} LEDs at 0x{reg_base:08X}")
+
+        self._update_display()
+
+    def read32(self, addr):
+        if addr == self.REG_OUT:
+            return self.led_state
+        else:
+            raise MemoryAccessError(f"Invalid MMIO register read at 0x{addr:08X}")
+
+    def write32(self, addr, value):
+        if addr == self.REG_OUT:
+            # Mask to 2 bits per LED
+            mask = (1 << (self.num_leds * 2)) - 1
+            self.led_state = value & mask
+            self._update_display()
+        else:
+            raise MemoryAccessError(f"Invalid MMIO register write at 0x{addr:08X}")
+
+    def _update_display(self):
+        """Update the terminal status line with current LED states."""
+        if not self.status_line:
+            return
+
+        # Build LED display string (right to left: LED7 ... LED0)
+        led_display = []
+        for i in range(self.num_leds - 1, -1, -1):
+            color_bits = (self.led_state >> (i * 2)) & 0b11
+            led_display.append(self.COLORS[color_bits])
+
+        led_str = " ".join(led_display)
+
+        # Add hex representation
+        display_text = f"{led_str}  [0x{self.led_state:04X}]"
+
+        self.status_line.update_section("LEDs", display_text)

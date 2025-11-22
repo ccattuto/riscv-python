@@ -36,6 +36,8 @@
 
 - `test_peripheral_blkdev.c`: Tests the memory-mapped block device implementation backed by a file on the host. Run this example with the `--blkdev=image` option, where `image` is the filename you want to use. If the file does not exist, it will be created by the emulator.
 
+- `test_peripheral_led_gpio.c`: Tests the memory-mapped LED GPIO peripheral with visual display in the terminal. Run this example with the `--status-line` option to enable the terminal status line that shows 8 multi-color LEDs. Each LED can display 4 colors (OFF/RED/GREEN/BLUE) using 2 bits per LED.
+
 - `test_api1.py`: Python API example: loads and executes a simple program.
 
 - `test_api2.py`: Python API example: loads a flat binary executable into RAM, runs it, intercepts a trap.
