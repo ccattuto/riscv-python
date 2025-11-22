@@ -13,7 +13,6 @@
 #endif
 
 // Float support: only for REPL_SYSCALL mode
-// MUST be defined BEFORE ROM level to prevent ROM defaults from overriding
 #if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL)
     #define MICROPY_PY_BUILTINS_FLOAT         (1)
     #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
@@ -25,6 +24,15 @@
 #endif
 
 #define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EXTRA_FEATURES)
+
+// Override ROM level defaults for math module (must come after ROM level is set)
+// This ensures the module isn't registered even if ROM level tries to enable it
+#if (MICROPY_PORT_MODE != MODE_REPL_SYSCALL)
+    #undef MICROPY_PY_MATH
+    #define MICROPY_PY_MATH (0)
+    #undef MICROPY_PY_CMATH
+    #define MICROPY_PY_CMATH (0)
+#endif
 
 #define MICROPY_ENABLE_COMPILER     (1)
 #define MICROPY_ENAVLE_REPL	        (1)
@@ -96,3 +104,17 @@ typedef long mp_off_t;
 #define MICROPY_HW_MCU_NAME "riscv-emu.py"
 
 #define MP_STATE_PORT MP_STATE_VM
+
+// Final overrides to ensure math is disabled in non-float modes
+// This must be at the END to override any ROM level defaults
+#if (MICROPY_PORT_MODE != MODE_REPL_SYSCALL)
+    #ifdef MICROPY_PY_MATH
+        #undef MICROPY_PY_MATH
+    #endif
+    #define MICROPY_PY_MATH (0)
+
+    #ifdef MICROPY_PY_CMATH
+        #undef MICROPY_PY_CMATH
+    #endif
+    #define MICROPY_PY_CMATH (0)
+#endif
