@@ -24,10 +24,10 @@ NEWLIB_NANO_SPECS = --specs=nano.specs
 # Source file groups
 ASM_TARGETS = test_asm1
 BARE_TARGETS = test_bare1
-NEWLIB_NANO_TARGETS = test_newlib1 test_newlib2 test_newlib3 test_newlib4 test_newlib5 \
-                 test_newlib6 test_newlib7 test_newlib8 test_newlib9 test_newlib10 test_newlib11 \
-				 test_peripheral_uart test_peripheral_blkdev test_newlib13 test_newlib14
-NEWLIB_TARGETS = test_newlib12
+NEWLIB_NANO_TARGETS = test_newlib_stdio test_newlib_primes test_newlib_malloc test_newlib_mandelbrot test_newlib_maze \
+                 test_newlib_conway test_newlib_args test_newlib_fileio test_newlib_traps test_newlib_timer test_newlib_scheduler \
+				 test_peripheral_uart test_peripheral_blkdev test_newlib_setjmp test_newlib_mext
+NEWLIB_TARGETS = test_newlib_softfloat
 
 ALL_ELF_TARGETS = $(addprefix build/,$(addsuffix .elf,$(ASM_TARGETS) $(BARE_TARGETS) $(NEWLIB_NANO_TARGETS) $(NEWLIB_TARGETS)))
 ALL_BIN_TARGETS = $(addprefix build/,$(addsuffix .bin,$(ASM_TARGETS) $(BARE_TARGETS)))
