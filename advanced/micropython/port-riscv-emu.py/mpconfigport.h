@@ -12,26 +12,20 @@
 #define MICROPY_PORT_MODE MODE_REPL_SYSCALL
 #endif
 
+// Use CORE_FEATURES ROM level as base, then explicitly enable what we need
+#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_CORE_FEATURES)
+
 // Float support: only for REPL_SYSCALL mode
 #if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL)
     #define MICROPY_PY_BUILTINS_FLOAT         (1)
     #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
     #define MICROPY_PY_MATH                   (1)
+    #define MICROPY_PY_CMATH                  (0)
 #else
     #define MICROPY_PY_BUILTINS_FLOAT         (0)
     #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_NONE)
     #define MICROPY_PY_MATH                   (0)
-#endif
-
-#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EXTRA_FEATURES)
-
-// Override ROM level defaults for math module (must come after ROM level is set)
-// This ensures the module isn't registered even if ROM level tries to enable it
-#if (MICROPY_PORT_MODE != MODE_REPL_SYSCALL)
-    #undef MICROPY_PY_MATH
-    #define MICROPY_PY_MATH (0)
-    #undef MICROPY_PY_CMATH
-    #define MICROPY_PY_CMATH (0)
+    #define MICROPY_PY_CMATH                  (0)
 #endif
 
 #define MICROPY_ENABLE_COMPILER     (1)
@@ -64,13 +58,21 @@
 #define MICROPY_LONGINT_IMPL              (MICROPY_LONGINT_IMPL_LONGLONG)
 #define MICROPY_PY_BUILTINS_COMPLEX       (0)
 #define MICROPY_PY_IO                     (0)  // no file system or streams
+
+// Explicitly enable modules we need (some may not be in CORE_FEATURES)
 #define MICROPY_PY_ARRAY                  (1)
 #define MICROPY_PY_COLLECTIONS            (1)
+#define MICROPY_PY_COLLECTIONS_DEQUE      (1)
+#define MICROPY_PY_COLLECTIONS_ORDEREDDICT (1)
 #define MICROPY_PY_URANDOM                (1)
+#define MICROPY_PY_URANDOM_SEED_INIT_FUNC (0)
 #define MICROPY_PY_STRUCT                 (1)
 #define MICROPY_PY_ERRNO                  (1)
 #define MICROPY_PY_BINASCII               (1)
 #define MICROPY_PY_RE                     (1)
+#define MICROPY_PY_HEAPQ                  (1)
+#define MICROPY_PY_HASHLIB                (0)
+#define MICROPY_PY_JSON                   (1)
 #define MICROPY_PY_UCTYPES                (1)
 
 #define MICROPY_PY_SYS                    (1)
@@ -104,17 +106,3 @@ typedef long mp_off_t;
 #define MICROPY_HW_MCU_NAME "riscv-emu.py"
 
 #define MP_STATE_PORT MP_STATE_VM
-
-// Final overrides to ensure math is disabled in non-float modes
-// This must be at the END to override any ROM level defaults
-#if (MICROPY_PORT_MODE != MODE_REPL_SYSCALL)
-    #ifdef MICROPY_PY_MATH
-        #undef MICROPY_PY_MATH
-    #endif
-    #define MICROPY_PY_MATH (0)
-
-    #ifdef MICROPY_PY_CMATH
-        #undef MICROPY_PY_CMATH
-    #endif
-    #define MICROPY_PY_CMATH (0)
-#endif
