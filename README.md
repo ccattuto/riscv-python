@@ -126,7 +126,7 @@ or
 
 Newlib C examples:
 ```
-./riscv-emu.py build/test_newlib4.elf
+./riscv-emu.py build/test_newlib_mandelbrot.elf
 
                         .................................
                   .............................................
@@ -156,9 +156,9 @@ Newlib C examples:
 
 Use the `--` separator to pass command-line arguments to the emulated program (the basename of the executable is automatically passed as `argv[0]`):
 ```
-./riscv-emu.py build/test_newlib7.elf -- arg1 arg2 arg3    
+./riscv-emu.py build/test_newlib_args.elf -- arg1 arg2 arg3
 Number of arguments: 4
-Argument 0: test_newlib7.elf
+Argument 0: test_newlib_args.elf
 Argument 1: arg1
 Argument 2: arg2
 Argument 3: arg3
@@ -232,7 +232,7 @@ print (cpu.registers[5])  # Print result stored in t0/x5
 
 Example Python programs using programmatic access to the emulator are provided in the `tests` directory. Run them from the top-level directory of the emulator, e.g.:
 ```
-PYTHONPATH=. python tests/test_api1.py 
+PYTHONPATH=. python tests/test_api_simple.py
 ```
 
 ## 🧪 Running Unit Tests
@@ -346,20 +346,20 @@ Test rv32uc-p-rvc                  : PASS
 ###  Performance notes
 The emulator achieves **over 2 MIPS** (million instructions per second) using Python 3.12 (Anaconda distribution) on a Macbook Pro (M1, 2020) running macOS Sequoia. Execution times for some binaries in `prebuilt/`:
 ```
-time ./riscv-emu.py prebuilt/test_newlib2.elf
-./riscv-emu.py prebuilt/test_newlib2.elf  1.71s user 0.03s system 98% cpu 1.772 total
+time ./riscv-emu.py prebuilt/test_newlib_primes.elf
+./riscv-emu.py prebuilt/test_newlib_primes.elf  1.71s user 0.03s system 98% cpu 1.772 total
 ```
 ```
-time ./riscv-emu.py prebuilt/test_newlib4.elf
-./riscv-emu.py prebuilt/test_newlib4.elf  0.37s user 0.03s system 94% cpu 0.416 total
+time ./riscv-emu.py prebuilt/test_newlib_mandelbrot.elf
+./riscv-emu.py prebuilt/test_newlib_mandelbrot.elf  0.37s user 0.03s system 94% cpu 0.416 total
 ```
 ```
-time ./riscv-emu.py prebuilt/test_newlib6.elf
-./riscv-emu.py prebuilt/test_newlib6.elf  76.19s user 0.29s system 99% cpu 1:16.56 total
+time ./riscv-emu.py prebuilt/test_newlib_conway.elf
+./riscv-emu.py prebuilt/test_newlib_conway.elf  76.19s user 0.29s system 99% cpu 1:16.56 total
 ```
 
 Running the emulator with [PyPy](https://pypy.org/) yields a speedup of almost 4x over CPython, achieving **over 9 MIPS**.
 ```
-time pypy3 ./riscv-emu.py prebuilt/test_newlib6.elf
-pypy3 ./riscv-emu.py prebuilt/test_newlib6.elf  19.77s user 0.11s system 99% cpu 20.009 total
+time pypy3 ./riscv-emu.py prebuilt/test_newlib_conway.elf
+pypy3 ./riscv-emu.py prebuilt/test_newlib_conway.elf  19.77s user 0.11s system 99% cpu 20.009 total
 ```
