@@ -12,6 +12,18 @@
 #define MICROPY_PORT_MODE MODE_REPL_SYSCALL
 #endif
 
+// Float support: only for REPL_SYSCALL mode
+// MUST be defined BEFORE ROM level to prevent ROM defaults from overriding
+#if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL)
+    #define MICROPY_PY_BUILTINS_FLOAT         (1)
+    #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
+    #define MICROPY_PY_MATH                   (1)
+#else
+    #define MICROPY_PY_BUILTINS_FLOAT         (0)
+    #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_NONE)
+    #define MICROPY_PY_MATH                   (0)
+#endif
+
 #define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EXTRA_FEATURES)
 
 #define MICROPY_ENABLE_COMPILER     (1)
@@ -41,17 +53,6 @@
 #define MICROPY_PY_GC                     (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE   (1)
 
-// Float support: only for Newlib mode (REPL_SYSCALL)
-#if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL)
-    #define MICROPY_PY_BUILTINS_FLOAT         (1)
-    #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
-    #define MICROPY_PY_MATH                   (1)
-#else
-    #define MICROPY_PY_BUILTINS_FLOAT         (0)
-    #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_NONE)
-    #define MICROPY_PY_MATH                   (0)
-#endif
-
 #define MICROPY_LONGINT_IMPL              (MICROPY_LONGINT_IMPL_LONGLONG)
 #define MICROPY_PY_BUILTINS_COMPLEX       (0)
 #define MICROPY_PY_IO                     (0)  // no file system or streams
@@ -73,7 +74,6 @@
 #define MICROPY_PY_SYS_ARGV               (1)
 
 #define MICROPY_PY_BUILTINS_SLICE         (1)
-#define MICROPY_PY_ALL_FEATURES           (1)
 
 #define MICROPY_ALLOC_PATH_MAX            (256)
 
