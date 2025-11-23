@@ -1,15 +1,14 @@
 # MicroPython Port - Build Modes
 
-This MicroPython port supports 4 configurable build modes, selectable at compile time via the `MODE` Makefile variable.
+This MicroPython port supports 3 configurable build modes, selectable at compile time via the `MODE` Makefile variable.
 
 ## Overview
 
-| Mode | Description | Newlib | I/O Method | REPL | Frozen Script | Use Case |
-|------|-------------|--------|------------|------|---------------|----------|
+| Mode | Description | Float Support | I/O Method | REPL | Frozen Script | Use Case |
+|------|-------------|---------------|------------|------|---------------|----------|
 | **REPL_SYSCALL** | Interactive REPL with syscalls | ✅ Yes | read()/write() syscalls | ✅ Yes | ❌ No | Development, testing |
-| **EMBEDDED_SILENT** | Run frozen script, no I/O | ❌ No | Silent (no-op) | ❌ No | ✅ Yes | Bare-metal, computation only |
-| **REPL_UART** | Interactive REPL over UART | ❌ No | UART MMIO | ✅ Yes | ❌ No | Embedded with UART |
-| **EMBEDDED_UART** | Frozen script + UART REPL | ❌ No | UART MMIO | ✅ Yes | ✅ Yes | Embedded init + debug |
+| **HEADLESS** | Run frozen script, no stdio REPL | ❌ No | Silent stdio (script can use machine.mem32, etc.) | ❌ No | ✅ Yes | Bare-metal, embedded apps |
+| **UART** | Frozen init script + UART REPL | ❌ No | UART MMIO (machine.mem32) | ✅ Yes | ✅ Yes (optional) | Embedded with UART debug |
 
 ---
 
@@ -45,14 +44,14 @@ make
 
 ---
 
-## Mode 2: EMBEDDED_SILENT
+## Mode 2: HEADLESS
 
-**Zero syscalls** - Runs a frozen Python script with no I/O.
+**No stdio REPL** - Runs a frozen Python script with no stdio interface. The script can still perform I/O via `machine.mem32` or other mechanisms.
 
 ### Build
 ```bash
 cd port-riscv-emu.py
-make MODE=EMBEDDED_SILENT FROZEN_SCRIPT=startup.py clean all
+make MODE=HEADLESS FROZEN_SCRIPT=startup.py clean all
 ```
 
 ### Run
@@ -62,17 +61,16 @@ make MODE=EMBEDDED_SILENT FROZEN_SCRIPT=startup.py clean all
 
 ### Features
 - Executes embedded Python script at startup
-- **No syscalls** - can run in completely bare-metal environment
-- No Newlib - smaller binary
-- Silent mode: all print() output discarded
+- Silent stdio: print() and input() are no-ops
+- Script can still do I/O via `machine.mem32` for MMIO peripherals
 - No REPL - exits after script completes
-- Smallest binary size
+- Integer-only (no float support) - smaller binary
 
 ### Use Cases
+- Embedded applications with custom I/O (UART, SPI, I2C via MMIO)
 - Pure computation (crypto, algorithms, data processing)
-- Environments without I/O devices
 - ROM-based systems
-- Deterministic embedded scripts
+- Deterministic embedded scripts without interactive debugging
 
 ### Script Embedding
 The Python script specified by `FROZEN_SCRIPT` is compiled to bytecode and embedded in the firmware binary at build time.
@@ -81,65 +79,18 @@ The Python script specified by `FROZEN_SCRIPT` is compiled to bytecode and embed
 
 ---
 
-## Mode 3: REPL_UART
+## Mode 3: UART
 
-**UART MMIO** - Interactive REPL over memory-mapped UART, no syscalls.
-
-### Build
-```bash
-cd port-riscv-emu.py
-make MODE=REPL_UART clean all
-```
-
-### Run
-```bash
-# Start emulator with UART peripheral
-../../riscv-emu.py --uart --ram-size=4096 build/firmware.elf
-
-# The emulator will print the PTY device name, e.g.:
-# [UART] PTY created: /dev/pts/X
-
-# In another terminal, connect to the UART:
-screen /dev/pts/X
-# or
-picocom /dev/pts/X
-```
-
-### Features
-- Full interactive REPL over UART
-- **No syscalls** - all I/O via MMIO registers
-- UART at memory address 0x10000000
-- No Newlib - smaller binary
-- Welcome message on startup
-- Standard Python REPL experience
-
-### UART Register Map
-```
-Base Address: 0x10000000
-
-Offset  | Register | Access | Description
---------|----------|--------|---------------------------
-0x00    | TX       | Write  | Write byte to transmit
-0x04    | RX       | Read   | Read received byte
-                             | Bit 31 = 1 if no data available
-```
-
-### Use Cases
-- Embedded systems with UART
-- Minimal I/O overhead
-- Hardware without full syscall support
-- Smaller binary than REPL_SYSCALL mode
-
----
-
-## Mode 4: EMBEDDED_UART
-
-**Init script + UART REPL** - Runs frozen script then drops to UART REPL.
+**Frozen init script + UART REPL** - Optionally runs a frozen initialization script, then starts an interactive REPL over memory-mapped UART.
 
 ### Build
 ```bash
 cd port-riscv-emu.py
-make MODE=EMBEDDED_UART FROZEN_SCRIPT=startup.py clean all
+# With initialization script:
+make MODE=UART FROZEN_SCRIPT=startup.py clean all
+
+# Without initialization script (REPL only):
+make MODE=UART FROZEN_SCRIPT= clean all
 ```
 
 ### Run
@@ -152,11 +103,25 @@ screen /dev/pts/X
 ```
 
 ### Features
-- Executes embedded initialization script first
+- Optionally executes frozen initialization script first (can be empty/omitted)
 - Then starts interactive REPL over UART
-- **No syscalls** - all I/O via UART MMIO
-- No Newlib - smaller binary
+- **No syscalls** - all I/O via UART MMIO using `machine.mem32`
+- Integer-only (no float support) - smaller binary
 - Persistent state from init script available in REPL
+- UART at memory address 0x10000000 (TX) and 0x10000004 (RX)
+
+### UART Register Map
+```
+Base Address: 0x10000000
+
+Offset  | Register | Access | Description
+--------|----------|--------|---------------------------
+0x00    | TX       | Write  | Write byte to transmit
+0x04    | RX       | Read   | Read received byte
+                             | Bit 31 = 1 if no data available
+```
+
+Access via `machine.mem32[]` for proper word-aligned MMIO operations.
 
 ### Use Cases
 - Embedded systems requiring initialization
@@ -168,7 +133,7 @@ screen /dev/pts/X
 1. `startup.py` initializes hardware, loads config, starts services
 2. REPL starts for debugging/inspection
 3. Can examine variables, test functions, modify behavior
-4. Production build can disable REPL by switching to EMBEDDED_SILENT
+4. Production build can disable REPL by switching to HEADLESS mode
 
 ---
 
@@ -200,28 +165,24 @@ The mode system is implemented through:
    - `mphalport_silent.c` - no-op stubs (Mode 2)
 
 5. **Startup code**
-   - `start_newlib.S` - Newlib initialization (Mode 1)
-   - `start_nolib.S` - Minimal startup (Modes 2, 3, 4)
+   - `start_newlib.S` - Newlib initialization (all modes)
 
 6. **Linker scripts**
-   - `linker_newlib.ld` - With Newlib heap (Mode 1)
-   - `linker_nolib.ld` - No Newlib, simpler layout (Modes 2, 3, 4)
+   - `linker_newlib.ld` - All modes use Newlib
 
 ### File Map
 
-| File | Mode 1 | Mode 2 | Mode 3 | Mode 4 |
-|------|--------|--------|--------|--------|
-| main.c | ✅ | ✅ | ✅ | ✅ |
-| mphalport.c | ✅ | ❌ | ❌ | ❌ |
-| mphalport_uart.c | ❌ | ❌ | ✅ | ✅ |
-| mphalport_silent.c | ❌ | ✅ | ❌ | ❌ |
-| minimal_stubs.c | ✅ | ❌ | ❌ | ❌ |
-| minimal_nolib.c | ❌ | ✅ | ✅ | ✅ |
-| start_newlib.S | ✅ | ❌ | ❌ | ❌ |
-| start_nolib.S | ❌ | ✅ | ✅ | ✅ |
-| syscalls_newlib.S | ✅ | ❌ | ❌ | ❌ |
-| linker_newlib.ld | ✅ | ❌ | ❌ | ❌ |
-| linker_nolib.ld | ❌ | ✅ | ✅ | ✅ |
+| File | REPL_SYSCALL | HEADLESS | UART |
+|------|--------------|----------|------|
+| main.c | ✅ | ✅ | ✅ |
+| mphalport.c | ✅ | ❌ | ❌ |
+| mphalport_uart.c | ❌ | ❌ | ✅ |
+| mphalport_silent.c | ❌ | ✅ | ❌ |
+| minimal_stubs.c | ✅ | ✅ | ✅ |
+| shared/libc/printf.c | ✅ | ✅ | ✅ |
+| start_newlib.S | ✅ | ✅ | ✅ |
+| syscalls_newlib.S | ✅ | ✅ | ✅ |
+| linker_newlib.ld | ✅ | ✅ | ✅ |
 
 ### Memory Allocation
 
@@ -233,14 +194,14 @@ All modes use **MicroPython's garbage collector** with a fixed 2MB heap:
 
 ### Syscall Dependencies
 
-| Component | Mode 1 | Mode 2 | Mode 3 | Mode 4 |
-|-----------|--------|--------|--------|--------|
-| GC/malloc | ❌ None | ❌ None | ❌ None | ❌ None |
-| stdout | ✅ write(1) | ❌ None | ❌ None | ❌ None |
-| stdin | ✅ read(0) | ❌ None | ❌ None | ❌ None |
-| Newlib | ✅ sbrk, etc | ❌ None | ❌ None | ❌ None |
+| Component | REPL_SYSCALL | HEADLESS | UART |
+|-----------|--------------|----------|------|
+| GC/malloc | ❌ None | ❌ None | ❌ None |
+| stdout | ✅ write(1) | ❌ No-op | ❌ UART MMIO |
+| stdin | ✅ read(0) | ❌ No-op | ❌ UART MMIO |
+| Newlib | ✅ Yes | ✅ Yes | ✅ Yes |
 
-**Summary**: Modes 2, 3, 4 have **zero syscall dependencies** and can run in completely bare-metal environments.
+**Summary**: All modes use Newlib. REPL_SYSCALL mode uses syscalls for stdio. HEADLESS and UART modes use alternative I/O methods (no-op and MMIO respectively).
 
 ---
 
@@ -249,8 +210,8 @@ All modes use **MicroPython's garbage collector** with a fixed 2MB heap:
 ### Makefile Variables
 
 ```makefile
-MODE=<mode>          # REPL_SYSCALL, EMBEDDED_SILENT, REPL_UART, EMBEDDED_UART
-FROZEN_SCRIPT=<path> # Path to Python script to embed (Modes 2, 4)
+MODE=<mode>          # REPL_SYSCALL, HEADLESS, UART
+FROZEN_SCRIPT=<path> # Path to Python script to embed (HEADLESS, UART)
 DEBUG=1              # Enable debug build (default: optimized)
 RVM=1                # Enable RISC-V M extension (multiply/divide)
 RVA=1                # Enable RISC-V A extension (atomic)
@@ -263,14 +224,14 @@ RVC=1                # Enable RISC-V C extension (compressed)
 # Default mode (REPL with syscalls)
 make
 
-# Embedded silent mode with custom script
-make MODE=EMBEDDED_SILENT FROZEN_SCRIPT=my_app.py clean all
+# Headless mode with custom script
+make MODE=HEADLESS FROZEN_SCRIPT=my_app.py clean all
 
 # UART REPL with debug symbols
-make MODE=REPL_UART DEBUG=1 clean all
+make MODE=UART DEBUG=1 clean all
 
-# Embedded UART with all RISC-V extensions
-make MODE=EMBEDDED_UART RVM=1 RVA=1 RVC=1 clean all
+# UART with initialization script and all RISC-V extensions
+make MODE=UART FROZEN_SCRIPT=startup.py RVM=1 RVA=1 RVC=1 clean all
 ```
 
 ### Clean Builds
@@ -278,7 +239,7 @@ make MODE=EMBEDDED_UART RVM=1 RVA=1 RVC=1 clean all
 **Always use `clean all` when changing MODE** to ensure all source files are recompiled with correct configuration:
 
 ```bash
-make MODE=REPL_UART clean all
+make MODE=UART clean all
 ```
 
 ---
@@ -302,12 +263,11 @@ Alternative approaches:
 
 Estimated sizes (to be measured after building):
 
-| Mode | Newlib | Estimated Size | Notes |
-|------|--------|---------------|-------|
-| REPL_SYSCALL | Yes | ~500 KB | Largest (Newlib + printf) |
-| EMBEDDED_SILENT | No | ~350 KB | Smallest (no I/O, no Newlib) |
-| REPL_UART | No | ~400 KB | Medium (UART HAL, no Newlib) |
-| EMBEDDED_UART | No | ~420 KB | Medium (frozen + UART) |
+| Mode | Float Support | Estimated Size | Notes |
+|------|---------------|----------------|-------|
+| REPL_SYSCALL | Yes | ~500 KB | Largest (float + math module) |
+| HEADLESS | No | ~400 KB | Medium (integer-only) |
+| UART | No | ~420 KB | Medium (integer-only + UART HAL) |
 
 ---
 
@@ -321,34 +281,23 @@ make clean all
 # Type: print("Hello")
 ```
 
-### Mode 2 - EMBEDDED_SILENT
+### Mode 2 - HEADLESS
 ```bash
-make MODE=EMBEDDED_SILENT FROZEN_SCRIPT=startup.py clean all
+make MODE=HEADLESS FROZEN_SCRIPT=startup.py clean all
 ../../riscv-emu.py --ram-size=4096 build/firmware.elf
-# Should run silently and exit (once frozen module support is complete)
+# Should run silently and exit after executing startup.py
 ```
 
-### Mode 3 - REPL_UART
+### Mode 3 - UART
 ```bash
-make MODE=REPL_UART clean all
+make MODE=UART FROZEN_SCRIPT=startup.py clean all
 # Terminal 1:
 ../../riscv-emu.py --uart --ram-size=4096 build/firmware.elf
 # Note the PTY device shown
 
 # Terminal 2:
 screen /dev/pts/X  # Replace X with actual number
-# Should see REPL prompt
-```
-
-### Mode 4 - EMBEDDED_UART
-```bash
-make MODE=EMBEDDED_UART FROZEN_SCRIPT=startup.py clean all
-# Terminal 1:
-../../riscv-emu.py --uart --ram-size=4096 build/firmware.elf
-
-# Terminal 2:
-screen /dev/pts/X
-# Should see startup script output, then REPL prompt
+# Should see startup script output (if provided), then REPL prompt
 ```
 
 ---
