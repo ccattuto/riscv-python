@@ -20,14 +20,13 @@ int main(int argc, char *argv[]) {
 		mp_obj_list_append(mp_sys_argv, mp_obj_new_str(argv[i], strlen(argv[i])));
     }
 
-#if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL) || \
-    (MICROPY_PORT_MODE == MODE_REPL_UART)
-    // Welcome message for REPL-only modes
+#if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL)
+    // Welcome message for syscall REPL mode
     mp_printf(&mp_plat_print, "Welcome to MicroPython on RISC-V!\n");
 #endif
 
-#if (MICROPY_PORT_MODE == MODE_EMBEDDED_SILENT) || \
-    (MICROPY_PORT_MODE == MODE_EMBEDDED_UART)
+#if (MICROPY_PORT_MODE == MODE_HEADLESS) || \
+    (MICROPY_PORT_MODE == MODE_UART)
     // Execute frozen script (module name set by Makefile via -DFROZEN_MODULE_NAME)
     #ifndef FROZEN_MODULE_NAME
     #define FROZEN_MODULE_NAME "startup"  // default if not set
@@ -36,8 +35,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 #if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL) || \
-    (MICROPY_PORT_MODE == MODE_REPL_UART) || \
-    (MICROPY_PORT_MODE == MODE_EMBEDDED_UART)
+    (MICROPY_PORT_MODE == MODE_UART)
     // Start REPL
 	pyexec_friendly_repl();
 #endif

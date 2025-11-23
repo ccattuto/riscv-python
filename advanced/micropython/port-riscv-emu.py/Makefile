@@ -9,10 +9,10 @@ QSTR_DEFS = qstrdefsport.h
 MICROPY_ROM_TEXT_COMPRESSION ?= 1
 
 # Mode selection (default to REPL_SYSCALL for backwards compatibility)
-# Valid values: REPL_SYSCALL, EMBEDDED_SILENT, REPL_UART, EMBEDDED_UART
+# Valid values: REPL_SYSCALL, HEADLESS, UART
 MODE ?= REPL_SYSCALL
 
-# Script to embed (for EMBEDDED_SILENT and EMBEDDED_UART modes)
+# Script to embed (for HEADLESS and UART modes)
 FROZEN_SCRIPT ?= startup.py
 
 # include py core make definitions
@@ -25,14 +25,12 @@ endif
 # Mode-specific configuration
 ifeq ($(MODE),REPL_SYSCALL)
     MODE_FLAG = MODE_REPL_SYSCALL
-else ifeq ($(MODE),EMBEDDED_SILENT)
-    MODE_FLAG = MODE_EMBEDDED_SILENT
-else ifeq ($(MODE),REPL_UART)
-    MODE_FLAG = MODE_REPL_UART
-else ifeq ($(MODE),EMBEDDED_UART)
-    MODE_FLAG = MODE_EMBEDDED_UART
+else ifeq ($(MODE),HEADLESS)
+    MODE_FLAG = MODE_HEADLESS
+else ifeq ($(MODE),UART)
+    MODE_FLAG = MODE_UART
 else
-    $(error Invalid MODE=$(MODE). Valid values: REPL_SYSCALL, EMBEDDED_SILENT, REPL_UART, EMBEDDED_UART)
+    $(error Invalid MODE=$(MODE). Valid values: REPL_SYSCALL, HEADLESS, UART)
 endif
 
 # MicroPython build tools
@@ -113,11 +111,11 @@ SRC_S = start_newlib.S syscalls_newlib.S gchelper_rv32i.S
 ifeq ($(MODE),REPL_SYSCALL)
     # Mode 1: syscall-based I/O
     SRC_C += mphalport.c
-else ifeq ($(MODE),EMBEDDED_SILENT)
+else ifeq ($(MODE),HEADLESS)
     # Mode 2: silent (no I/O)
     SRC_C += mphalport_silent.c
-else
-    # Modes 3,4: UART MMIO I/O
+else ifeq ($(MODE),UART)
+    # Mode 3: UART MMIO I/O
     SRC_C += mphalport_uart.c
 endif
 
@@ -176,10 +174,10 @@ test: $(BUILD)/firmware.elf
 
 include $(TOP)/py/mkrules.mk
 
-# Frozen module support for embedded modes
-ifeq ($(MODE),EMBEDDED_SILENT)
+# Frozen module support for headless and UART modes
+ifeq ($(MODE),HEADLESS)
     FROZEN_ENABLED = 1
-else ifeq ($(MODE),EMBEDDED_UART)
+else ifeq ($(MODE),UART)
     FROZEN_ENABLED = 1
 else
     FROZEN_ENABLED = 0

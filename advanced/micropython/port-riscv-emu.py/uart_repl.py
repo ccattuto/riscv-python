@@ -1,6 +1,6 @@
 """
 Python REPL using machine.mem32 to access memory-mapped UART
-For use in EMBEDDED_SILENT mode - demonstrates pure Python hardware control
+For use in UART mode - demonstrates pure Python hardware control
 """
 
 import machine
@@ -49,7 +49,7 @@ def repl():
     uart_write('\r\n')
     uart_write('=' * 50 + '\r\n')
     uart_write('Python REPL via machine.mem32 UART\r\n')
-    uart_write('MicroPython on RISC-V (EMBEDDED_SILENT mode)\r\n')
+    uart_write('MicroPython on RISC-V (UART mode)\r\n')
     uart_write('=' * 50 + '\r\n')
     uart_write('\r\n')
 

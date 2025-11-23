@@ -1,6 +1,6 @@
 """
 Simple demo of machine.mem32 for memory-mapped UART access
-For use in EMBEDDED_SILENT mode
+For use in HEADLESS or UART modes
 """
 
 import machine

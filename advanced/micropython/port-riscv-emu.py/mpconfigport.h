@@ -3,10 +3,9 @@
 // options to control how MicroPython is built
 
 // Mode definitions (set via Makefile)
-#define MODE_REPL_SYSCALL    1  // REPL with syscalls
-#define MODE_EMBEDDED_SILENT 2  // Frozen script, no I/O
-#define MODE_REPL_UART       3  // REPL over UART MMIO
-#define MODE_EMBEDDED_UART   4  // Frozen script + UART REPL
+#define MODE_REPL_SYSCALL    1  // Interactive REPL with syscalls, float support
+#define MODE_HEADLESS        2  // Frozen script execution, no I/O, integer-only
+#define MODE_UART            3  // Frozen init script + UART REPL, integer-only
 
 #ifndef MICROPY_PORT_MODE
 #define MICROPY_PORT_MODE MODE_REPL_SYSCALL
@@ -37,9 +36,9 @@
 #define MICROPY_HELPER_REPL               (1)
 #define MICROPY_ENABLE_REPL_HELPERS       (1)
 
-// Enable frozen modules for embedded modes
-#if (MICROPY_PORT_MODE == MODE_EMBEDDED_SILENT) || \
-    (MICROPY_PORT_MODE == MODE_EMBEDDED_UART)
+// Enable frozen modules for headless and UART modes
+#if (MICROPY_PORT_MODE == MODE_HEADLESS) || \
+    (MICROPY_PORT_MODE == MODE_UART)
     #define MICROPY_MODULE_FROZEN_MPY         (1)
 #else
     #define MICROPY_MODULE_FROZEN_MPY         (0)
