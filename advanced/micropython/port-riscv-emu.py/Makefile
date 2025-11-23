@@ -100,7 +100,8 @@ SRC_C = \
 	shared/runtime/pyexec.c \
 	shared/runtime/gchelper_native.c \
 	shared/runtime/stdout_helpers.c \
-	extmod/moductypes.c
+	extmod/moductypes.c \
+	extmod/modmachine.c
 
 # Mode-specific source files
 # All modes use Newlib startup and syscalls (since we link Newlib libraries)

@@ -75,6 +75,10 @@
 #define MICROPY_PY_JSON                   (1)
 #define MICROPY_PY_UCTYPES                (1)
 
+// Enable machine module for MMIO access (mem8, mem16, mem32)
+#define MICROPY_PY_MACHINE                (1)
+#define MICROPY_PY_MACHINE_MEMX           (1)
+
 #define MICROPY_PY_SYS                    (1)
 #define MICROPY_PY_SYS_MODULES            (1)
 #define MICROPY_PY_SYS_PLATFORM           "riscv-emu.py"
