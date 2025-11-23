@@ -188,7 +188,7 @@ ifeq ($(FROZEN_ENABLED),1)
     # Compile Python script to .mpy bytecode
     $(BUILD)/$(FROZEN_SCRIPT:.py=.mpy): $(FROZEN_SCRIPT)
 	$(ECHO) "MPY $(FROZEN_SCRIPT)"
-	$(Q)$(MPY_CROSS) -o $@ -s $(FROZEN_SCRIPT) $<
+	$(Q)$(MPY_CROSS) -o $@ -s $(FROZEN_MODULE_NAME) $<
 
     # Generate C code from .mpy bytecode
     $(BUILD)/_frozen_mpy.c: $(BUILD)/$(FROZEN_SCRIPT:.py=.mpy) $(BUILD)/genhdr/qstrdefs.generated.h
