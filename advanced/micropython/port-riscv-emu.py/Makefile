@@ -179,6 +179,12 @@ else
 endif
 
 ifeq ($(FROZEN_ENABLED),1)
+    # Extract module name from script filename (remove .py extension)
+    FROZEN_MODULE_NAME = $(basename $(FROZEN_SCRIPT))
+
+    # Add define to CFLAGS so main.c knows which module to load
+    CFLAGS += -DFROZEN_MODULE_NAME=\"$(FROZEN_MODULE_NAME)\"
+
     # Compile Python script to .mpy bytecode
     $(BUILD)/$(FROZEN_SCRIPT:.py=.mpy): $(FROZEN_SCRIPT)
 	$(ECHO) "MPY $(FROZEN_SCRIPT)"
@@ -191,7 +197,7 @@ ifeq ($(FROZEN_ENABLED),1)
 
     # Add frozen module C file to sources
     SRC_C += $(BUILD)/_frozen_mpy.c
-    
+
     # Make firmware depend on frozen module
     $(BUILD)/firmware.elf: $(BUILD)/_frozen_mpy.c
 endif

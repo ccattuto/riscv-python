@@ -28,8 +28,11 @@ int main(int argc, char *argv[]) {
 
 #if (MICROPY_PORT_MODE == MODE_EMBEDDED_SILENT) || \
     (MICROPY_PORT_MODE == MODE_EMBEDDED_UART)
-    // Execute frozen script
-    pyexec_frozen_module("startup", false);
+    // Execute frozen script (module name set by Makefile via -DFROZEN_MODULE_NAME)
+    #ifndef FROZEN_MODULE_NAME
+    #define FROZEN_MODULE_NAME "startup"  // default if not set
+    #endif
+    pyexec_frozen_module(FROZEN_MODULE_NAME, false);
 #endif
 
 #if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL) || \
