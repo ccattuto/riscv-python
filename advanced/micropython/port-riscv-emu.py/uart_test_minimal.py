@@ -1,27 +1,24 @@
 """
-Absolute minimal UART test - direct memory write without struct or functions
+Absolute minimal UART test - direct memory write using machine.mem32
 """
 
-import uctypes
+import machine
 
 UART_TX = 0x10000000
 
-# Create a single UINT32 at the TX address
-tx_reg = uctypes.struct(UART_TX, {"val": uctypes.UINT32 | 0}, uctypes.LITTLE_ENDIAN)
-
 # Write message byte by byte
-tx_reg.val = ord('\r')
-tx_reg.val = ord('\n')
-tx_reg.val = ord('*')
-tx_reg.val = ord('*')
-tx_reg.val = ord('*')
-tx_reg.val = ord(' ')
-tx_reg.val = ord('T')
-tx_reg.val = ord('E')
-tx_reg.val = ord('S')
-tx_reg.val = ord('T')
-tx_reg.val = ord('\r')
-tx_reg.val = ord('\n')
+machine.mem32[UART_TX] = ord('\r')
+machine.mem32[UART_TX] = ord('\n')
+machine.mem32[UART_TX] = ord('*')
+machine.mem32[UART_TX] = ord('*')
+machine.mem32[UART_TX] = ord('*')
+machine.mem32[UART_TX] = ord(' ')
+machine.mem32[UART_TX] = ord('T')
+machine.mem32[UART_TX] = ord('E')
+machine.mem32[UART_TX] = ord('S')
+machine.mem32[UART_TX] = ord('T')
+machine.mem32[UART_TX] = ord('\r')
+machine.mem32[UART_TX] = ord('\n')
 
 # Loop forever
 while True:

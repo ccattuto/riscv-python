@@ -1,31 +1,23 @@
 """
-Python REPL using uctypes to access memory-mapped UART
+Python REPL using machine.mem32 to access memory-mapped UART
 For use in EMBEDDED_SILENT mode - demonstrates pure Python hardware control
 """
 
-import uctypes
+import machine
 
 # UART memory-mapped registers at 0x10000000
-UART_BASE = 0x10000000
-
-# Define UART register layout
-UART_LAYOUT = {
-    "TX": uctypes.UINT32 | 0x00,  # Transmit register
-    "RX": uctypes.UINT32 | 0x04,  # Receive register (bit 31 = empty)
-}
-
-# Create UART structure
-uart = uctypes.struct(UART_BASE, UART_LAYOUT, uctypes.LITTLE_ENDIAN)
+UART_TX = 0x10000000
+UART_RX = 0x10000004
 
 # UART I/O functions
 def uart_putc(c):
     """Write a character to UART"""
-    uart.TX = ord(c) if isinstance(c, str) else c
+    machine.mem32[UART_TX] = ord(c) if isinstance(c, str) else c
 
 def uart_getc():
     """Read a character from UART (blocking)"""
     while True:
-        val = uart.RX
+        val = machine.mem32[UART_RX] & 0xFFFFFFFF
         if not (val & 0x80000000):  # Check empty bit
             return val & 0xFF
 
@@ -53,10 +45,10 @@ def uart_readline():
 
 # Simple REPL implementation
 def repl():
-    """Python REPL using UART via uctypes"""
+    """Python REPL using UART via machine.mem32"""
     uart_write('\r\n')
     uart_write('=' * 50 + '\r\n')
-    uart_write('Python REPL via uctypes UART\r\n')
+    uart_write('Python REPL via machine.mem32 UART\r\n')
     uart_write('MicroPython on RISC-V (EMBEDDED_SILENT mode)\r\n')
     uart_write('=' * 50 + '\r\n')
     uart_write('\r\n')
@@ -65,9 +57,10 @@ def repl():
     repl_globals = {'__name__': '__main__'}
 
     # Add useful modules to namespace
-    repl_globals['uctypes'] = uctypes
-    repl_globals['uart'] = uart
+    repl_globals['machine'] = machine
     repl_globals['uart_write'] = uart_write
+    repl_globals['UART_TX'] = UART_TX
+    repl_globals['UART_RX'] = UART_RX
 
     while True:
         try:
@@ -85,7 +78,7 @@ def repl():
                 uart_write('Exiting REPL...\r\n')
                 break
             elif line == 'help':
-                uart_write('Available: uctypes, uart, uart_write\r\n')
+                uart_write('Available: machine, uart_write, UART_TX, UART_RX\r\n')
                 uart_write('Type exit to quit\r\n')
                 continue
 
@@ -105,16 +98,14 @@ def repl():
 def demo_uart():
     """Demonstrate direct UART register access"""
     uart_write('\r\nDirect UART register access:\r\n')
-    uart_write(f'UART_BASE: 0x{UART_BASE:08X}\r\n')
-    uart_write(f'TX register: 0x{UART_BASE:08X}\r\n')
-    uart_write(f'RX register: 0x{UART_BASE+4:08X}\r\n')
+    uart_write(f'UART_TX: 0x{UART_TX:08X}\r\n')
+    uart_write(f'UART_RX: 0x{UART_RX:08X}\r\n')
 
-def demo_memory():
-    """Demonstrate uctypes memory access"""
-    # Read some memory
-    uart_write('\r\nMemory access demo:\r\n')
-    mem = uctypes.struct(0x1000, {"value": uctypes.UINT32 | 0}, uctypes.LITTLE_ENDIAN)
-    uart_write(f'Value at 0x1000: 0x{mem.value:08X}\r\n')
+def demo_peek_poke():
+    """Demonstrate peek/poke with machine.mem32"""
+    uart_write('\r\nmachine.mem32 peek/poke demo:\r\n')
+    val = machine.mem32[UART_RX] & 0xFFFFFFFF
+    uart_write(f'RX register: 0x{val:08X}\r\n')
 
 # Main entry point - execute immediately when frozen
 # Run REPL
