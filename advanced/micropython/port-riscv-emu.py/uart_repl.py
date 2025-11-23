@@ -116,9 +116,8 @@ def demo_memory():
     mem = uctypes.struct(0x1000, {"value": uctypes.UINT32 | 0}, uctypes.LITTLE_ENDIAN)
     uart_write(f'Value at 0x1000: 0x{mem.value:08X}\r\n')
 
-# Main entry point
-if __name__ == '__main__':
-    # Run REPL
-    repl()
+# Main entry point - execute immediately when frozen
+# Run REPL
+repl()
 
-    uart_write('\r\nREPL exited. System halted.\r\n')
+uart_write('\r\nREPL exited. System halted.\r\n')
