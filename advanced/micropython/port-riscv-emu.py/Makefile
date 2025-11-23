@@ -105,7 +105,7 @@ SRC_C = \
 
 # Mode-specific source files
 # All modes use Newlib startup and syscalls (since we link Newlib libraries)
-SRC_C += minimal_stubs.c shared/libc/printf.c
+SRC_C += minimal_stubs.c modmachine.c shared/libc/printf.c
 SRC_S = start_newlib.S syscalls_newlib.S gchelper_rv32i.S
 
 # Select HAL based on mode

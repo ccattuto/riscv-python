@@ -1,5 +1,5 @@
 /*
- * Port-specific machine module implementations
+ * Port-specific machine module declarations for RISC-V emulator
  */
 
 #ifndef MICROPY_INCLUDED_RISCVEMU_MODMACHINE_H
@@ -7,10 +7,6 @@
 
 #include "py/obj.h"
 
-// Minimal idle implementation - does nothing in emulator
-static void mp_machine_idle(void) {
-    // In a real embedded system, this would put the CPU in low-power mode
-    // For the emulator, we just return
-}
+// No additional machine-specific types or declarations needed for this port
 
 #endif // MICROPY_INCLUDED_RISCVEMU_MODMACHINE_H
