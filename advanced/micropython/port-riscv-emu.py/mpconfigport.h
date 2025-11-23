@@ -36,9 +36,8 @@
 #define MICROPY_HELPER_REPL               (1)
 #define MICROPY_ENABLE_REPL_HELPERS       (1)
 
-// Enable frozen modules for headless and UART modes
-#if (MICROPY_PORT_MODE == MODE_HEADLESS) || \
-    (MICROPY_PORT_MODE == MODE_UART)
+// Enable frozen modules only when actually compiled (set by Makefile)
+#ifdef MICROPY_HAS_FROZEN_MODULES
     #define MICROPY_MODULE_FROZEN_MPY         (1)
 #else
     #define MICROPY_MODULE_FROZEN_MPY         (0)

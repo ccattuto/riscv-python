@@ -175,10 +175,19 @@ test: $(BUILD)/firmware.elf
 include $(TOP)/py/mkrules.mk
 
 # Frozen module support for headless and UART modes
+# HEADLESS mode requires a frozen script
+# UART mode optionally accepts a frozen script
 ifeq ($(MODE),HEADLESS)
+    ifeq ($(FROZEN_SCRIPT),)
+        $(error HEADLESS mode requires FROZEN_SCRIPT to be set)
+    endif
     FROZEN_ENABLED = 1
 else ifeq ($(MODE),UART)
-    FROZEN_ENABLED = 1
+    ifneq ($(FROZEN_SCRIPT),)
+        FROZEN_ENABLED = 1
+    else
+        FROZEN_ENABLED = 0
+    endif
 else
     FROZEN_ENABLED = 0
 endif
@@ -187,8 +196,9 @@ ifeq ($(FROZEN_ENABLED),1)
     # Extract module name from script filename (remove .py extension)
     FROZEN_MODULE_NAME = $(basename $(FROZEN_SCRIPT))
 
-    # Add define to CFLAGS so main.c knows which module to load
+    # Add defines to CFLAGS
     CFLAGS += -DFROZEN_MODULE_NAME=\"$(FROZEN_MODULE_NAME)\"
+    CFLAGS += -DMICROPY_HAS_FROZEN_MODULES=1
 
     # Compile Python script to .mpy bytecode
     $(BUILD)/$(FROZEN_SCRIPT:.py=.mpy): $(FROZEN_SCRIPT)
