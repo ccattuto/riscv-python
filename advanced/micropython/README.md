@@ -4,18 +4,18 @@ This is a MicroPython port for the pure-Python RISC-V emulator, supporting multi
 
 ## Build Modes
 
-The port supports 4 configurable modes, selected at compile time via the `MODE` variable:
+The port supports 3 configurable modes, selected at compile time via the `MODE` variable:
 
 | Mode | Description | I/O Method | Float Support | REPL | Frozen Script |
 |------|-------------|------------|---------------|------|---------------|
 | **REPL_SYSCALL** | Interactive development | read()/write() syscalls | ✅ Yes | ✅ Yes | ❌ No |
-| **EMBEDDED_SILENT** | Embedded script only | Silent (no I/O) | ❌ No | ❌ No | ✅ Yes |
-| **REPL_UART** | Interactive over UART | UART MMIO (0x10000000) | ❌ No | ✅ Yes | ❌ No |
-| **EMBEDDED_UART** | Script + UART REPL | UART MMIO (0x10000000) | ❌ No | ✅ Yes | ✅ Yes |
+| **HEADLESS** | Embedded script only | Silent stdio (can use machine.mem32) | ❌ No | ❌ No | ✅ Yes |
+| **UART** | Script + UART REPL | UART MMIO via machine.mem32 | ❌ No | ✅ Yes | ✅ Yes (optional) |
 
 All modes support:
-- 64-bit integers (for uctypes and large values)
-- uctypes module (memory-mapped I/O)
+- 64-bit integers (for large values)
+- machine module with machine.mem32 for word-aligned MMIO
+- uctypes module (also supports memory-mapped I/O)
 - struct, array, collections, re modules
 - Full Python language features (except floats in non-REPL_SYSCALL modes)
 
@@ -52,13 +52,13 @@ Hello World!
 
 ---
 
-### Mode 2: EMBEDDED_SILENT
+### Mode 2: HEADLESS
 
-Run a frozen Python script with no I/O (for pure computation tasks).
+Run a frozen Python script with silent stdio (script can still do I/O via machine.mem32).
 
 **Build with a script:**
 ```bash
-make MODE=EMBEDDED_SILENT FROZEN_SCRIPT=startup.py clean all
+make MODE=HEADLESS FROZEN_SCRIPT=startup.py clean all
 ```
 
 **Run:**
@@ -66,27 +66,38 @@ make MODE=EMBEDDED_SILENT FROZEN_SCRIPT=startup.py clean all
 ../../riscv-emu.py --ram-size=4096 build/firmware.elf
 ```
 
-The script runs silently and exits. Use this mode for:
-- Computation-only tasks
-- Environments without I/O devices
-- Minimal binary size
+The script runs with stdio disabled (print() is no-op), but can still access hardware via machine.mem32. Use this mode for:
+- Embedded applications with custom I/O (UART, SPI, I2C via MMIO)
+- Computation tasks
+- ROM-based systems without console
 
 **Example script (startup.py):**
 ```python
+import machine
+
 # Integer-only computation
 result = sum([i**2 for i in range(100)])
-# Result stored in memory, can be read by emulator
+
+# Can still do UART output via MMIO
+UART_TX = 0x10000000
+for c in "Done!\r\n":
+    machine.mem32[UART_TX] = ord(c)
 ```
 
 ---
 
-### Mode 3: REPL_UART
+### Mode 3: UART
 
-Interactive REPL over memory-mapped UART (no syscalls, integer-only).
+Interactive REPL over memory-mapped UART with optional frozen initialization script (integer-only).
 
-**Build:**
+**Build (REPL only):**
 ```bash
-make MODE=REPL_UART clean all
+make MODE=UART clean all
+```
+
+**Build (with init script):**
+```bash
+make MODE=UART FROZEN_SCRIPT=startup.py clean all
 ```
 
 **Run:**
@@ -102,40 +113,19 @@ screen /dev/pts/3
 picocom /dev/pts/3
 ```
 
-You'll see the MicroPython REPL over the UART:
+You'll see output from the init script (if provided), then the MicroPython REPL over UART:
 ```
-Welcome to MicroPython on RISC-V!
 >>> print([i*i for i in range(10)])
 [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
->>> import uctypes
+>>> import machine
+>>> machine.mem32[0x10000000] = ord('X')  # Write to UART TX
 ```
 
-**Note:** This mode has no float support (integer-only), but is perfect for embedded systems with UART.
-
----
-
-### Mode 4: EMBEDDED_UART
-
-Run a frozen script, then start REPL over UART.
-
-**Build:**
-```bash
-make MODE=EMBEDDED_UART FROZEN_SCRIPT=startup.py clean all
-```
-
-**Run:**
-```bash
-# Terminal 1: Start emulator
-../../riscv-emu.py --uart --ram-size=4096 build/firmware.elf
-
-# Terminal 2: Connect to UART
-screen /dev/pts/3
-```
-
-The frozen script executes first, then you get an interactive REPL. Perfect for:
+**Perfect for:**
+- Embedded systems with UART
 - Initialization scripts followed by debug console
-- Automated setup with interactive testing
 - Production systems with maintenance access
+- Integer-only environments (no float support)
 
 ---
 
@@ -148,7 +138,7 @@ Frozen scripts are Python files compiled to bytecode and embedded in the firmwar
 1. **Specify script** via `FROZEN_SCRIPT` variable
 2. **Build** - script is compiled to `.mpy` bytecode
 3. **Embedded** - bytecode converted to C and linked into firmware
-4. **Executed** - runs automatically at startup (modes 2 and 4)
+4. **Executed** - runs automatically at startup (HEADLESS and UART modes)
 
 ### Example: Custom Frozen Script
 
@@ -178,60 +168,56 @@ print("Application complete")
 
 Build and run:
 ```bash
-make MODE=EMBEDDED_UART FROZEN_SCRIPT=my_app.py clean all
+make MODE=UART FROZEN_SCRIPT=my_app.py clean all
 ../../riscv-emu.py --uart --ram-size=4096 build/firmware.elf
 # Connect via screen - see app output, then get REPL
 ```
 
 ---
 
-## Using uctypes for Hardware Access
+## Hardware Access via machine.mem32
 
-The `uctypes` module allows direct memory-mapped I/O access from Python, perfect for embedded systems.
+The `machine` module provides `machine.mem32` for proper word-aligned MMIO access, which is the recommended method for accessing memory-mapped peripherals.
 
-### Example: UART via uctypes
+### Example: UART via machine.mem32
 
-The included `uart_demo.py` demonstrates uctypes for UART control:
+The included `uart_demo.py` demonstrates machine.mem32 for UART control:
 
 ```python
-import uctypes
+import machine
 
-# Define UART registers at 0x10000000
-UART_BASE = 0x10000000
-uart_layout = {
-    "TX": uctypes.UINT32 | 0x00,  # Transmit
-    "RX": uctypes.UINT32 | 0x04,  # Receive
-}
-
-# Create UART structure
-uart = uctypes.struct(UART_BASE, uart_layout, uctypes.LITTLE_ENDIAN)
+# UART registers at 0x10000000
+UART_TX = 0x10000000
+UART_RX = 0x10000004
 
 # Write to UART
 def uart_print(s):
     for c in s:
-        uart.TX = ord(c)
+        machine.mem32[UART_TX] = ord(c)
 
 uart_print("Hello from Python!\r\n")
 
 # Read from UART (non-blocking)
-rx_val = uart.RX
+rx_val = machine.mem32[UART_RX] & 0xFFFFFFFF
 if not (rx_val & 0x80000000):
     print(f"Received: {chr(rx_val & 0xFF)}")
 ```
 
 **Run the demo:**
 ```bash
-make MODE=EMBEDDED_SILENT FROZEN_SCRIPT=uart_demo.py clean all
+make MODE=HEADLESS FROZEN_SCRIPT=uart_demo.py clean all
 ../../riscv-emu.py --uart --ram-size=4096 build/firmware.elf
 # Connect via screen to see output
 ```
 
-### Python REPL via uctypes
+**Note:** `machine.mem32` performs proper 32-bit word-aligned reads/writes, making it suitable for MMIO peripherals. The `uctypes` module is also available but uses byte-level access which may not work with all hardware.
 
-The included `uart_repl.py` implements a full REPL using only uctypes (no C-level I/O):
+### Python REPL via machine.mem32
+
+The included `uart_repl.py` implements a full REPL using machine.mem32 for I/O:
 
 ```bash
-make MODE=EMBEDDED_SILENT FROZEN_SCRIPT=uart_repl.py clean all
+make MODE=HEADLESS FROZEN_SCRIPT=uart_repl.py clean all
 ../../riscv-emu.py --uart --ram-size=4096 build/firmware.elf
 # Connect via screen - get a Python-implemented REPL!
 ```
@@ -267,7 +253,7 @@ make DEBUG=1
 ### Custom Frozen Script
 
 ```bash
-make MODE=EMBEDDED_UART FROZEN_SCRIPT=/path/to/my_script.py clean all
+make MODE=UART FROZEN_SCRIPT=/path/to/my_script.py clean all
 ```
 
 **Important:** Always use `clean all` when changing modes to ensure proper rebuild.
@@ -290,7 +276,7 @@ make MODE=REPL_SYSCALL
 >>> [math.sin(x/10) for x in range(10)]
 ```
 
-### 2. Data Processing Script (EMBEDDED_SILENT)
+### 2. Data Processing Script (HEADLESS)
 
 Create `process.py`:
 ```python
@@ -306,14 +292,14 @@ minimum = min(readings)
 ```
 
 ```bash
-make MODE=EMBEDDED_SILENT FROZEN_SCRIPT=process.py clean all
+make MODE=HEADLESS FROZEN_SCRIPT=process.py clean all
 ../../riscv-emu.py --ram-size=4096 build/firmware.elf
 ```
 
-### 3. Hardware Control (REPL_UART + uctypes)
+### 3. Hardware Control (UART + machine.mem32)
 
 ```bash
-make MODE=REPL_UART clean all
+make MODE=UART clean all
 ../../riscv-emu.py --uart --ram-size=4096 build/firmware.elf
 # In another terminal:
 screen /dev/pts/X
@@ -321,14 +307,14 @@ screen /dev/pts/X
 
 In the REPL:
 ```python
->>> import uctypes
+>>> import machine
 >>> # Define memory-mapped LED at 0x20000000
->>> led = uctypes.struct(0x20000000, {"ctrl": uctypes.UINT32 | 0}, uctypes.LITTLE_ENDIAN)
->>> led.ctrl = 1  # Turn on LED
->>> led.ctrl = 0  # Turn off LED
+>>> LED_CTRL = 0x20000000
+>>> machine.mem32[LED_CTRL] = 1  # Turn on LED
+>>> machine.mem32[LED_CTRL] = 0  # Turn off LED
 ```
 
-### 4. Bootloader + Debug Console (EMBEDDED_UART)
+### 4. Bootloader + Debug Console (UART)
 
 Create `bootloader.py`:
 ```python
@@ -346,7 +332,7 @@ print("Boot complete. Entering debug mode...")
 ```
 
 ```bash
-make MODE=EMBEDDED_UART FROZEN_SCRIPT=bootloader.py clean all
+make MODE=UART FROZEN_SCRIPT=bootloader.py clean all
 ../../riscv-emu.py --uart --ram-size=4096 build/firmware.elf
 # Bootloader runs, then get interactive REPL for debugging
 ```
