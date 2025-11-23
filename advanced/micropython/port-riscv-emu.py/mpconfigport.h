@@ -36,6 +36,10 @@
 #define MICROPY_PY_BINASCII               (1)
 #define MICROPY_PY_RE                     (1)
 #define MICROPY_PY_UCTYPES                (1)
+#define MICROPY_PY_MACHINE                (1)
+#define MICROPY_PY_MACHINE_INCLUDEFILE    "modmachine_port.c"
+#define MICROPY_PY_MACHINE_MEMX           (1)
+#define MICROPY_PY_MACHINE_SIGNAL         (0)
 
 #define MICROPY_PY_SYS                    (1)
 #define MICROPY_PY_SYS_MODULES            (1)

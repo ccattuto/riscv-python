@@ -73,13 +73,15 @@ SRC_C = \
 	shared/runtime/pyexec.c \
 	shared/runtime/gchelper_native.c \
 	shared/runtime/stdout_helpers.c \
+	extmod/modmachine.c \
+	extmod/machine_mem.c \
 	extmod/moductypes.c
 
 ifeq ($(CROSS), 1)
 SRC_C += shared/libc/string0.c
 endif
 
-SRC_QSTR += shared/readline/readline.c shared/runtime/pyexec.c extmod/moductypes.c
+SRC_QSTR += shared/readline/readline.c shared/runtime/pyexec.c extmod/modmachine.c extmod/machine_mem.c extmod/moductypes.c
 
 SRC_S = \
 	start_newlib.S \
