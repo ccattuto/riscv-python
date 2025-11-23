@@ -74,6 +74,10 @@
 #define MICROPY_PY_HASHLIB                (0)
 #define MICROPY_PY_JSON                   (1)
 #define MICROPY_PY_UCTYPES                (1)
+#define MICROPY_PY_MACHINE                (1)
+#define MICROPY_PY_MACHINE_INCLUDEFILE    "modmachine_port.c"
+#define MICROPY_PY_MACHINE_MEMX           (1)
+#define MICROPY_PY_MACHINE_SIGNAL         (0)
 
 // Enable machine module for MMIO access (mem8, mem16, mem32)
 #define MICROPY_PY_MACHINE                (1)
