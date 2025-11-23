@@ -8,8 +8,8 @@
 #include "py/obj.h"
 
 // Minimal idle implementation - does nothing in emulator
-// Must be static inline because extmod/modmachine.c declares it as static
-static inline void mp_machine_idle(void) {
+// Must be static to match the declaration in extmod/modmachine.c
+static void mp_machine_idle(void) {
     // In a real embedded system, this would execute WFI (Wait For Interrupt)
     // For the emulator, we just return immediately
 }

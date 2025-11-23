@@ -100,8 +100,7 @@ SRC_C = \
 	shared/runtime/pyexec.c \
 	shared/runtime/gchelper_native.c \
 	shared/runtime/stdout_helpers.c \
-	extmod/moductypes.c \
-	extmod/modmachine.c
+	extmod/moductypes.c
 
 # Mode-specific source files
 # All modes use Newlib startup and syscalls (since we link Newlib libraries)
@@ -124,7 +123,7 @@ ifeq ($(CROSS), 1)
 SRC_C += shared/libc/string0.c
 endif
 
-SRC_QSTR += shared/readline/readline.c shared/runtime/pyexec.c extmod/moductypes.c extmod/modmachine.c
+SRC_QSTR += shared/readline/readline.c shared/runtime/pyexec.c extmod/moductypes.c
 
 OBJ += $(PY_CORE_O)
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))

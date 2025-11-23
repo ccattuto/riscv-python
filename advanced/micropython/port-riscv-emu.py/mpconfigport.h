@@ -75,10 +75,11 @@
 #define MICROPY_PY_JSON                   (1)
 #define MICROPY_PY_UCTYPES                (1)
 
-// Enable machine module for MMIO access (mem8, mem16, mem32)
-#define MICROPY_PY_MACHINE                (1)
-#define MICROPY_PY_MACHINE_MEMX           (1)
-#define MICROPY_PY_MACHINE_INCLUDEFILE    "modmachine.h"
+// Machine module disabled due to port implementation complexity
+// For MMIO: Use uctypes for write-only access, or use C HAL for read/write
+#define MICROPY_PY_MACHINE                (0)
+//#define MICROPY_PY_MACHINE_MEMX           (1)
+//#define MICROPY_PY_MACHINE_INCLUDEFILE    "modmachine.h"
 
 #define MICROPY_PY_SYS                    (1)
 #define MICROPY_PY_SYS_MODULES            (1)
