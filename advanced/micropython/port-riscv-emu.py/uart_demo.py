@@ -69,3 +69,18 @@ uart_print("\r\n")
 uart_print("=" * 50 + "\r\n")
 uart_print("Demo completed successfully!\r\n")
 uart_print("=" * 50 + "\r\n")
+
+# Blocking read example - wait for a character
+uart_print("\r\nBlocking read test: Type a character...\r\n")
+while True:
+    rx_val = machine.mem32[UART_RX] & 0xFFFFFFFF
+    if not (rx_val & 0x80000000):  # Data available
+        char = rx_val & 0xFF
+        uart_print(f"Got: '{chr(char)}' (0x{char:02X})\r\n")
+        break
+
+uart_print("Done!\r\n")
+
+# Loop forever to keep program running
+while True:
+    pass
