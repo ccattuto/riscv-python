@@ -3,9 +3,9 @@
 // options to control how MicroPython is built
 
 // Mode definitions (set via Makefile)
-#define MODE_REPL_SYSCALL    1  // Interactive REPL with syscalls, float support
-#define MODE_HEADLESS        2  // Frozen script execution, no I/O, integer-only
-#define MODE_UART            3  // Frozen init script + UART REPL, integer-only
+#define MODE_REPL_SYSCALL    1  // Interactive REPL with syscalls
+#define MODE_HEADLESS        2  // Frozen script execution, no stdio
+#define MODE_UART            3  // Frozen init script + UART REPL
 
 #ifndef MICROPY_PORT_MODE
 #define MICROPY_PORT_MODE MODE_REPL_SYSCALL
@@ -14,18 +14,11 @@
 // Use CORE_FEATURES ROM level as base, then explicitly enable what we need
 #define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_CORE_FEATURES)
 
-// Float support: only for REPL_SYSCALL mode
-#if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL)
-    #define MICROPY_PY_BUILTINS_FLOAT         (1)
-    #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
-    #define MICROPY_PY_MATH                   (1)
-    #define MICROPY_PY_CMATH                  (0)
-#else
-    #define MICROPY_PY_BUILTINS_FLOAT         (0)
-    #define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_NONE)
-    #define MICROPY_PY_MATH                   (0)
-    #define MICROPY_PY_CMATH                  (0)
-#endif
+// Float support enabled for all modes
+#define MICROPY_PY_BUILTINS_FLOAT         (1)
+#define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
+#define MICROPY_PY_MATH                   (1)
+#define MICROPY_PY_CMATH                  (0)
 
 #define MICROPY_ENABLE_COMPILER     (1)
 #define MICROPY_ENAVLE_REPL	        (1)
