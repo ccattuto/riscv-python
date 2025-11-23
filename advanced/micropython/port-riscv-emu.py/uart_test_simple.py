@@ -18,7 +18,7 @@ uart = uctypes.struct(UART_BASE, uart_layout, uctypes.LITTLE_ENDIAN)
 
 def uart_putc(c):
     """Write a character to UART"""
-    uart.TX = ord(c) if isinstance(c, str) else c
+    uart.TX = ord(c)
 
 def uart_write(s):
     """Write a string to UART"""
@@ -26,7 +26,7 @@ def uart_write(s):
         uart_putc(c)
 
 # Simple test - just write and loop forever
-uart_write("\r\n*** UART Test Starting ***\r\n")
+uart_write("\r\n=== UART Test Starting ===\r\n")
 uart_write("If you see this, uctypes UART works!\r\n")
 uart_write("Entering infinite loop...\r\n")
 
@@ -34,4 +34,6 @@ count = 0
 while True:
     count += 1
     if count % 100000 == 0:
-        uart_write(f"Alive: {count}\r\n")
+        uart_write("Alive: ")
+        uart_write(str(count))
+        uart_write("\r\n")
