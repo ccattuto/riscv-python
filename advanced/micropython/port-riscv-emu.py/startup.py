@@ -16,7 +16,8 @@ def uart_getc():
         if not (val & 0x80000000):  # Check empty bit
             return val & 0xFF
 
+for c in 'Press a key...\r\n':
+	uart_putc(c)
+
 uart_getc()
 
-while True:
-	pass

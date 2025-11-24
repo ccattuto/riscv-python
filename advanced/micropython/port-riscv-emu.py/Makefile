@@ -58,13 +58,11 @@ DFU = $(TOP)/tools/dfu.py
 PYDFU = $(TOP)/tools/pydfu.py
 CFLAGS_RISCV  = -march=$(MARCH) -mabi=ilp32 -D_REENT_SMALL
 CFLAGS += $(INC) -Wall -Werror -std=c99 $(CFLAGS_RISCV) $(COPT) -DMICROPY_PORT_MODE=$(MODE_FLAG)
-# All modes use Newlib linker script and specs
 LDFLAGS += -nostartfiles -static -Tlinker_newlib.ld --specs=nosys.specs
 else
 UNAME_S := $(shell uname -s)
 LD = $(CC)
 CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 $(COPT) -DMICROPY_PORT_MODE=$(MODE_FLAG)
-# All modes use Newlib
 ifeq ($(UNAME_S),Linux)
 LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
 else ifeq ($(UNAME_S),Darwin)
@@ -86,11 +84,9 @@ endif
 # Flags for optional C++ source code
 CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
 
-# Libraries (all modes use Newlib)
-# Need libgcc for 64-bit integer ops, libc for standard functions, libm for math
-LIBS = -lc -lm -lgcc
+LIBS = -lm
 
-# Common source files for all modes
+# Common source files for all build modes
 SRC_C = \
 	main.c \
 	gccollect.c \
@@ -103,11 +99,11 @@ SRC_C = \
 	extmod/moductypes.c
 
 # Mode-specific source files
-# All modes use Newlib startup and syscalls (since we link Newlib libraries)
+# All build modes use Newlib startup and syscalls
 SRC_C += minimal_stubs.c shared/libc/printf.c
 SRC_S = start_newlib.S syscalls_newlib.S gchelper_rv32i.S
 
-# Select HAL based on mode
+# Select HAL based on build mode
 ifeq ($(MODE),REPL_SYSCALL)
     # Mode 1: syscall-based I/O
     SRC_C += mphalport.c
@@ -174,7 +170,7 @@ test: $(BUILD)/firmware.elf
 
 include $(TOP)/py/mkrules.mk
 
-# Frozen module support for headless and UART modes
+# Frozen module support for HEADLESS and UART modes
 # HEADLESS mode requires a frozen script
 # UART mode optionally accepts a frozen script
 ifeq ($(MODE),HEADLESS)
@@ -203,7 +199,7 @@ ifeq ($(FROZEN_ENABLED),1)
     # Compile Python script to .mpy bytecode
     $(BUILD)/$(FROZEN_SCRIPT:.py=.mpy): $(FROZEN_SCRIPT)
 	$(ECHO) "MPY $(FROZEN_SCRIPT)"
-	$(Q)$(MPY_CROSS) -o $@ -s $(FROZEN_MODULE_NAME) $<
+	$(Q)$(MPY_CROSS) -msmall-int-bits=31 -o $@ -s $(FROZEN_MODULE_NAME) $<
 
     # Generate C code from .mpy bytecode
     $(BUILD)/_frozen_mpy.c: $(BUILD)/$(FROZEN_SCRIPT:.py=.mpy) $(BUILD)/genhdr/qstrdefs.generated.h

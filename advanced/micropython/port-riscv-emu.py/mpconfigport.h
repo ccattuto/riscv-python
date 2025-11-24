@@ -1,5 +1,9 @@
 #include <stdint.h>
 
+// Force object representation A (default for 32-bit systems)
+// Use numeric value 0 since MICROPY_OBJ_REPR_A isn't defined yet
+#define MICROPY_OBJ_REPR (0)
+
 // options to control how MicroPython is built
 
 // Mode definitions (set via Makefile)
