@@ -7,8 +7,9 @@ MEMORY
 
 SECTIONS
 {
-  .text : ALIGN(4)
+  .text 0x00000000 : ALIGN(4)
   {
+    *(.text)           /* Place .text first to ensure _start is at address 0 */
     KEEP(*(.init))
     KEEP(*(.text.startup))
     *(.text*)
