@@ -86,9 +86,9 @@ endif
 # Flags for optional C++ source code
 CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
 
-# Libraries (all modes use Newlib)
-# Need libgcc for 64-bit integer ops, libc for standard functions, libm for math
-LIBS = -lc -lm -lgcc
+# Libraries
+# Newlib provides libc and math library support
+LIBS = -lm
 
 # Common source files for all modes
 SRC_C = \
