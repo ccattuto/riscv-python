@@ -33,15 +33,10 @@
 #define MICROPY_HELPER_REPL               (1)
 #define MICROPY_ENABLE_REPL_HELPERS       (1)
 
-// Enable frozen modules only when actually compiled (set by Makefile)
-#ifdef MICROPY_HAS_FROZEN_MODULES
-    #define MICROPY_MODULE_FROZEN_MPY         (1)
-#else
-    #define MICROPY_MODULE_FROZEN_MPY         (0)
-#endif
-
 #define MICROPY_ENABLE_EXTERNAL_IMPORT    (0)
 #define MICROPY_KBD_EXCEPTION             (1)
+
+// MICROPY_MODULE_FROZEN_MPY is automatically defined by the manifest system, when needed
 
 // Enable core modules
 #define MICROPY_PY_MICROPYTHON            (1)
