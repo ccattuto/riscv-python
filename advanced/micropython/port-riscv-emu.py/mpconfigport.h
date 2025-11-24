@@ -1,8 +1,28 @@
 #include <stdint.h>
 
+// Force object representation A (default for 32-bit systems)
+// Use numeric value 0 since MICROPY_OBJ_REPR_A isn't defined yet
+#define MICROPY_OBJ_REPR (0)
+
 // options to control how MicroPython is built
 
-#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EXTRA_FEATURES)
+// Mode definitions (set via Makefile)
+#define MODE_REPL_SYSCALL    1  // Interactive REPL with syscalls
+#define MODE_HEADLESS        2  // Frozen script execution, no stdio
+#define MODE_UART            3  // Frozen init script + UART REPL
+
+#ifndef MICROPY_PORT_MODE
+#define MICROPY_PORT_MODE MODE_REPL_SYSCALL
+#endif
+
+// Use CORE_FEATURES ROM level as base, then explicitly enable what we need
+#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_CORE_FEATURES)
+
+// Float support enabled for all modes
+#define MICROPY_PY_BUILTINS_FLOAT         (1)
+#define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
+#define MICROPY_PY_MATH                   (1)
+#define MICROPY_PY_CMATH                  (0)
 
 #define MICROPY_ENABLE_COMPILER     (1)
 #define MICROPY_ENAVLE_REPL	        (1)
@@ -12,9 +32,11 @@
 #define MICROPY_ENABLE_GC                 (1)
 #define MICROPY_HELPER_REPL               (1)
 #define MICROPY_ENABLE_REPL_HELPERS       (1)
-#define MICROPY_MODULE_FROZEN_MPY         (0)
+
 #define MICROPY_ENABLE_EXTERNAL_IMPORT    (0)
 #define MICROPY_KBD_EXCEPTION             (1)
+
+// MICROPY_MODULE_FROZEN_MPY is automatically defined by the manifest system, when needed
 
 // Enable core modules
 #define MICROPY_PY_MICROPYTHON            (1)
@@ -22,20 +44,28 @@
 #define MICROPY_PY_BUILTINS_HELP_MODULES  (1)
 #define MICROPY_PY_GC                     (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE   (1)
-#define MICROPY_PY_BUILTINS_FLOAT         (1)
+
 #define MICROPY_LONGINT_IMPL              (MICROPY_LONGINT_IMPL_LONGLONG)
-#define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
 #define MICROPY_PY_BUILTINS_COMPLEX       (0)
 #define MICROPY_PY_IO                     (0)  // no file system or streams
+
+// Explicitly enable modules we need (some may not be in CORE_FEATURES)
 #define MICROPY_PY_ARRAY                  (1)
 #define MICROPY_PY_COLLECTIONS            (1)
-#define MICROPY_PY_MATH                   (1)
+#define MICROPY_PY_COLLECTIONS_DEQUE      (1)
+#define MICROPY_PY_COLLECTIONS_ORDEREDDICT (1)
 #define MICROPY_PY_URANDOM                (1)
+#define MICROPY_PY_URANDOM_SEED_INIT_FUNC (0)
 #define MICROPY_PY_STRUCT                 (1)
 #define MICROPY_PY_ERRNO                  (1)
 #define MICROPY_PY_BINASCII               (1)
 #define MICROPY_PY_RE                     (1)
+#define MICROPY_PY_HEAPQ                  (1)
+#define MICROPY_PY_HASHLIB                (0)
+#define MICROPY_PY_JSON                   (1)
 #define MICROPY_PY_UCTYPES                (1)
+
+// Enable machine module for MMIO access (mem8, mem16, mem32)
 #define MICROPY_PY_MACHINE                (1)
 #define MICROPY_PY_MACHINE_INCLUDEFILE    "modmachine_port.c"
 #define MICROPY_PY_MACHINE_MEMX           (1)
@@ -50,7 +80,6 @@
 #define MICROPY_PY_SYS_ARGV               (1)
 
 #define MICROPY_PY_BUILTINS_SLICE         (1)
-#define MICROPY_PY_ALL_FEATURES           (1)
 
 #define MICROPY_ALLOC_PATH_MAX            (256)
 
