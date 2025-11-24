@@ -112,8 +112,8 @@ ifeq ($(MODE),REPL_SYSCALL)
     # Mode 1: syscall-based I/O
     SRC_C += mphalport.c
 else ifeq ($(MODE),HEADLESS)
-    # Mode 2: silent (no I/O)
-    SRC_C += mphalport_silent.c
+    # Mode 2: headless (no stdio)
+    SRC_C += mphalport_headless.c
 else ifeq ($(MODE),UART)
     # Mode 3: UART MMIO I/O
     SRC_C += mphalport_uart.c

@@ -1,37 +1,22 @@
-# Example startup script for embedded MicroPython modes
-# Note: Float support disabled in non-Newlib modes
+import machine
 
-print("MicroPython embedded startup script")
-print("=====================================")
+# UART memory-mapped registers at 0x10000000
+UART_TX = 0x10000000
+UART_RX = 0x10000004
 
-# Basic computation (integer only)
-result = sum([i**2 for i in range(10)])
-print("Sum of squares 0-9:", result)
+# UART I/O functions
+def uart_putc(c):
+    """Write a character to UART"""
+    machine.mem32[UART_TX] = ord(c) if isinstance(c, str) else c
 
-# Array operations
-import array
-arr = array.array('i', [1, 2, 3, 4, 5])
-print("Array:", list(arr))
+def uart_getc():
+    """Read a character from UART (blocking)"""
+    while True:
+        val = machine.mem32[UART_RX] & 0xFFFFFFFF
+        if not (val & 0x80000000):  # Check empty bit
+            return val & 0xFF
 
-# Struct packing/unpacking
-import struct
-packed = struct.pack('HHL', 1, 2, 3)
-unpacked = struct.unpack('HHL', packed)
-print("Struct pack/unpack:", unpacked)
+uart_getc()
 
-# Regular expressions
-import re
-match = re.match(r'(\w+):(\d+)', 'hello:42')
-if match:
-    print("Regex match:", match.groups())
-
-# String operations
-text = "Hello from RISC-V!"
-print("Upper:", text.upper())
-print("Reversed:", text[::-1])
-
-# List comprehensions
-squares = [x*x for x in range(10)]
-print("Squares:", squares)
-
-print("\nStartup script completed successfully!")
+while True:
+	pass
