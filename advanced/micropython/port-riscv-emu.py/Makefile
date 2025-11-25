@@ -12,23 +12,12 @@ MICROPY_ROM_TEXT_COMPRESSION ?= 1
 # Valid values: REPL_SYSCALL, HEADLESS, UART
 MODE ?= REPL_SYSCALL
 
-# Script to embed (for HEADLESS and UART modes)
-FROZEN_SCRIPT ?= startup.py
-
 # Frozen module support for HEADLESS and UART modes
-# HEADLESS mode requires a frozen script
-# UART mode optionally accepts a frozen script
+# The frozen script is always named startup.py
 ifeq ($(MODE),HEADLESS)
-    ifeq ($(FROZEN_SCRIPT),)
-        $(error HEADLESS mode requires FROZEN_SCRIPT to be set)
-    endif
     FROZEN_ENABLED = 1
 else ifeq ($(MODE),UART)
-    ifneq ($(FROZEN_SCRIPT),)
-        FROZEN_ENABLED = 1
-    else
-        FROZEN_ENABLED = 0
-    endif
+    FROZEN_ENABLED = 1
 else ifeq ($(MODE),REPL_SYSCALL)
     FROZEN_ENABLED = 0
 else
@@ -36,15 +25,12 @@ else
 endif
 
 ifeq ($(FROZEN_ENABLED),1)
-    # Module name includes .py extension (manifest system registers with full filename)
-    FROZEN_MODULE_NAME = $(FROZEN_SCRIPT)
-
-    # Use manifest.py for freezing (idiomatic MicroPython approach)
+    # Use manifest.py for freezing.
     # The manifest file will handle compilation via makemanifest.py
     FROZEN_MANIFEST = $(CURDIR)/manifest.py
 
-    # Pass FROZEN_SCRIPT to manifest as a variable
-    MICROPY_MANIFEST_FROZEN_SCRIPT = $(FROZEN_SCRIPT)
+    # Module name is always startup.py
+    FROZEN_MODULE_NAME = startup.py
 endif
 
 # include py core make definitions
@@ -173,7 +159,7 @@ $(BUILD)/firmware.elf: $(OBJ)
 	$(Q)$(SIZE) $@
 
 $(BUILD)/firmware.bin: $(BUILD)/firmware.elf
-	$(Q)$(OBJCOPY) -O binary -j .isr_vector -j .text -j .data $^ $(BUILD)/firmware.bin
+	$(Q)$(OBJCOPY) -O binary $^ $(BUILD)/firmware.bin
 
 $(BUILD)/firmware.dfu: $(BUILD)/firmware.bin
 	$(ECHO) "Create $@"
