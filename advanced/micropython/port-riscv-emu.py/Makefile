@@ -8,20 +8,20 @@ QSTR_DEFS = qstrdefsport.h
 # MicroPython feature configurations
 MICROPY_ROM_TEXT_COMPRESSION ?= 1
 
-# Mode selection (default to REPL_SYSCALL for backwards compatibility)
-# Valid values: REPL_SYSCALL, HEADLESS, UART
-MODE ?= REPL_SYSCALL
+# Mode selection (default to REPL_NEWLIB for backwards compatibility)
+# Valid values: REPL_NEWLIB, HEADLESS, REPL_UART
+MODE ?= REPL_NEWLIB
 
-# Frozen module support for HEADLESS and UART modes
+# Frozen module support for HEADLESS and REPL_UART modes
 # The frozen script is always named startup.py
 ifeq ($(MODE),HEADLESS)
     FROZEN_ENABLED = 1
-else ifeq ($(MODE),UART)
+else ifeq ($(MODE),REPL_UART)
     FROZEN_ENABLED = 1
-else ifeq ($(MODE),REPL_SYSCALL)
+else ifeq ($(MODE),REPL_NEWLIB)
     FROZEN_ENABLED = 0
 else
-    $(error Invalid MODE=$(MODE). Valid values: REPL_SYSCALL, HEADLESS, UART)
+    $(error Invalid MODE=$(MODE). Valid values: REPL_NEWLIB, HEADLESS, REPL_UART)
 endif
 
 ifeq ($(FROZEN_ENABLED),1)
@@ -45,7 +45,12 @@ MPY_CROSS ?= $(TOP)/mpy-cross/build/mpy-cross
 MPY_TOOL ?= $(PYTHON) $(TOP)/tools/mpy-tool.py
 # Flags for mpy-cross and mpy-tool to match port configuration
 MPY_CROSS_FLAGS += -msmall-int-bits=31
-MPY_TOOL_FLAGS += -mlongint-impl=longlong
+ifeq ($(MODE),REPL_NEWLIB)
+    MPY_TOOL_FLAGS += -mlongint-impl=longlong
+else
+    # HEADLESS and REPL_UART use minimal integer implementation
+    MPY_TOOL_FLAGS += -mlongint-impl=none
+endif
 
 # Extension options - set to 1 to enable, 0 to disable
 # Note: the toolchain might not support all combinations
@@ -65,17 +70,45 @@ INC += -I$(BUILD)
 ifeq ($(CROSS), 1)
 DFU = $(TOP)/tools/dfu.py
 PYDFU = $(TOP)/tools/pydfu.py
-CFLAGS_RISCV  = -march=$(MARCH) -mabi=ilp32 -D_REENT_SMALL
+
+# Base RISC-V flags (bare-metal)
+CFLAGS_RISCV = -march=$(MARCH) -mabi=ilp32
+
+# Define MODE constants for use in C and assembly
+CFLAGS_RISCV += -DMODE_REPL_NEWLIB=1 -DMODE_HEADLESS=2 -DMODE_REPL_UART=3
+
+# Add Newlib-specific flags for REPL_NEWLIB mode
+ifeq ($(MODE),REPL_NEWLIB)
+    CFLAGS_RISCV += -D_REENT_SMALL
+endif
+
 CFLAGS += $(INC) -Wall -Werror -std=c99 $(CFLAGS_RISCV) $(COPT) -DMICROPY_PORT_MODE=MODE_$(MODE)
-LDFLAGS += -nostartfiles -static -Tlinker_newlib.ld --specs=nosys.specs
+
+# Linker flags
+LDFLAGS += -nostartfiles -static -Tmicropython.ld
+ifeq ($(MODE),REPL_NEWLIB)
+    LDFLAGS += --specs=nosys.specs
+else
+    LDFLAGS += -nostdlib
+endif
 else
 UNAME_S := $(shell uname -s)
 LD = $(CC)
 CFLAGS += $(INC) -Wall -Werror -Wdouble-promotion -Wfloat-conversion -std=c99 $(COPT) -DMICROPY_PORT_MODE=MODE_$(MODE)
 ifeq ($(UNAME_S),Linux)
-LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
+LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tmicropython.ld -Wl,-map,$@.map -Wl,-dead_strip
+ifeq ($(MODE),REPL_NEWLIB)
+    LDFLAGS += --specs=nano.specs
+else
+    LDFLAGS += -nostdlib
+endif
 else ifeq ($(UNAME_S),Darwin)
-LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tlinker_newlib.ld --specs=nano.specs -Wl,-map,$@.map -Wl,-dead_strip
+LDFLAGS += -nostartfiles -Wl,--gc-sections -static -Tmicropython.ld -Wl,-map,$@.map -Wl,-dead_strip
+ifeq ($(MODE),REPL_NEWLIB)
+    LDFLAGS += --specs=nano.specs
+else
+    LDFLAGS += -nostdlib
+endif
 endif
 endif
 
@@ -99,7 +132,14 @@ endif
 # Flags for optional C++ source code
 CXXFLAGS += $(filter-out -std=c99,$(CFLAGS))
 
-LIBS = -lm
+# Libraries based on mode
+ifeq ($(MODE),REPL_NEWLIB)
+    # REPL_NEWLIB: Full Newlib with float support
+    LIBS = -lm
+else
+    # HEADLESS and REPL_UART: Minimal config (no floats, no long ints) - only libgcc
+    LIBS = -lgcc
+endif
 
 # Common source files for all build modes
 SRC_C = \
@@ -115,19 +155,24 @@ SRC_C = \
 	extmod/machine_mem.c \
 	extmod/moductypes.c
 
+# Base assembly files (bare-metal)
 SRC_S = \
-	start_newlib.S \
-    syscalls_newlib.S \
+	start.S \
 	gchelper_rv32i.S
 
+# Add syscall stubs for REPL_NEWLIB mode
+ifeq ($(MODE),REPL_NEWLIB)
+    SRC_S += syscalls_newlib.S
+endif
+
 # Select HAL based on build mode
-ifeq ($(MODE),REPL_SYSCALL)
+ifeq ($(MODE),REPL_NEWLIB)
     # Mode 1: syscall-based I/O
     SRC_C += mphalport.c
 else ifeq ($(MODE),HEADLESS)
     # Mode 2: headless (no stdio)
     SRC_C += mphalport_headless.c
-else ifeq ($(MODE),UART)
+else ifeq ($(MODE),REPL_UART)
     # Mode 3: UART MMIO I/O
     SRC_C += mphalport_uart.c
 endif

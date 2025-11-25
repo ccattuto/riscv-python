@@ -7,22 +7,29 @@
 // options to control how MicroPython is built
 
 // Mode definitions (set via Makefile)
-#define MODE_REPL_SYSCALL    1  // Interactive REPL with syscalls
+#define MODE_REPL_NEWLIB     1  // Interactive REPL with Newlib syscalls
 #define MODE_HEADLESS        2  // Frozen script execution, no stdio
-#define MODE_UART            3  // Frozen init script + UART REPL
+#define MODE_REPL_UART       3  // Frozen init script + UART REPL
 
 #ifndef MICROPY_PORT_MODE
-#define MICROPY_PORT_MODE MODE_REPL_SYSCALL
+#define MICROPY_PORT_MODE MODE_REPL_NEWLIB
 #endif
 
 // Use CORE_FEATURES ROM level as base, then explicitly enable what we need
 #define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_CORE_FEATURES)
 
-// Float support enabled for all modes
-#define MICROPY_PY_BUILTINS_FLOAT         (1)
-#define MICROPY_FLOAT_IMPL                (MICROPY_FLOAT_IMPL_FLOAT)
-#define MICROPY_PY_MATH                   (1)
-#define MICROPY_PY_CMATH                  (0)
+// Float support - disabled for HEADLESS and REPL_UART to eliminate libc dependencies
+#if (MICROPY_PORT_MODE == MODE_REPL_NEWLIB)
+    #define MICROPY_PY_BUILTINS_FLOAT     (1)
+    #define MICROPY_FLOAT_IMPL            (MICROPY_FLOAT_IMPL_FLOAT)
+    #define MICROPY_PY_MATH               (1)
+    #define MICROPY_PY_CMATH              (0)
+#else
+    #define MICROPY_PY_BUILTINS_FLOAT     (0)
+    #define MICROPY_FLOAT_IMPL            (MICROPY_FLOAT_IMPL_NONE)
+    #define MICROPY_PY_MATH               (0)
+    #define MICROPY_PY_CMATH              (0)
+#endif
 
 #define MICROPY_ENABLE_COMPILER     (1)
 #define MICROPY_ENAVLE_REPL	        (1)
@@ -36,6 +43,12 @@
 #define MICROPY_ENABLE_EXTERNAL_IMPORT    (0)
 #define MICROPY_KBD_EXCEPTION             (1)
 
+// Use MicroPython's internal printf for HEADLESS and REPL_UART (non-Newlib builds)
+#if (MICROPY_PORT_MODE != MODE_REPL_NEWLIB)
+    #define MICROPY_USE_INTERNAL_PRINTF (1)
+    #define MICROPY_INTERNAL_PRINTF_PRINTER (&mp_plat_print)
+#endif
+
 // MICROPY_MODULE_FROZEN_MPY is automatically defined by the manifest system, when needed
 
 // Enable core modules
@@ -45,7 +58,12 @@
 #define MICROPY_PY_GC                     (1)
 #define MICROPY_PY_BUILTINS_STR_UNICODE   (1)
 
-#define MICROPY_LONGINT_IMPL              (MICROPY_LONGINT_IMPL_LONGLONG)
+// Integer implementation - minimal for HEADLESS and REPL_UART to reduce dependencies
+#if (MICROPY_PORT_MODE == MODE_REPL_NEWLIB)
+    #define MICROPY_LONGINT_IMPL          (MICROPY_LONGINT_IMPL_LONGLONG)
+#else
+    #define MICROPY_LONGINT_IMPL          (MICROPY_LONGINT_IMPL_NONE)
+#endif
 #define MICROPY_PY_BUILTINS_COMPLEX       (0)
 #define MICROPY_PY_IO                     (0)  // no file system or streams
 

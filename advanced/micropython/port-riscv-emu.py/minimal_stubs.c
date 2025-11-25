@@ -1,15 +1,31 @@
-#include <stdio.h>
 #include "py/obj.h"
 #include "py/lexer.h"
 #include "py/stream.h"
 #include "py/runtime.h"
 #include "py/builtin.h"
 #include "py/mpprint.h"
+#include "py/mphal.h"
+#include "mpconfigport.h"
+#include <string.h>
+
+#if (MICROPY_PORT_MODE == MODE_REPL_NEWLIB)
+    #include <stdio.h>
+    #define FATAL_ERROR(msg) do { printf("FATAL: %s\n", msg); while(1); } while(0)
+#else
+    // Bare-metal: no stdio.h (HEADLESS and REPL_UART modes)
+    static void fatal_error(const char *msg) __attribute__((noreturn));
+    static void fatal_error(const char *msg) {
+        mp_hal_stdout_tx_strn("FATAL: ", 7);
+        mp_hal_stdout_tx_strn(msg, strlen(msg));
+        mp_hal_stdout_tx_strn("\n", 1);
+        while (1);
+    }
+    #define FATAL_ERROR(msg) fatal_error(msg)
+#endif
 
 // Stub: If nlr fails, just halt.
 void nlr_jump_fail(void *val) {
-    printf("FATAL: nlr_jump_fail\n");
-    while (1);
+    FATAL_ERROR("nlr_jump_fail");
 }
 
 // Stub: We have no filesystem
@@ -19,7 +35,7 @@ mp_import_stat_t mp_import_stat(const char *path) {
 
 // Stub: no file-based imports
 mp_lexer_t *mp_lexer_new_from_file(qstr filename) {
-    printf("FATAL: mp_lexer_new_from_file() not supported\n");
+    FATAL_ERROR("mp_lexer_new_from_file() not supported");
     return NULL;
 }
 

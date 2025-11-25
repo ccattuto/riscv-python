@@ -20,8 +20,8 @@ int main(int argc, char *argv[]) {
 		mp_obj_list_append(mp_sys_argv, mp_obj_new_str(argv[i], strlen(argv[i])));
     }
 
-#if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL)
-    // Welcome message for syscall REPL mode
+#if (MICROPY_PORT_MODE == MODE_REPL_NEWLIB)
+    // Welcome message for REPL with Newlib mode
     mp_printf(&mp_plat_print, "Welcome to MicroPython on RISC-V!\n");
 #endif
 
@@ -30,8 +30,8 @@ int main(int argc, char *argv[]) {
     pyexec_frozen_module(FROZEN_MODULE_NAME, false);
 #endif
 
-#if (MICROPY_PORT_MODE == MODE_REPL_SYSCALL) || \
-    (MICROPY_PORT_MODE == MODE_UART)
+#if (MICROPY_PORT_MODE == MODE_REPL_NEWLIB) || \
+    (MICROPY_PORT_MODE == MODE_REPL_UART)
     // Start REPL
 	pyexec_friendly_repl();
 #endif

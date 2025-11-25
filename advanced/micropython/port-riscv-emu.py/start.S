@@ -28,10 +28,12 @@ z_sbss:
     addi a0, a0, 4
     blt  a0, a1, z_sbss
 
+#if (MICROPY_PORT_MODE == MODE_REPL_NEWLIB)
     # initialize Newlib
     la   a0, _impure_ptr
     lw   a0, 0(a0)
     call __sinit
+#endif
 
     # restore a0 and a1
     mv a0, s0
