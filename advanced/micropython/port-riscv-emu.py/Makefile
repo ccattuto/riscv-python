@@ -167,13 +167,10 @@ endif
 
 # Select HAL based on build mode
 ifeq ($(MODE),REPL_NEWLIB)
-    # Mode 1: syscall-based I/O
     SRC_C += mphalport.c
 else ifeq ($(MODE),HEADLESS)
-    # Mode 2: headless (no stdio)
     SRC_C += mphalport_headless.c
 else ifeq ($(MODE),REPL_UART)
-    # Mode 3: UART MMIO I/O
     SRC_C += mphalport_uart.c
 endif
 
@@ -197,7 +194,6 @@ endif
 # Print build configuration
 $(info Building MicroPython port in MODE=$(MODE))
 
-
 $(BUILD)/firmware.elf: $(OBJ)
 	$(ECHO) "LINK $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -205,24 +201,5 @@ $(BUILD)/firmware.elf: $(OBJ)
 
 $(BUILD)/firmware.bin: $(BUILD)/firmware.elf
 	$(Q)$(OBJCOPY) -O binary $^ $(BUILD)/firmware.bin
-
-$(BUILD)/firmware.dfu: $(BUILD)/firmware.bin
-	$(ECHO) "Create $@"
-	$(Q)$(PYTHON) $(DFU) -b 0x08000000:$(BUILD)/firmware.bin $@
-
-deploy: $(BUILD)/firmware.dfu
-	$(ECHO) "Writing $< to the board"
-	$(Q)$(PYTHON) $(PYDFU) -u $<
-
-# Run emulation build on a POSIX system with suitable terminal settings
-run:
-	@saved_=`stty -g`; \
-	  stty raw opost -echo; \
-	  $(BUILD)/firmware.elf; \
-	  echo "Exit status: $$?"; \
-	  stty $$saved_
-
-test: $(BUILD)/firmware.elf
-	$(Q)/usr/bin/printf "print('hello world!', list(x+1 for x in range(10)), end='eol\\\\n')\\r\\n\\004" | $(BUILD)/firmware.elf | tail -n2 | grep "^hello world! \\[1, 2, 3, 4, 5, 6, 7, 8, 9, 10\\]eol"
 
 include $(TOP)/py/mkrules.mk
