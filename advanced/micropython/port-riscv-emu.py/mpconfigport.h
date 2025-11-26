@@ -15,20 +15,22 @@
 #define MICROPY_PORT_MODE MODE_REPL_NEWLIB
 #endif
 
-// Use CORE_FEATURES ROM level as base, then explicitly enable what we need
-#define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_CORE_FEATURES)
+// Use EXTRA_FEATURES for full-featured REPL_NEWLIB, CORE_FEATURES for minimal modes
+#if (MICROPY_PORT_MODE == MODE_REPL_NEWLIB)
+    #define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_EXTRA_FEATURES)
+#else
+    #define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_CORE_FEATURES)
+#endif
 
 // Float support - disabled for HEADLESS and REPL_UART to eliminate libc dependencies
 #if (MICROPY_PORT_MODE == MODE_REPL_NEWLIB)
     #define MICROPY_PY_BUILTINS_FLOAT     (1)
     #define MICROPY_FLOAT_IMPL            (MICROPY_FLOAT_IMPL_FLOAT)
     #define MICROPY_PY_MATH               (1)
-    #define MICROPY_PY_CMATH              (0)
 #else
     #define MICROPY_PY_BUILTINS_FLOAT     (0)
     #define MICROPY_FLOAT_IMPL            (MICROPY_FLOAT_IMPL_NONE)
     #define MICROPY_PY_MATH               (0)
-    #define MICROPY_PY_CMATH              (0)
 #endif
 
 #define MICROPY_ENABLE_COMPILER     (1)
@@ -65,6 +67,7 @@
     #define MICROPY_LONGINT_IMPL          (MICROPY_LONGINT_IMPL_NONE)
 #endif
 #define MICROPY_PY_BUILTINS_COMPLEX       (0)
+#define MICROPY_PY_CMATH                  (0)
 #define MICROPY_PY_IO                     (0)  // no file system or streams
 
 // Explicitly enable modules we need (some may not be in CORE_FEATURES)
@@ -79,7 +82,6 @@
 #define MICROPY_PY_BINASCII               (1)
 #define MICROPY_PY_RE                     (1)
 #define MICROPY_PY_HEAPQ                  (1)
-#define MICROPY_PY_HASHLIB                (0)
 #define MICROPY_PY_JSON                   (1)
 #define MICROPY_PY_UCTYPES                (1)
 
@@ -88,6 +90,16 @@
 #define MICROPY_PY_MACHINE_INCLUDEFILE    "modmachine_port.c"
 #define MICROPY_PY_MACHINE_MEMX           (1)
 #define MICROPY_PY_MACHINE_SIGNAL         (0)
+
+// Additional modules for REPL_NEWLIB mode only
+#if (MICROPY_PORT_MODE == MODE_REPL_NEWLIB)
+    // Cryptographic hashing for checksums and data integrity
+    #define MICROPY_PY_HASHLIB            (1)
+    #define MICROPY_PY_HASHLIB_SHA1       (1)
+    #define MICROPY_PY_HASHLIB_SHA256     (1)
+#else
+    #define MICROPY_PY_HASHLIB            (0)
+#endif
 
 #define MICROPY_PY_SYS                    (1)
 #define MICROPY_PY_SYS_MODULES            (1)

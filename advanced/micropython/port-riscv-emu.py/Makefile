@@ -68,9 +68,6 @@ INC += -I$(TOP)
 INC += -I$(BUILD)
 
 ifeq ($(CROSS), 1)
-DFU = $(TOP)/tools/dfu.py
-PYDFU = $(TOP)/tools/pydfu.py
-
 # Base RISC-V flags (bare-metal)
 CFLAGS_RISCV = -march=$(MARCH) -mabi=ilp32
 
@@ -185,11 +182,7 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_S:.S=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_CXX:.cpp=.o))
 
-ifeq ($(CROSS), 1)
-all: $(BUILD)/firmware.dfu
-else
-all: $(BUILD)/firmware.elf
-endif
+all: $(BUILD)/firmware.elf $(BUILD)/firmware.bin
 
 # Print build configuration
 $(info Building MicroPython port in MODE=$(MODE))
