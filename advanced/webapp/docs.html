@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RISC-V Emulator - Documentation</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            overflow-y: auto;
+        }
+        header {
+            background: #252526;
+            padding: 15px 20px;
+            border-bottom: 1px solid #3e3e42;
+        }
+        header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #cccccc;
+            margin-bottom: 5px;
+        }
+        header p {
+            font-size: 12px;
+            color: #858585;
+        }
+        .docs-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #d4d4d4;
+        }
+        .docs-container h1 {
+            color: #cccccc;
+            border-bottom: 2px solid #3e3e42;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .docs-container h2 {
+            color: #cccccc;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .docs-container h3 {
+            color: #cccccc;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        .docs-container p {
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        .docs-container ul, .docs-container ol {
+            margin-bottom: 15px;
+            padding-left: 20px;
+        }
+        .docs-container li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .docs-container code {
+            background: #2d2d2d;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #ce9178;
+        }
+        .docs-container a {
+            color: #4fc3f7;
+            text-decoration: none;
+        }
+        .docs-container a:hover {
+            text-decoration: underline;
+        }
+        .reload-indicator {
+            color: #858585;
+            font-size: 14px;
+            margin-left: 4px;
+        }
+        .option-group {
+            background: #252526;
+            border-left: 3px solid #007acc;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 3px;
+        }
+        .option-group strong {
+            color: #4fc3f7;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>RISC-V Emulator - Documentation</h1>
+        <p>Browser-based RV32IMAC emulator powered by Pyodide</p>
+    </header>
+
+    <div class="docs-container">
+        <h2>Overview</h2>
+            <p>
+                This is a browser-based RISC-V emulator that runs entirely in your web browser using
+                <a href="https://pyodide.org/" target="_blank">Pyodide</a> (Python compiled to WebAssembly).
+                It's based on the <a href="https://github.com/cbalint13/riscv-emu" target="_blank">riscv-emu</a>
+                Python emulator, adapted to work in the browser environment.
+            </p>
+
+            <h2>Getting Started</h2>
+            <ol>
+                <li>Wait for Pyodide to load (status bar shows progress)</li>
+                <li>Click <strong>Load ELF/BIN</strong> and select a RISC-V executable (.elf or .bin file)</li>
+                <li>Configure options and toggles as needed</li>
+                <li>Click <strong>Run</strong> to start execution</li>
+            </ol>
+
+            <h2>Control Buttons</h2>
+
+            <div class="option-group">
+                <strong>Load ELF/BIN</strong><br>
+                Loads a RISC-V executable file into the emulator. Supports:
+                <ul>
+                    <li><strong>ELF files</strong> (.elf) - Full symbol information, stack/heap layout</li>
+                    <li><strong>Binary files</strong> (.bin) - Raw binary loaded at address 0x00000000</li>
+                </ul>
+                Loading a file always performs full reinitialization with current UI settings.
+            </div>
+
+            <div class="option-group">
+                <strong>Run / Resume</strong><br>
+                Starts or resumes execution:
+                <ul>
+                    <li><strong>Run</strong> - Starts from entry point (after load/reset/program exit)</li>
+                    <li><strong>Resume</strong> - Continues from current PC (after stop)</li>
+                </ul>
+                Button text changes to indicate which action will be performed.
+            </div>
+
+            <div class="option-group">
+                <strong>Stop</strong><br>
+                Pauses execution at current PC. Use <strong>Resume</strong> to continue from where you stopped.
+            </div>
+
+            <div class="option-group">
+                <strong>Reset</strong><br>
+                Performs full reinitialization with current UI settings and reloads the current file.
+                Use this to apply toggle changes that require reload (marked with <span class="reload-indicator">⟳</span>).
+            </div>
+
+            <h2>Tracing Options</h2>
+            <p>Enable debug output in the terminal. Changes take effect immediately (no reload required).</p>
+
+            <div class="option-group">
+                <strong>Syscalls</strong><br>
+                Traces system calls (read, write, exit, sbrk, etc.) with arguments and return values.
+            </div>
+
+            <div class="option-group">
+                <strong>Traps</strong><br>
+                Traces trap/exception handling (interrupts, illegal instructions, etc.).
+            </div>
+
+            <div class="option-group">
+                <strong>Functions</strong><br>
+                Traces function entry points using ELF symbol information.
+                <em>Only available for ELF files with symbols.</em>
+            </div>
+
+            <h2>Checking Options</h2>
+            <p>Runtime verification checks. Most require reload to take effect.</p>
+
+            <div class="option-group">
+                <strong>Invariants</strong><br>
+                Checks program invariants during execution (x0=0, PC in bounds, stack/heap separation, etc.).
+                Changes take effect immediately.
+                <em>Not compatible with multi-tasking programs (scheduler, threads).</em>
+            </div>
+
+            <div class="option-group">
+                <strong>Memory bounds <span class="reload-indicator">⟳</span></strong><br>
+                Enables bounds checking on all memory accesses (uses SafeRAM implementation).
+                Requires reset/reload to take effect.
+            </div>
+
+            <div class="option-group">
+                <strong>Text integrity <span class="reload-indicator">⟳</span></strong><br>
+                Verifies that the code segment (.text) is not modified during execution.
+                <em>Only available for ELF files.</em> Requires reset/reload to take effect.
+            </div>
+
+            <h2>Features</h2>
+            <p>CPU extensions and hardware features. Require reload to take effect.</p>
+
+            <div class="option-group">
+                <strong>Timer (CSR) <span class="reload-indicator">⟳</span></strong><br>
+                Enables the timer peripheral with <code>mtime</code> and <code>mtimecmp</code> CSRs.
+                Required for programs that use timer interrupts.
+                Requires reset/reload to take effect.
+            </div>
+
+            <div class="option-group">
+                <strong>RVC (Compressed) <span class="reload-indicator">⟳</span></strong><br>
+                Enables RISC-V Compressed (RVC) instruction set extension.
+                Supports 16-bit compressed instructions mixed with 32-bit instructions.
+                Requires reset/reload to take effect.
+            </div>
+
+            <h2>Options</h2>
+
+            <div class="option-group">
+                <strong>Raw terminal <span class="reload-indicator">⟳</span></strong><br>
+                Enables raw TTY mode (character-at-a-time input without echo).
+                Required for programs like MicroPython REPL.
+                Requires reset/reload to take effect.
+            </div>
+
+            <div class="option-group">
+                <strong>Registers</strong><br>
+                Comma-separated list of registers to trace (e.g., <code>pc,sp,ra,a0</code>).
+                Shows register values before each instruction.
+                Changes take effect immediately after field loses focus.
+            </div>
+
+            <div class="option-group">
+                <strong>RAM Size (KB) <span class="reload-indicator">⟳</span></strong><br>
+                Configures emulated RAM size (512KB to 8192KB in 512KB increments).
+                Default: 1024KB (1MB). Some programs (like MicroPython) require 4096KB (4MB).
+                Requires reset/reload to take effect.
+            </div>
+
+            <h2>File Type Compatibility</h2>
+
+            <h3>ELF Files (.elf)</h3>
+            <ul>
+                <li>Full symbol information available</li>
+                <li>Stack and heap layout from symbols (<code>__stack_top</code>, <code>__heap_start</code>)</li>
+                <li>Function tracing available</li>
+                <li>Text integrity checking available</li>
+                <li>Entry point from ELF header</li>
+            </ul>
+
+            <h3>Binary Files (.bin)</h3>
+            <ul>
+                <li>Raw binary loaded at address 0x00000000</li>
+                <li>Entry point at 0x00000000</li>
+                <li>No symbol information (function tracing disabled)</li>
+                <li>No text integrity checking (disabled)</li>
+                <li>Programs must manage their own stack/heap</li>
+            </ul>
+
+            <h2>Performance Stats</h2>
+            <ul>
+                <li><strong>Instructions</strong> - Total instructions executed since start</li>
+                <li><strong>IPS</strong> - Instructions per second (averaged over last 500ms)</li>
+            </ul>
+
+            <h2>Keyboard Shortcuts</h2>
+            <ul>
+                <li><strong>Ctrl-C</strong> in terminal - Sends interrupt to running program (if supported)</li>
+            </ul>
+
+            <h2>Tips</h2>
+            <ul>
+                <li>Use <strong>Stop/Resume</strong> for debugging or examining state at specific points</li>
+                <li>Use <strong>Reset</strong> after changing toggles marked with <span class="reload-indicator">⟳</span></li>
+                <li>Check RAM requirements: If you get "Access out of bounds" errors, increase RAM size and reload</li>
+                <li>Enable <strong>Tracing</strong> options to debug program behavior in the terminal</li>
+                <li>Raw terminal mode is needed for interactive programs (REPLs)</li>
+                <li>Invariant checking helps catch bugs but doesn't work with multi-tasking programs</li>
+            </ul>
+
+            <h2>Source Code</h2>
+            <p>
+                Original Python emulator:
+                <a href="https://github.com/cbalint13/riscv-emu" target="_blank">github.com/cbalint13/riscv-emu</a>
+            </p>
+        </div>
+</body>
+</html>

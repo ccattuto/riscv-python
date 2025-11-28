@@ -38,6 +38,15 @@ header p {
     color: #858585;
 }
 
+header a {
+    transition: all 0.2s ease;
+}
+
+header a:hover {
+    background: #4fc3f7;
+    color: #1e1e1e;
+}
+
 .status {
     background: #007acc;
     color: white;
