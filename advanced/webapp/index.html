@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RISC-V Emulator</title>
+
+    <!-- Xterm.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>RISC-V Emulator</h1>
+                    <p>Pure browser-based RV32IMAC emulator powered by Pyodide</p>
+                </div>
+                <a href="docs.html" target="_blank" style="color: #4fc3f7; text-decoration: none; font-size: 14px; padding: 8px 16px; border: 1px solid #4fc3f7; border-radius: 3px;">Documentation</a>
+            </div>
+        </header>
+
+        <div id="status" class="status">
+            <span id="status-text">Initializing Pyodide...</span>
+        </div>
+
+        <div class="container">
+            <!-- Left Panel: Controls -->
+            <aside class="controls-panel">
+                <section class="control-section">
+                    <h3>File</h3>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="file-input" accept=".elf,.bin" disabled />
+                        <label for="file-input">Load ELF/BIN</label>
+                    </div>
+                    <div id="file-info" class="file-info"></div>
+                </section>
+
+                <section class="control-section">
+                    <h3>Actions</h3>
+                    <button id="btn-run" disabled>Run</button>
+                    <button id="btn-stop" disabled>Stop</button>
+                    <button id="btn-reset" disabled>Reset</button>
+                </section>
+
+                <section class="control-section">
+                    <h3>Tracing</h3>
+                    <label><input type="checkbox" id="opt-trace-syscalls"> Syscalls</label>
+                    <label><input type="checkbox" id="opt-trace-traps"> Traps</label>
+                    <label><input type="checkbox" id="opt-trace-functions"> Functions</label>
+                </section>
+
+                <section class="control-section">
+                    <h3>Checking</h3>
+                    <label><input type="checkbox" id="opt-check-inv"> Invariants</label>
+                    <label><input type="checkbox" id="opt-check-ram"> Memory bounds <span class="reload-required" title="Requires reset/reload">⟳</span></label>
+                    <label><input type="checkbox" id="opt-check-text"> Text integrity <span class="reload-required" title="Requires reset/reload">⟳</span></label>
+                </section>
+
+                <section class="control-section">
+                    <h3>Features</h3>
+                    <label><input type="checkbox" id="opt-timer"> Timer (CSR) <span class="reload-required" title="Requires reset/reload">⟳</span></label>
+                    <label><input type="checkbox" id="opt-rvc"> RVC (Compressed) <span class="reload-required" title="Requires reset/reload">⟳</span></label>
+                </section>
+
+                <section class="control-section">
+                    <h3>Options</h3>
+                    <label><input type="checkbox" id="opt-raw-tty"> Raw terminal <span class="reload-required" title="Requires reset/reload">⟳</span></label>
+                    <label>
+                        Registers:
+                        <input type="text" id="opt-regs" placeholder="pc,sp,ra,a0" />
+                    </label>
+                    <label>
+                        RAM Size (KB): <span class="reload-required" title="Requires reset/reload">⟳</span>
+                        <input type="number" id="opt-ram-size" value="1024" min="512" max="8192" step="512" />
+                    </label>
+                </section>
+
+                <section class="control-section">
+                    <h3>Performance</h3>
+                    <div id="perf-stats">
+                        <div>Instructions: <span id="stat-instructions">0</span></div>
+                        <div>IPS: <span id="stat-ips">0</span></div>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- Right Panel: Terminal -->
+            <main class="terminal-panel">
+                <div id="terminal"></div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Pyodide from CDN -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+
+    <!-- Xterm.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+    <!-- Application modules -->
+    <script src="js/terminal.js"></script>
+    <script src="js/fileloader.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

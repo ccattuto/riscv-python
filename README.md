@@ -57,7 +57,8 @@ pip install -r requirements.txt
 ├── advanced/freertos/         # FreeRTOS port
 ├── advanced/micropython/      # MicroPython port
 ├── advanced/circuitpython/    # CircuitPython port
-├── advanced/coremark/         # CoreMark port 
+├── advanced/coremark/         # CoreMark port
+├── advanced/webapp/           # Browser-based port powered by Pyodide
 └── README.md                  # You're here!
 ```
 
@@ -234,6 +235,10 @@ Example Python programs using programmatic access to the emulator are provided i
 ```
 PYTHONPATH=. python tests/test_api_simple.py
 ```
+
+## Browser-based emulator
+
+The emulator can run in a web browser thanks to [Pyodide](https://pyodide.org/). See `advanced/webapp`.
 
 ## 🧪 Running Unit Tests
 ```

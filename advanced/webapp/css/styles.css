@@ -1,0 +1,267 @@
+/* RISC-V Emulator - Styles */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+header {
+    background: #252526;
+    padding: 15px 20px;
+    border-bottom: 1px solid #3e3e42;
+}
+
+header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #cccccc;
+    margin-bottom: 5px;
+}
+
+header p {
+    font-size: 12px;
+    color: #858585;
+}
+
+header a {
+    transition: all 0.2s ease;
+}
+
+header a:hover {
+    background: #4fc3f7;
+    color: #1e1e1e;
+}
+
+.status {
+    background: #007acc;
+    color: white;
+    padding: 8px 20px;
+    font-size: 13px;
+    border-bottom: 1px solid #005a9e;
+}
+
+.status.error {
+    background: #d72b2b;
+    border-bottom-color: #a01c1c;
+}
+
+.container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.controls-panel {
+    width: 280px;
+    background: #252526;
+    border-right: 1px solid #3e3e42;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+.control-section {
+    margin-bottom: 20px;
+}
+
+.control-section h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #cccccc;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.control-section label {
+    display: block;
+    font-size: 13px;
+    color: #cccccc;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.control-section label:hover {
+    color: #ffffff;
+}
+
+.control-section input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.control-section input[type="text"],
+.control-section input[type="number"] {
+    width: 100%;
+    padding: 6px 8px;
+    background: #3c3c3c;
+    border: 1px solid #3e3e42;
+    color: #cccccc;
+    font-size: 13px;
+    border-radius: 3px;
+    margin-top: 5px;
+}
+
+.control-section input[type="text"]:focus,
+.control-section input[type="number"]:focus {
+    outline: none;
+    border-color: #007acc;
+}
+
+.file-input-wrapper {
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.file-input-wrapper input[type="file"] {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.file-input-wrapper label {
+    display: block;
+    background: #0e639c;
+    color: white;
+    padding: 8px 12px;
+    text-align: center;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.file-input-wrapper label:hover {
+    background: #1177bb;
+}
+
+.file-input-wrapper input[type="file"]:disabled {
+    cursor: not-allowed;
+}
+
+.file-input-wrapper input[type="file"]:disabled + label {
+    background: #3c3c3c;
+    color: #858585;
+    cursor: not-allowed;
+}
+
+.file-input-wrapper input[type="file"]:disabled + label:hover {
+    background: #3c3c3c;
+}
+
+.file-info {
+    font-size: 12px;
+    color: #858585;
+    margin-top: 8px;
+    word-break: break-all;
+}
+
+.file-info.error {
+    color: #f48771;
+}
+
+button {
+    width: 100%;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: #0e639c;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+    background: #1177bb;
+}
+
+button:disabled {
+    background: #3c3c3c;
+    color: #858585;
+    cursor: not-allowed;
+}
+
+button#btn-stop {
+    background: #d72b2b;
+}
+
+button#btn-stop:hover:not(:disabled) {
+    background: #e23939;
+}
+
+button#btn-reset {
+    background: #7f7f7f;
+}
+
+button#btn-reset:hover:not(:disabled) {
+    background: #8f8f8f;
+}
+
+#perf-stats {
+    font-size: 12px;
+    color: #858585;
+}
+
+#perf-stats div {
+    margin-bottom: 5px;
+}
+
+#perf-stats span {
+    color: #cccccc;
+    font-weight: 500;
+}
+
+.terminal-panel {
+    flex: 1;
+    background: #1e1e1e;
+    padding: 10px;
+    overflow: hidden;
+}
+
+#terminal {
+    height: 100%;
+}
+
+/* Custom scrollbar for controls panel */
+.controls-panel::-webkit-scrollbar {
+    width: 10px;
+}
+
+.controls-panel::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.controls-panel::-webkit-scrollbar-thumb {
+    background: #3e3e42;
+    border-radius: 5px;
+}
+
+.controls-panel::-webkit-scrollbar-thumb:hover {
+    background: #4e4e52;
+}
+
+/* Reload required indicator */
+.reload-required {
+    color: #858585;
+    font-size: 14px;
+    cursor: help;
+    margin-left: 4px;
+}
