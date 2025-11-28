@@ -109,7 +109,7 @@
             <p>
                 This is a browser-based RISC-V emulator that runs entirely in your web browser using
                 <a href="https://pyodide.org/" target="_blank">Pyodide</a> (Python compiled to WebAssembly).
-                It's based on the <a href="https://github.com/cbalint13/riscv-emu" target="_blank">riscv-emu</a>
+                It's based on the <a href="https://github.com/ccattuto/riscv-python" target="_blank">riscv-python</a>
                 Python emulator, adapted to work in the browser environment.
             </p>
 
@@ -217,7 +217,6 @@
             <div class="option-group">
                 <strong>Raw terminal <span class="reload-indicator">⟳</span></strong><br>
                 Enables raw TTY mode (character-at-a-time input without echo).
-                Required for programs like MicroPython REPL.
                 Requires reset/reload to take effect.
             </div>
 
@@ -230,8 +229,8 @@
 
             <div class="option-group">
                 <strong>RAM Size (KB) <span class="reload-indicator">⟳</span></strong><br>
-                Configures emulated RAM size (512KB to 8192KB in 512KB increments).
-                Default: 1024KB (1MB). Some programs (like MicroPython) require 4096KB (4MB).
+                Configures emulated RAM size.
+                Default: 1024KB (1MB).
                 Requires reset/reload to take effect.
             </div>
 
@@ -279,7 +278,7 @@
             <h2>Source Code</h2>
             <p>
                 Original Python emulator:
-                <a href="https://github.com/cbalint13/riscv-emu" target="_blank">github.com/cbalint13/riscv-emu</a>
+                <a href="https://github.com/ccattuto/riscv-python" target="_blank">github.com/ccattuto/riscv-python</a>
             </p>
         </div>
 </body>
