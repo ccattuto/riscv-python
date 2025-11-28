@@ -122,7 +122,7 @@ def initialize(options):
         # Register timer peripheral if enabled
         if timer_enabled:
             try:
-                from peripherals import MMIOTimer
+                from browser_peripherals import MMIOTimer
                 timer_peripheral = MMIOTimer(state.cpu)
                 state.ram.register_peripheral(timer_peripheral)
                 state.machine.register_peripheral(timer_peripheral)

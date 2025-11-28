@@ -1,6 +1,7 @@
 # RISC-V Emulator - Browser Edition
 
 A pure browser-based RISC-V (RV32IMAC) emulator powered by Pyodide and xterm.js.
+Developed using [Claude Code](https://www.claude.com/product/claude-code).
 
 ## Features
 

@@ -59,7 +59,7 @@ async function initializePyodide() {
         const cacheBust = Date.now();
 
         // Fetch core emulator modules from py directory
-        const coreModules = ['cpu.py', 'ram.py', 'machine.py', 'rvc.py', 'peripherals.py'];
+        const coreModules = ['cpu.py', 'ram.py', 'machine.py', 'rvc.py'];
 
         for (const moduleName of coreModules) {
             try {
@@ -79,7 +79,7 @@ async function initializePyodide() {
         updateStatus('Loading browser-specific Python modules...');
 
         // Fetch and load browser-specific Python modules
-        const pythonModules = ['browser_logger.py', 'browser_syscalls.py', 'browser_entry.py'];
+        const pythonModules = ['browser_logger.py', 'browser_syscalls.py', 'browser_peripherals.py', 'browser_entry.py'];
 
         for (const moduleName of pythonModules) {
             try {
