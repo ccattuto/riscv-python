@@ -236,11 +236,11 @@ Example Python programs using programmatic access to the emulator are provided i
 PYTHONPATH=. python tests/test_api_simple.py
 ```
 
-## 🌐 Browser-based Emulation
+## 🌐 Running Programs in the Browser
 
-The emulator can run in a web browser thanks to [Pyodide](https://pyodide.org/). See `advanced/webapp`.
+The emulator can run in a web browser thanks to [Pyodide](https://pyodide.org/). See `advanced/webapp/`.
 
-You can [try it out here](https://ccattuto.github.io/riscv-python/).
+You can [try it out here](https://ccattuto.github.io/riscv-python/) using the binaries available in `prebuilt/`.
 
 ## 🧪 Running Unit Tests
 ```
