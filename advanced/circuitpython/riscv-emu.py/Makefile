@@ -85,7 +85,7 @@ $(BUILD)/%.o: %.S
 
 SRC_QSTR += $(SRC_C) $(SRC_SUPERVISOR) $(SRC_COMMON_HAL_EXPANDED) $(SRC_SHARED_MODULE_EXPANDED) $(SRC_CIRCUITPY_COMMON)
 
-all: $(BUILD)/firmware.elf $(BUILD)/circuitpy.img
+all: $(BUILD)/firmware.elf $(BUILD)/firmware.bin $(BUILD)/circuitpy.img
 
 BOARD_LD := $(wildcard boards/$(BOARD)/link.ld)
 

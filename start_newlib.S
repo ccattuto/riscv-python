@@ -13,25 +13,23 @@ _start:
     mv s1, a1
 
     # initialize .bss
-    la   a0, __bss_start
-    la   a1, __bss_end
+    la   t0, __bss_start
+    la   t1, __bss_end
 z_bss:
-    sw   zero, 0(a0)
-    addi a0, a0, 4
-    blt  a0, a1, z_bss
+    sw   zero, 0(t0)
+    addi t0, t0, 4
+    blt  t0, t1, z_bss
 
     # initialize .sbss
-    la   a0, __sbss_start
-    la   a1, __sbss_end
+    la   t0, __sbss_start
+    la   t1, __sbss_end
 z_sbss:
-    sw   zero, 0(a0)
-    addi a0, a0, 4
-    blt  a0, a1, z_sbss
+    sw   zero, 0(t0)
+    addi t0, t0, 4
+    blt  t0, t1, z_sbss
 
     # initialize Newlib
-    la   a0, _impure_ptr
-    lw   a0, 0(a0)
-    call __sinit
+    call __libc_init_array
 
     # restore a0 and a1
     mv a0, s0

@@ -7,6 +7,8 @@ MEMORY
 
 SECTIONS
 {
+  . = 0x00000000;
+
   .text : ALIGN(4)
   {
     KEEP(*(.init))

@@ -1,4 +1,4 @@
-    .section .text
+    .section .init
     .globl _start
 
 _start:
@@ -13,33 +13,31 @@ _start:
     mv s1, a1
 
     # initialize .bss
-    la   a0, __bss_start
-    la   a1, __bss_end
+    la   t0, __bss_start
+    la   t1, __bss_end
 z_bss:
-    sw   zero, 0(a0)
-    addi a0, a0, 4
-    blt  a0, a1, z_bss
+    sw   zero, 0(t0)
+    addi t0, t0, 4
+    blt  t0, t1, z_bss
 
     # initialize .sbss
-    la   a0, __sbss_start
-    la   a1, __sbss_end
+    la   t0, __sbss_start
+    la   t1, __sbss_end
 z_sbss:
-    sw   zero, 0(a0)
-    addi a0, a0, 4
-    blt  a0, a1, z_sbss
+    sw   zero, 0(t0)
+    addi t0, t0, 4
+    blt  t0, t1, z_sbss
 
-    # initialize Newlib -- uncomment these if your FreeRTOS application needs Newlib-nano
-#    la   a0, _impure_ptr
-#    lw   a0, 0(a0)
-#    call __sinit
+    # initialize Newlib -- uncomment this if your FreeRTOS application needs Newlib-nano
+#    call __libc_init_array
 
     # install trap handler for FreeRTOS
 #if defined(MTIMER_MMIO) && MTIMER_MMIO == 1
-    la a0, freertos_risc_v_trap_handler
+    la t0, freertos_risc_v_trap_handler
 #else
-    la a0, freertos_risc_v_trap_handler_riscvpy
+    la t0, freertos_risc_v_trap_handler_riscvpy
 #endif
-    csrw mtvec, a0
+    csrw mtvec, t0
 
     # restore a0 and a1
     mv a0, s0
