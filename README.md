@@ -370,3 +370,7 @@ Running the emulator with [PyPy](https://pypy.org/) yields a speedup of almost 4
 time pypy3 ./riscv-emu.py prebuilt/test_newlib_conway.elf
 pypy3 ./riscv-emu.py prebuilt/test_newlib_conway.elf  19.77s user 0.11s system 99% cpu 20.009 total
 ```
+
+## Acknowledgements
+
+**Danh** and **Tannewt** from [Adafruit's Discord server](http://adafru.it/discord) for help with the CircuitPython port.  **Onur Toker** for identifing an issue with the Newlib initialization sequence.
