@@ -395,4 +395,4 @@ pypy3 ./riscv-emu.py prebuilt/test_newlib_conway.elf  19.77s user 0.11s system 9
 
 ## Acknowledgements
 
-**Danh** and **Tannewt** from [Adafruit's Discord server](http://adafru.it/discord) for help with the CircuitPython port.  **Onur Toker** for identifing an issue with the Newlib initialization sequence. [ChatGPT Pro](https://chatgpt.com) for debugging the initial implementation. [Claude Code](https://www.claude.com/product/claude-code) for development of the Web app and the GDB stub.
+**Danh** and **Tannewt** from [Adafruit's Discord server](http://adafru.it/discord) for help with the CircuitPython port.  **Onur Toker** for identifing an issue with the Newlib initialization sequence. [ChatGPT Pro](https://chatgpt.com) for debugging the initial implementation. [Claude Code](https://www.claude.com/product/claude-code) for RVC support and for the development of the Web app and the GDB stub.
