@@ -14,7 +14,9 @@ This is a simple and readable **RISC-V RV32IMAC emulator** written in pure Pytho
 - **Supports memory-mapped IO** and provides a **UART peripheral** using a pseudo-terminal, and a **memory-mapped block device** backed by an image file
 - **Passes all `rv32ui`, `rv32mi`, `rv32um`, `rv32ua`, and `rv32uc` unit tests** provided by [RISC-V International](https://github.com/riscv-software-src/riscv-tests)
 - **Supports logging** of register values, function calls, system calls, traps, invalid memory accesses, and violations of invariants
+- **GDB remote debugging support** via GDB Remote Serial Protocol (RSP) with breakpoints, single-stepping, register/memory inspection
 - Runs [MicroPython](https://micropython.org/), [CircuitPython](https://circuitpython.org/) with emulated peripherals, and [FreeRTOS](https://www.freertos.org/) with preemptive multitasking
+- **Browser-based emulation** via [Pyodide](https://pyodide.org/), try it [here](https://ccattuto.github.io/riscv-python/)
 - Self-contained, modular, extensible codebase. Provides a **Python API** enabling users to control execution, inspect state, and script complex tests directly in Python.
 
 ## 🔧 Requirements
@@ -37,6 +39,7 @@ pip install -r requirements.txt
 ├── machine.py                 # Host logic (executable loading, invariants check)
 ├── peripherals.py             # Peripherals (UART, block device)
 ├── syscalls.py                # System calls and terminal I/O
+├── gdbstub.py                 # GDB Remote Serial Protocol implementation
 ├── Makefile                   # Builds ELF/binary targets
 ├── start_bare.S               # Minimal startup code
 ├── start_newlib.S             # Startup code for Newlib-nano
@@ -90,6 +93,9 @@ pip install -r requirements.txt
 | `--raw-tty`             | Enable raw terminal mode                                                    |
 | `--no-color`            | Remove ANSI colors in debugging output                                      |
 | `--log LOG_FILE`        | Log debug information to file `LOG_FILE`                                    |
+| `--gdb`                 | Enable GDB remote debugging (integrates with all other features)            |
+| `--gdb-port PORT`       | GDB server port (default: 1234)                                             |
+| `--gdb-host HOST`       | GDB server host (default: localhost)                                        |
 | `--help`                | Show usage help and available options                                       |
 
 ### Compiling Examples
@@ -236,7 +242,23 @@ Example Python programs using programmatic access to the emulator are provided i
 PYTHONPATH=. python tests/test_api_simple.py
 ```
 
-## 🌐 Running Programs in the Browser
+### 🐛 GDB Remote Debugging
+
+The emulator includes GDB remote debugging support. Add the `--gdb` flag to enable it:
+
+```bash
+./riscv-emu.py --gdb prebuilt/test_bare1.elf
+```
+
+Then connect with GDB, e.g.:
+```bash
+riscv64-unknown-elf-gdb prebuilt/test_bare1.elf
+(gdb) target remote localhost:1234
+```
+
+All standard GDB commands work (breakpoints, stepping, register/memory inspection). CSRs can be accessed via monitor commands: `monitor csr mstatus`, `monitor csr mtvec 0x1000`.
+
+### 🌐 Running Programs in the Browser
 
 The emulator can run in a web browser thanks to [Pyodide](https://pyodide.org/). See `advanced/webapp/`.
 

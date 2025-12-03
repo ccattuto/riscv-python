@@ -25,6 +25,7 @@ from cpu import CPU
 from ram import RAM, SafeRAM, RAM_MMIO, SafeRAM_MMIO
 from syscalls import SyscallHandler
 from peripherals import PtyUART, MMIOTimer, MMIOBlockDevice
+from gdbstub import GDBStub
 
 LOG_COLORS = {
     logging.DEBUG: "\033[36m",      # Cyan
@@ -69,6 +70,10 @@ def parse_args():
     parser.add_argument("--no-color", action="store_false", help="Remove ANSI colors in terminal output")
     parser.add_argument("--log", help="Path to log file")
     parser.add_argument("--log-level", default="DEBUG", help="Logging level: DEBUG, INFO, WARNING, ERROR")
+    parser.add_argument("--gdb", action="store_true", help="Enable GDB remote debugging")
+    parser.add_argument("--gdb-port", type=int, default=1234, help="GDB server port (default: 1234)")
+    parser.add_argument("--gdb-host", default='localhost', help="GDB server host (default: localhost)")
+    parser.add_argument("--gdb-debug", action="store_true", help="Enable verbose GDB protocol logging")
 
     args = parser.parse_args(emulator_args)
     args.program_args = [os.path.basename(args.executable)] + program_args
@@ -147,7 +152,7 @@ if __name__ == '__main__':
         console_handler.setLevel(logging.DEBUG)
         console_handler.setFormatter(ColorFormatter('%(asctime)s [%(levelname)s] %(message)s', t0=time.time(), use_color=is_tty and args.no_color))
         log.addHandler(console_handler)
-    
+
     # Instantiate CPU + RAM  + machine + peripherals + syscall handler
 
     # Select RAM implementation
@@ -210,7 +215,14 @@ if __name__ == '__main__':
 
     # RUN
     try:
-        machine.run()
+        if not args.gdb:
+            machine.run()
+        else:
+            # GDB debugging mode
+            gdb_stub = GDBStub(cpu, ram, machine, logger=log, debug_protocol=args.gdb_debug)
+            log.info(f"Starting GDB server on {args.gdb_host}:{args.gdb_port}")
+            gdb_stub.listen(port=args.gdb_port, host=args.gdb_host)
+            machine.run_gdbstub(gdb_stub)
 
     except KeyboardInterrupt:
         if args.raw_tty: # Restore terminal settings
