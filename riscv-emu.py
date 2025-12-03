@@ -215,15 +215,14 @@ if __name__ == '__main__':
 
     # RUN
     try:
-        if args.gdb:
+        if not args.gdb:
+            machine.run()
+        else:
             # GDB debugging mode
             gdb_stub = GDBStub(cpu, ram, machine, logger=log, debug_protocol=args.gdb_debug)
             log.info(f"Starting GDB server on {args.gdb_host}:{args.gdb_port}")
             gdb_stub.listen(port=args.gdb_port, host=args.gdb_host)
             machine.run_gdbstub(gdb_stub)
-        else:
-            # Normal execution mode
-            machine.run()
 
     except KeyboardInterrupt:
         if args.raw_tty: # Restore terminal settings

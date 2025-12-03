@@ -19,12 +19,16 @@ from elftools.elf.elffile import ELFFile
 
 class MachineError(Exception):
     pass
+
 class SetupError(MachineError):
     pass
+
 class InvariantViolationError(MachineError):
     pass
+
 class ExecutionTerminated(MachineError):
     pass
+
 class DebugBreak(MachineError):
     """Exception raised to break out of execution loop for GDB debugging.
 
@@ -369,6 +373,33 @@ class Machine:
                 self.peripherals_run()
                 div = 0
 
+    # Run the emulator loop.
+    # For performance reasons, we use different implementations of the emulator loop,
+    # selected according to the requested features, rather than having a single implementation
+    # with several conditions along the hot execution path.
+    def run(self):
+        # Verify initial PC alignment based on RVC support
+        alignment_mask = 0x1 if self.rvc else 0x3
+        if self.cpu.pc & alignment_mask:
+            raise MachineError(f"Initial PC=0x{self.cpu.pc:08X} violates {2 if self.rvc else 4}-byte alignment requirement")
+
+        if self.regs or self.check_inv or self.trace:
+            self.run_with_checks()  # checks everything at every cycle, up to 3x slower (always with RVC support)
+        else:
+            if self.mmio:
+                self.run_mmio()  # MMIO support, optional timer (always with RVC support)
+            else:
+                if self.timer:
+                    self.run_timer()  # timer support, no checks, no MMIO (always with RVC support)
+                else:
+                    # Fastest option, no timer, no checks, no MMIO
+                    # RVC support is optional for maximum performance on pure RV32I code
+                    if self.rvc:
+                        self.run_fast()  # Fast with RVC support (half-word fetches)
+                    else:
+                        self.run_fast_no_rvc()  # Fastest: pure RV32I (32-bit word fetches)
+
+
     # EXECUTION LOOP: GDB debugging version with breakpoint support
     def run_with_gdb(self, gdb_stub):
         """Execute with GDB breakpoint support and full peripheral integration.
@@ -532,29 +563,3 @@ class Machine:
 
         # Close GDB stub
         gdb_stub.close()
-
-    # Run the emulator loop.
-    # For performance reasons, we use different implementations of the emulator loop,
-    # selected according to the requested features, rather than having a single implementation
-    # with several conditions along the hot execution path.
-    def run(self):
-        # Verify initial PC alignment based on RVC support
-        alignment_mask = 0x1 if self.rvc else 0x3
-        if self.cpu.pc & alignment_mask:
-            raise MachineError(f"Initial PC=0x{self.cpu.pc:08X} violates {2 if self.rvc else 4}-byte alignment requirement")
-
-        if self.regs or self.check_inv or self.trace:
-            self.run_with_checks()  # checks everything at every cycle, up to 3x slower (always with RVC support)
-        else:
-            if self.mmio:
-                self.run_mmio()  # MMIO support, optional timer (always with RVC support)
-            else:
-                if self.timer:
-                    self.run_timer()  # timer support, no checks, no MMIO (always with RVC support)
-                else:
-                    # Fastest option, no timer, no checks, no MMIO
-                    # RVC support is optional for maximum performance on pure RV32I code
-                    if self.rvc:
-                        self.run_fast()  # Fast with RVC support (half-word fetches)
-                    else:
-                        self.run_fast_no_rvc()  # Fastest: pure RV32I (32-bit word fetches)
