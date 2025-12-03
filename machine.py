@@ -25,6 +25,17 @@ class InvariantViolationError(MachineError):
     pass
 class ExecutionTerminated(MachineError):
     pass
+class DebugBreak(MachineError):
+    """Exception raised to break out of execution loop for GDB debugging.
+
+    Attributes:
+        reason: Human-readable reason for break
+        signal: GDB signal number
+    """
+    def __init__(self, reason, signal=5):  # signal=5 is SIGTRAP
+        self.reason = reason
+        self.signal = signal
+        super().__init__(reason)
 
 class Machine:
     def __init__(self, cpu, ram, timer=False, mmio=False, rvc=False, logger=None, trace=False, regs=None, check_inv=False, start_checks=None):
@@ -357,6 +368,170 @@ class Machine:
             if div & DIV_MASK == 0:
                 self.peripherals_run()
                 div = 0
+
+    # EXECUTION LOOP: GDB debugging version with breakpoint support
+    def run_with_gdb(self, gdb_stub):
+        """Execute with GDB breakpoint support and full peripheral integration.
+
+        This loop checks for breakpoints before each instruction and integrates
+        with peripherals (timer + MMIO) just like run_mmio() does.
+
+        Args:
+            gdb_stub: GDBStub instance for breakpoint management
+
+        Raises:
+            DebugBreak: When breakpoint hit or single-step complete
+        """
+        cpu = self.cpu
+        ram = self.ram
+        timer = self.timer
+        mmio = self.mmio
+        div = 0
+        DIV_MASK = 0xFF  # call peripheral run() methods every 256 cycles
+        INTERRUPT_CHECK_MASK = 0xFFF  # check for interrupts every 4096 cycles (~2ms)
+
+        # Single step mode - execute one instruction then break
+        if gdb_stub.single_step:
+            # Fetch and execute one instruction
+            inst_low = ram.load_half(cpu.pc, signed=False)
+            if (inst_low & 0x3) == 0x3:
+                # 32-bit instruction
+                inst_high = ram.load_half(cpu.pc + 2, signed=False)
+                inst = inst_low | (inst_high << 16)
+                cpu.execute_32(inst)
+            else:
+                # 16-bit compressed instruction
+                cpu.execute_16(inst_low)
+
+            if timer:
+                cpu.timer_update()
+            cpu.pc = cpu.next_pc
+
+            # Run peripherals if needed
+            if mmio:
+                self.peripherals_run()
+
+            raise DebugBreak("Single step complete", signal=5)  # SIGTRAP
+
+        # Continue mode - run until breakpoint or exception
+        cycle_count = 0
+        while gdb_stub.running:
+            # Check for breakpoint BEFORE executing instruction
+            if gdb_stub.is_breakpoint(cpu.pc):
+                raise DebugBreak(f"Breakpoint at 0x{cpu.pc:08x}", signal=5)  # SIGTRAP
+
+            # Periodically check for interrupt from GDB (Ctrl+C)
+            # Note: This only works while executing instructions. If the program
+            # is blocked in a syscall (e.g., READ waiting for input), the interrupt
+            # won't be detected until the syscall completes.
+            cycle_count += 1
+            if cycle_count & INTERRUPT_CHECK_MASK == 0:
+                if gdb_stub.check_for_interrupt():
+                    gdb_stub.running = False
+                    raise DebugBreak("Interrupted by user", signal=2)  # SIGINT
+
+            # Fetch and execute instruction
+            inst_low = ram.load_half(cpu.pc, signed=False)
+            if (inst_low & 0x3) == 0x3:
+                # 32-bit instruction
+                inst_high = ram.load_half(cpu.pc + 2, signed=False)
+                inst = inst_low | (inst_high << 16)
+                cpu.execute_32(inst)
+            else:
+                # 16-bit compressed instruction
+                cpu.execute_16(inst_low)
+
+            if timer:
+                cpu.timer_update()
+            cpu.pc = cpu.next_pc
+
+            # Run peripherals periodically
+            if mmio:
+                div += 1
+                if div & DIV_MASK == 0:
+                    self.peripherals_run()
+                    div = 0
+
+    # EXECUTION LOOP: GDB stub command loop
+    def run_gdbstub(self, gdb_stub):
+        """Run the GDB remote debugging command loop.
+
+        This method handles the GDB Remote Serial Protocol command/response loop,
+        delegating instruction execution to run_with_gdb() when continue/step commands
+        are received.
+
+        Args:
+            gdb_stub: GDBStub instance for protocol handling
+        """
+        # Import here to avoid circular dependency at module level
+        from gdbstub import GDBSignals
+
+        if self.logger:
+            self.logger.info("Waiting for GDB connection...")
+
+        # GDB command loop
+        while True:
+            # Receive command from GDB
+            cmd = gdb_stub.recv_packet()
+
+            if cmd is None:
+                if self.logger:
+                    self.logger.info("GDB connection closed")
+                break
+
+            # Handle interrupt (Ctrl+C from GDB)
+            if cmd == 'interrupt':
+                gdb_stub.running = False
+                gdb_stub.send_packet(gdb_stub.stop_reply(GDBSignals.SIGINT))
+                continue
+
+            # Process command
+            response = gdb_stub.handle_command(cmd)
+
+            # If command started execution (continue/step), run emulator
+            if gdb_stub.running:
+                try:
+                    self.run_with_gdb(gdb_stub)
+
+                    # If we get here, execution completed without hitting breakpoint
+                    gdb_stub.running = False
+                    gdb_stub.send_packet(gdb_stub.stop_reply(GDBSignals.SIGTRAP))
+
+                except DebugBreak as e:
+                    # Breakpoint hit or single-step complete
+                    gdb_stub.running = False
+                    gdb_stub.single_step = False  # Reset single-step flag
+                    gdb_stub.send_packet(gdb_stub.stop_reply(e.signal))
+                    if self.logger:
+                        self.logger.debug(f"Debug break: {e.reason}")
+
+                except ExecutionTerminated as e:
+                    # Program called exit syscall
+                    gdb_stub.running = False
+                    gdb_stub.send_packet(gdb_stub.stop_reply(GDBSignals.SIGTRAP))
+                    if self.logger:
+                        self.logger.info(f"Program terminated: {e}")
+
+                except MachineError as e:
+                    # Emulator error (trap, illegal instruction, etc.)
+                    gdb_stub.running = False
+                    # Try to map error to appropriate signal
+                    if 'illegal' in str(e).lower():
+                        signal = GDBSignals.SIGILL
+                    elif 'trap' in str(e).lower():
+                        signal = GDBSignals.SIGTRAP
+                    else:
+                        signal = GDBSignals.SIGSEGV
+                    gdb_stub.send_packet(gdb_stub.stop_reply(signal))
+                    if self.logger:
+                        self.logger.error(f"Emulator error: {e}")
+
+            # If command returned a response, send it
+            elif response is not None:
+                gdb_stub.send_packet(response)
+
+        # Close GDB stub
+        gdb_stub.close()
 
     # Run the emulator loop.
     # For performance reasons, we use different implementations of the emulator loop,
